@@ -1,0 +1,25 @@
+<html>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <body>
+        <div class="container">
+            <div class="col-md-6 offset-md-3 mt-3">
+                <form action="/login" method="POST">
+                    <div class="form-group">
+                        <label for="exampleInputEmail1">Windows account</label>
+                        <input name="username" type="text" class="form-control" placeholder="Enter windows account">
+                    </div>
+                    <div class="form-group">
+                        <label for="exampleInputPassword1">Password</label>
+                        <input type="password" class="form-control" placeholder="Password" name="password">
+                        {{ if .ErrorMsg }}
+                            <div class="invalid-feedback" style="display:block">
+                                {{ .ErrorMsg }}
+                            </div>
+                        {{end}}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        </div>
+    </body>
+</html>

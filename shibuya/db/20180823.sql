@@ -1,0 +1,40 @@
+
+CREATE database IF NOT EXISTS shibuya;
+use shibuya;
+
+
+CREATE TABLE IF NOT EXISTS plan (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(20) NOT NULL,
+    project_id INT UNSIGNED NOT NULL,
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    key (project_id)
+) CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS collection (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(20) NOT NULL,
+    project_id INT UNSIGNED NOT NULL,
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    key (project_id)
+) CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS collection_plan (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    collection_id INT UNSIGNED NOT NULL,
+    plan_id INT UNSIGNED NOT NULL,
+    concurrency INT UNSIGNED NOT NULL,
+    rampup INT UNSIGNED NOT NULL,
+    duration INT UNSIGNED NOT NULL,
+    engines INT UNSIGNED,
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (collection_id, plan_id)
+) CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS project (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(20) NOT NULL,
+    owner VARCHAR(50) NOT NULL,
+    created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    key (owner)
+) CHARSET=utf8mb4;

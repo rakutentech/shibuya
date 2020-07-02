@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Shibuya {{ .Context }}</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <script>
+        var running_context = {{ .Context }};
+        var result_dashboard = {{ .ResultDashboard }};
+        var engine_health_dashboard = {{ .EngineHealthDashboard }};
+        var on_demand_cluster = {{ .OnDemandCluster }}
+        var is_admin = {{ .IsAdmin }}
+        var project_home = {{ .ProjectHome }}
+        var upload_file_help = {{ .UploadFileHelp }}
+    </script>
+    <link href="/static/fontawesome/css/all.min.css" rel="stylesheet">
+</head>
+
+<body style="background-color: {{ .BackgroundColour }}">
+    <div id="top-bar"
+        class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom shadow-sm">
+        <h5 class="my-0 mr-md-auto font-weight-normal"><a href="/">Shibuya({{ .Context }})</a></h5>
+        <nav class="my-2 my-md-0 mr-md-3">
+            {{ if .IsAdmin }}
+            <a class="p-2" href="#admin">Admin Page</a>
+            {{ end }}
+            <a class="p-2" href="{{ .ProjectHome }}" target="_blank">Help</a>
+            <a class="p-2" href="#">Pricing</a>
+            <span class="p-2 text-dark">{{ .Account }}</span>
+            <a href="#" @click="logout">Logout</a>
+        </nav>
+    </div>
+    <div class="container">
+        <div class="shibuya">
+            <router-view :key="$route.path"></router-view>
+        </div>
+        <div class="shibuya-admin">
+            <router-view></router-view>
+        </div>
+    </div>
+</body>
+<script id="plan-tmpl" type="text/x-template">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/">Projects</a></li>
+                    <li class="breadcrumb-item">Plan</li>
+                    <li class="breadcrumb-item">${plan.name}</li>
+                </ol>
+            </nav>
+            <div class="card">
+                <div class="card-body">
+                    <button type="button" @click="remove" class="btn btn-outline-danger float-right">Delete</button>
+                    <span style="display: inline-block;" title="Upload your plan related files">
+                        <h5 class="card-title">${plan.name}
+                            <a style="color:black;" target="_blank" :href="upload_file_help">
+                                <i class="far fa-question-circle fa-xs"></i>
+                            </a>
+                        </h5>
+                        <h6 class="card-subtitle mb-2 text-muted">Plan ID: ${plan.id}</h6>
+                    </span>
+                    <form enctype="multipart/form-data" style="display: inline-block; padding-left: 1em; vertical-align: text-bottom;" novalidate>
+                        <label for="planFile" class="btn btn-outline-dark" style="border-radius: 1.5em;"><i class="fas fa-file-upload"></i></label>
+                        <input type="file" name="planFile" @change="upload($event)" id="planFile" accept=".csv, .jmx, .txt, .json" style="display: none"/>
+                    </form>
+                    <div class="alert alert-primary" role="alert">
+                        <p class="mb-0">You can upload only one .jmx file per plan</p>
+                    </div>
+                    <div class="btn-group" v-if="plan.test_file != null">
+                            <a class="btn btn-outline-success" v-if="plan.test_file != null" v-bind:href="plan.test_file.filelink" target="_blank" role="button">${plan.test_file.filename}</a>
+                        <button type="button" class="btn btn-outline-success" @click="deletePlanFile(plan.test_file.filename)" style="margin-right:1em;">X</button>
+                    </div>
+                    <div v-for="data in plan.data" class="btn-group">
+                            <a class="btn btn-outline-dark" v-bind:href="data.filelink" target="_blank" role="button">${data.filename}</a>
+                            <button type="button" class="btn btn-outline-dark" @click="deletePlanFile(data.filename)" style="margin-right:1em;">X</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+<script id="collection-tmpl" type="text/x-template">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/">Projects</a></li>
+                    <li class="breadcrumb-item">Collections</li>
+                    <li class="breadcrumb-item">${collection.name}</li>
+                </ol>
+            </nav>
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h3 style="padding-bottom: 0.5em;">${collection.name}</h3>
+                    <h6 class="card-subtitle mb-2 text-muted">Collection ID: ${collection.id}</h6>
+                    <button type="button" @click="launch" class="btn btn-outline-primary" :disabled="!launchable">Launch</button>
+                    <button type="button" @click="trigger" class="btn btn-outline-primary" :disabled="!triggerable">Trigger</button>
+                    <button type="button" @click="stop" class="btn btn-outline-primary" :disabled="!stoppable">Stop</button>
+                    <button type="button" @click="purge" class="btn btn-outline-primary">Purge</button>
+                    <button type="button" @click="remove" class="btn btn-outline-danger float-right">Delete</button>
+                    <span class="badge badge-warning" v-if="trigger_in_progress">Tests are being started</span>
+                    <span class="badge badge-warning" v-if="stop_in_progress">Tests are being stopped</span>
+                    <div class="alert alert-warning" v-if="on_demand_cluster" style="margin: 20px 0px 10px 0px; text-align:center; padding: .3rem .5rem">
+                        <span>${collection_status.pool_size} ${nodes_plural} ${verb} ${collection_status.pool_status} in ${running_context}</span>
+                        <button @click="purgeNodes" v-if="collection_status.pool_size > 0" class="btn btn-link" style="padding:0px; margin:0px;vertical-align:baseline;text-decoration:underline">Shut down</button>
+                    </div>
+                </div>
+                <div class="card-header bg-light" title="Files will be copied across all engines. Plan data will have priority in case of conflict">
+                    <div class="card-title" style="margin-bottom: 0px;">
+                        <h5 style="display: inline;">Common data</h5>
+                        <a :href="upload_file_help" target="_blank">
+                            <i class="far fa-question-circle fa-xs" style="color:black;"></i>
+                        </a>
+                        <form enctype="multipart/form-data" style="display: inline-flex; padding-left: 1em;" novalidate>
+                            <label for="collectionFile" class="btn btn-outline-dark" style="border-radius: 1.5em;" title=".csv .json etc"><i class="fas fa-file-upload"></i></label>
+                            <input type="file" name="collectionFile" @click="makeUploadURL('data')" @change="upload($event)" id="collectionFile" accept=".csv, .json, .txt" style="display: none"/>
+                        </form>
+                    </div>
+                    <div class="form-check" title="Split data in equal parts for each plan. Works only for CSV">
+                        <input type="checkbox" id="exampleCheck1" class="form-check-input" disabled v-model="collection.csv_split">
+                        <label class="form-check-label" for="exampleCheck1">Split data</label>
+                    </div>
+                    <br>
+                    <div v-for="data in collection.data" class="btn-group">
+                            <a class="btn btn-outline-dark" v-bind:href="data.filelink" target="_blank" role="button">${data.filename}</a>
+                            <button type="button" class="btn btn-outline-dark" @click="deleteCollectionFile(data.filename)" style="margin-right:1em;">X</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="card-title" style="display: inline-flex; align-items: center;" title="Upload your config.yaml">
+                        <h5>Plan config</h5>
+                        <a :href="upload_file_help" target="_blank">
+                            <i class="far fa-question-circle fa-xs" style="color:black; padding-left:0.3em;"></i>
+                        </a>
+                        <form enctype="multipart/form-data" style="padding-left: 1em;" novalidate>
+                            <label for="collectionYAML" class="btn btn-outline-dark" style="border-radius: 1.5em;"><i class="fas fa-cog"></i></label>
+                            <input type="file" name="collectionYAML" @click="makeUploadURL('yaml')" @change="upload($event)" id="collectionYAML" accept=".yaml, .yml" style="display: none"/>
+                        </form>
+                    </div>
+                    <table class="table table-striped table-hover table-sm">
+                        <thead>
+                            <th>Plan ID</th>
+                            <th>Concurrency</th>
+                            <th>Ramp up</th>
+                            <th>Duration</th>
+                            <th>Engines (<a :href="engineHealthGrafanaUrl()" target="_blank">Health <i class="fas fa-external-link-alt"></i></a>)</th>
+                            <th>CSV Split</th>
+                            <th>Launch Status</th>
+                            <th>Testing progress</th>
+                            <th>logs</th>
+                        </thead>
+                        <tbody>
+                            <tr v-for="p in collection.execution_plans">
+                                <td><a :href="plan_url(p.plan_id)">${p.plan_id}</a></td>
+                                <td>${p.concurrency}</td>
+                                <td>${p.rampup}</td>
+                                <td>${p.duration}</td>
+                                <td>${p.engines}</td>
+                                <td>${p.csv_split}</td>
+                                <td>
+                                    <div class="progress" style="margin-top:4px;">
+                                        <div class="progress-bar" role="progressbar" :style="progressBarStyle(p.plan_id)">${calPlanLaunchProgress(p.plan_id) + "%"}</div>
+                                        <div :class="reachableClass(p.plan_id)" :style="reachableStyle(p.plan_id)">${reachableText(p.plan_id)}</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div v-if="planStarted(p)">
+                                        <div class="progress" style="margin-top:4px;">
+                                            <div class="progress-bar progress-bar-striped" role="progressbar" :style="runningProgressStyle(p)"></div>
+                                        </div>
+                                        ${runningProgress(p)}
+                                    </div>
+                                    <p v-if="!planStarted(p)">Finished</p>
+                                </td>
+                                <td><a @click="viewPlanLog($event, p.plan_id)" href=":javascript;" class="">view</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-body" style="padding-top:0px">
+                    <div class="card-title"><h5>Run History</h5></div>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Run ID</th>
+                                <th>Started time</th>
+                                <th>End time</th>
+                                <th>Results Dashboard</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="r in collection.run_history">
+                                <td>${r.id}</td>
+                                <td>${toLocalTZ(r.started_time)}</td>
+                                <td>${toLocalTZ(r.end_time)}</td>
+                                <td><a :href="runGrafanaUrl(r)" target="_blank">link</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <modal v-if="showing_log" @close="showing_log = false">
+                    <div slot="header">${log_modal_title}</div>
+                    <div slot="body">
+                        <pre>${log_content}</pre>
+                    </div>
+                </modal>
+            </div>
+        </div>
+    </script>
+<script id="project-tmpl" type="text/x-template">
+        <div class="card mt-3">
+            <div class="card-body">
+                <h5 class="card-title">${project.name}</h5>
+                <div class="card-subtitle mb-2 text-muted">
+                    <span>Project ID: ${project.id}</span>
+                    <br>
+                    <span>Owner: ${project.owner}</span>
+                    <a @click="remove" class="float-right btn btn-outline-danger" href=":javascript;" style="margin-top: -12px">Delete</a>
+                </div>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="card">
+                            <div class  ="card-body">
+                                <h5 class="card-title">Collections</h5>
+                                <ul class="list-inline">
+                                    <li class="list-inline-item" :key="c.id" v-for="c in project.collections">
+                                        <a :href="collection_url(c)">${c.name}</a>
+                                    </li>
+                                </ul>
+                                <button class="btn btn-outline-default" @click="newCollection">New Collection</button>
+                                <modal v-if="creating_collection" @close="creating_collection = false">
+                                    <new-item slot="body" :attrs="collection_attrs" :url="new_collection_url" :event_name="collection_event_name" :extra_attrs="extra_attrs"></new-item>
+                                </modal>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Plans</h5>
+                                    <ul class="list-inline">
+                                        <li class="list-inline-item" :key="p.id" v-for="p in project.plans">
+                                            <a :href="plan_url(p)">${p.name}</a>
+                                        </li>
+                                    </ul>
+                                    <button class="btn btn-outline-default" @click="newPlan">New Plan</button>
+                                    <modal v-if="creating_plan" @close="creating_plan = false">
+                                        <new-item slot="body" :attrs="plan_attrs" :url="new_plan_url" :event_name="plan_event_name" :extra_attrs="extra_attrs"></new-item>
+                                    </modal>
+                                </div>
+                            </div>
+                        </div>
+                </div>
+            </div>
+        </div>
+    </script>
+<script id="projects-tmpl" type="text/x-template">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">Projects</li>
+                </ol>
+            </nav>
+            <div class="project-list">
+                <project :project="p" :key="p.id" v-for="p in projects"></project>
+                <modal v-if="creating" @close="creating = false">
+                    <new-item slot="body" :attrs="attrs" :url="newProjectUrl" :event_name="event_name"></new-item>
+                </modal>
+                <button class="btn btn-outline-primary mt-3" @click=create>Create Project</button>
+            </div>
+        </div>
+    </script>
+<script id="new-item-tmpl" type="text/x-template">
+        <form v-on:submit.prevent>
+            <div class="form-group" v-for="(attr, key) in attrs">
+                <label>${attr.label}</label>
+                <input type="text" class="form-control" v-model="attr.value" :placeholder="attr.placeholder">
+            </div>
+            <button @click="handleSubmit" type="submit" class="btn btn-default">Submit</button>
+        </form>
+    </script>
+<script id="modal-tmpl" type="text/x-template">
+        <transition name="modal">
+            <div class="modal" style="display:block;">
+                <div class="modal-dialog modal-dialog-scrollable" style="max-width: 800px">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 class="modal-title"><slot name="header"></slot></h4>
+                            <button @click="$emit('close')" type="button" class="close"><span aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <slot name="body"></slot>
+                        </div>
+                        <div class="modal-footer">
+                            <slot name="footer">
+                                <button @click="$emit('close')" class="btn btn-link">Cancel</button>
+                            </slot>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+    </script>
+<script id="admin-route" type="text/x-template">
+        <div class="card">
+            <div class="card-body">
+                <div class="card-title">Admin pages</div>
+                <ol class="list-group">
+                    <li class="list-group-item"><a href="#/admin/collections">Collections</a></li>
+                </ol>
+            </div>
+        </div>
+    </script>
+<script id="admin-collection-tmpl" type="text/x-template">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#/admin">Admin</a></li>
+                    <li class="breadcrumb-item">collections</li>
+                </ol>
+            </nav>
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-title">Running Collections</div>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Collection</th>
+                                <th>Start Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="r in running_collections">
+                                <td><a :href="collection_url(r.collection_id)">${r.collection_id}</a></td>
+                                <td>${toLocalTZ(r.started_time)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card" style="margin-top: 20px">
+                <div class="card-body">
+                    <div class="card-title">Nodes provisoned</div>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Collection</th>
+                                <th>Nodes</th>
+                                <th>Launched Since</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(nodes, collection_id) in node_pools">
+                                <td><a :href="collection_url(collection_id)">${collection_id}</a></td>
+                                <td>${nodes.size}</td>
+                                <td>${toLocalTZ(nodes.launch_time)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </script>
+<script src="/static/js/lib/vue.2.5.17.js"></script>
+<script src="/static/js/lib/vue-router.js"></script>
+<script src="/static/js/lib/vue-resource@1.5.1.js"></script>
+<script src="/static/js/lib/underscore-min.js"></script>
+<script src="/static/js/common.js"></script>
+<script src="/static/js/collection.js"></script>
+<script src="/static/js/project.js"></script>
+<script src="/static/js/plan.js"></script>
+<script src="/static/js/nav.js"></script>
+{{ if .IsAdmin }}
+<script src="/static/js/admin.js"></script>
+{{ end }}
+<script src="/static/js/app.js"></script>
+
+</html>
