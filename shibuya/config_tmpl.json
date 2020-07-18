@@ -40,7 +40,8 @@
         "engine_dashboard": "/d/9EH6xqTZz/shibuya-engine-health"
     },
     "object_storage": {
-        "url": "",
+        "provider": "local",
+        "url": "http://storage:8080",
         "user": "",
         "password": ""
     },
