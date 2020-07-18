@@ -18,7 +18,7 @@ clean:
 	-killall kubectl
 
 .PHONY: prometheus
-prometheus: prometheus/
+prometheus:
 	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/prometheus.yaml --force
 
 .PHONY: db
