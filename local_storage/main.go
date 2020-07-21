@@ -66,6 +66,7 @@ func fileGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 	file, err := ioutil.ReadFile(lf.FilePath)
 	if err != nil {
 		http.Error(w, "File not Found", 404)
+		return
 	}
 	w.Write(file)
 	return
@@ -80,6 +81,7 @@ func filePutHandler(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 	err = r.ParseMultipartForm(100 << 20) //parse 100 MB of data
 	if err != nil {
 		http.Error(w, err.Error(), 400)
+		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
@@ -100,6 +102,7 @@ func fileDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter
 	lf, err := newLocalFile(params.ByName("kind"), params.ByName("folder"), params.ByName("file"))
 	if err != nil {
 		http.Error(w, err.Error(), 400)
+		return
 	}
 	if err := os.Remove(lf.FilePath); err != nil {
 		http.Error(w, err.Error(), 500)
