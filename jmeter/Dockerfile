@@ -6,7 +6,7 @@ ENV JMETER_VERSION=$jmeter_ver
 RUN wget https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.zip
 RUN unzip -qq apache-jmeter-${JMETER_VERSION}
 
-FROM golang:1.12.9-stretch AS shibuya-agent
+FROM golang:1.13.6-stretch AS shibuya-agent
 RUN go get github.com/hpcloud/tail
 ADD shibuya-agent.go /go/src/shibuya-agent/shibuya-agent.go
 WORKDIR /go/src/shibuya-agent
@@ -21,4 +21,3 @@ COPY --from=shibuya-agent /go/bin/shibuya-agent /usr/local/bin/shibuya-agent
 ADD shibuya.properties /test-conf/shibuya.properties
 ADD jmeter.sh /apache-jmeter-${JMETER_VERSION}/bin/jmeter
 CMD ["shibuya-agent"]
-

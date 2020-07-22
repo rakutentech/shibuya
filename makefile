@@ -1,4 +1,4 @@
-all: | cluster permissions db prometheus grafana shibuya jmeter
+all: | cluster permissions db prometheus grafana shibuya jmeter local_storage
 
 shibuya-controller-ns = shibuya-executors
 shibuya-executor-ns = shibuya-executors
@@ -18,7 +18,7 @@ clean:
 	-killall kubectl
 
 .PHONY: prometheus
-prometheus: prometheus/
+prometheus:
 	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/prometheus.yaml --force
 
 .PHONY: db
@@ -68,3 +68,9 @@ permissions-gcp: node-permissions permissions
 node-permissions:
 	kubectl apply -f kubernetes/clusterrole.yaml
 	-kubectl create clusterrolebinding shibuya --clusterrole=shibuya --serviceaccount $(shibuya-controller-ns):shibuya
+
+.PHONY: local_storage
+local_storage:
+	docker build -t shibuya:storage local_storage
+	kind load docker-image shibuya:storage --name shibuya
+	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/storage.yaml --force

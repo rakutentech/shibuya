@@ -1,62 +1,69 @@
 package object_storage
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"shibuya/config"
 )
 
-type nexusStorage struct {
-	nexusURL string
-	username string
-	password string
+type localStorage struct {
+	url string
 }
 
-func NewNexusStorage() nexusStorage {
-	ns := new(nexusStorage)
+func NewLocalStorage() localStorage {
+	ls := new(localStorage)
 	o := config.SC.ObjectStorage
-	ns.nexusURL = o.Url
-	ns.username = o.User
-	ns.password = o.Password
-	return *ns
+	ls.url = o.Url
+	return *ls
 }
 
-func (n nexusStorage) GetUrl(filename string) string {
-	return fmt.Sprintf("%s/%s", n.nexusURL, filename)
+func (l localStorage) GetUrl(filename string) string {
+	return fmt.Sprintf("%s/%s", l.url, filename)
 }
 
-func (n nexusStorage) Upload(filename string, content io.ReadCloser) error {
+func (l localStorage) Upload(filename string, content io.ReadCloser) error {
 	defer content.Close()
 
-	url := n.GetUrl(filename)
-	req, err := http.NewRequest("PUT", url, content)
+	var b bytes.Buffer
+	var err error
+	w := multipart.NewWriter(&b)
+	var fw io.Writer
+	if fw, err = w.CreateFormFile("file", filename); err != nil {
+		return err
+	}
+	if _, err = io.Copy(fw, content); err != nil {
+		return err
+	}
+	w.Close()
+
+	url := l.GetUrl(filename)
+	req, err := http.NewRequest("PUT", url, &b)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "text/plain")
-	req.SetBasicAuth(n.username, n.password)
+	req.Header.Set("Content-Type", w.FormDataContentType())
 	client := config.SC.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode == 201 {
 		return nil
 	}
 	return err
 }
 
-func (n nexusStorage) Delete(filename string) error {
-	url := n.GetUrl(filename)
+func (l localStorage) Delete(filename string) error {
+	url := l.GetUrl(filename)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
-	req.SetBasicAuth(n.username, n.password)
 	client := config.SC.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
@@ -69,13 +76,12 @@ func (n nexusStorage) Delete(filename string) error {
 	return err
 }
 
-func (n nexusStorage) Download(filename string) ([]byte, error) {
-	url := n.GetUrl(filename)
+func (l localStorage) Download(filename string) ([]byte, error) {
+	url := l.GetUrl(filename)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(n.username, n.password)
 	client := config.SC.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
@@ -83,7 +89,7 @@ func (n nexusStorage) Download(filename string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return nil, errors.New("Bad response from Nexus")
+		return nil, errors.New("Bad response from Local storage")
 	}
 	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

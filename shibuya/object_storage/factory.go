@@ -10,9 +10,10 @@ import (
 const (
 	nexusStorageProvider = "nexus"
 	gcpStorageProvider   = "gcp"
+	localStorageProvider = "local"
 )
 
-var allStorageProvidder = []string{nexusStorageProvider, gcpStorageProvider}
+var allStorageProvidder = []string{nexusStorageProvider, gcpStorageProvider, localStorageProvider}
 
 type PlatformConfig struct {
 	Storage StorageInterface
@@ -21,9 +22,11 @@ type PlatformConfig struct {
 func getStorageOfType(storageProvider string) (StorageInterface, error) {
 	switch storageProvider {
 	case nexusStorageProvider:
-		return NewNexusClient(), nil
+		return NewNexusStorage(), nil
 	case gcpStorageProvider:
 		return NewGcpStorage(), nil
+	case localStorageProvider:
+		return NewLocalStorage(), nil
 	default:
 		return nil, fmt.Errorf("Unknown storage type %s, valid storage types are %v", storageProvider, allStorageProvidder)
 	}
@@ -32,8 +35,8 @@ func getStorageOfType(storageProvider string) (StorageInterface, error) {
 func factoryConfig() PlatformConfig {
 	storageProvider := config.SC.ObjectStorage.Provider
 	if storageProvider == "" {
-		//default to Nexus
-		storageProvider = nexusStorageProvider
+		//default to local
+		storageProvider = localStorageProvider
 	}
 	s, err := getStorageOfType(storageProvider)
 	if err != nil {
