@@ -131,6 +131,7 @@ func (je *jmeterEngine) readMetrics() chan *shibuyaMetric {
 					label:        label,
 					status:       status,
 					latency:      latency,
+					raw:          raw,
 					collectionID: strconv.FormatInt(je.collectionID, 10),
 					planID:       strconv.FormatInt(je.planID, 10),
 					engineID:     strconv.FormatInt(int64(je.ID), 10),
