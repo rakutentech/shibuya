@@ -256,6 +256,7 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 	wg.Wait()
 	collection.StopRun()
 	collection.RunFinish(currRunID)
+	collection.MarkUsageFinished()
 	return e
 }
 
@@ -271,24 +272,26 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	if err != nil {
 		return err
 	}
+	machinesCount := int64(0)
+	enginesCount := 0
+	for _, e := range eps {
+		enginesCount += e.Engines
+	}
 	if config.SC.ExecutorConfig.Cluster.OnDemand {
-		enginesNum := 0
-		for _, e := range eps {
-			enginesNum += e.Engines
-		}
-		operator := NewGCPOperator(collection.ID, c.calNodesRequired(enginesNum))
+		machinesCount = c.calNodesRequired(enginesCount)
+		operator := NewGCPOperator(collection.ID, machinesCount)
 		err := operator.prepareNodes()
 		if err != nil {
 			return err
 		}
 	}
+	collection.NewLaunchEntry(config.SC.Context, int64(enginesCount), machinesCount)
 	err = utils.Retry(func() error {
 		return c.DeployIngressController(collection.ID, collection.ProjectID, collection.Name)
 	})
 	if err != nil {
 		return err
 	}
-
 	// we will assume collection deployment will always be successful
 	var wg sync.WaitGroup
 	for _, e := range eps {
@@ -433,6 +436,7 @@ func (c *Controller) PurgeNodes(collection *model.Collection) error {
 		if err := operator.destroyNodes(); err != nil {
 			return err
 		}
+		collection.MarkUsageFinished()
 		return nil
 	}
 	return nil
