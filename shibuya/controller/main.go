@@ -272,20 +272,24 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	if err != nil {
 		return err
 	}
-	machinesCount := int64(0)
+	nodesCount := int64(0)
 	enginesCount := 0
 	for _, e := range eps {
 		enginesCount += e.Engines
 	}
 	if config.SC.ExecutorConfig.Cluster.OnDemand {
-		machinesCount = c.calNodesRequired(enginesCount)
-		operator := NewGCPOperator(collection.ID, machinesCount)
+		nodesCount = c.calNodesRequired(enginesCount)
+		operator := NewGCPOperator(collection.ID, nodesCount)
 		err := operator.prepareNodes()
 		if err != nil {
 			return err
 		}
 	}
-	collection.NewLaunchEntry(config.SC.Context, int64(enginesCount), machinesCount)
+	owner := ""
+	if project, err := model.GetProject(collection.ProjectID); err == nil {
+		owner = project.Owner
+	}
+	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount)
 	err = utils.Retry(func() error {
 		return c.DeployIngressController(collection.ID, collection.ProjectID, collection.Name)
 	})
