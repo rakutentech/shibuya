@@ -2,8 +2,9 @@ package model
 
 import (
 	"net/http"
-	"shibuya/auth"
-	"shibuya/config"
+
+	"github.com/harpratap/shibuya/auth"
+	"github.com/harpratap/shibuya/config"
 )
 
 type Account struct {

@@ -1,11 +1,11 @@
 package controller
 
 import (
-	"shibuya/config"
-	"shibuya/model"
 	"strconv"
 	"sync"
 
+	"github.com/harpratap/shibuya/config"
+	"github.com/harpratap/shibuya/model"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )

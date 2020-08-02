@@ -11,13 +11,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"shibuya/config"
-	"shibuya/model"
-	"shibuya/scheduler"
-	"shibuya/utils"
 	"strconv"
 	"time"
 
+	"github.com/harpratap/shibuya/config"
+	"github.com/harpratap/shibuya/model"
+	"github.com/harpratap/shibuya/scheduler"
+	"github.com/harpratap/shibuya/utils"
 	es "github.com/iandyh/eventsource"
 	log "github.com/sirupsen/logrus"
 )

@@ -13,15 +13,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"shibuya/config"
 	"strings"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
+	"github.com/harpratap/shibuya/config"
+	log "github.com/sirupsen/logrus"
 )
 
 type MySQLStore struct {

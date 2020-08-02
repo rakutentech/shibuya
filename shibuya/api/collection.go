@@ -1,8 +1,9 @@
 package api
 
 import (
-	"shibuya/model"
 	"strconv"
+
+	"github.com/harpratap/shibuya/model"
 )
 
 func getCollection(collectionID string) (*model.Collection, error) {

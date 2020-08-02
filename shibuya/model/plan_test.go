@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
-
 	"github.com/stretchr/testify/assert"
 )
 

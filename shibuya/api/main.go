@@ -10,14 +10,12 @@ import (
 	"strconv"
 	"time"
 
-	"shibuya/config"
-	"shibuya/controller"
-	"shibuya/model"
-	"shibuya/object_storage"
-	"shibuya/scheduler"
-
-	utils "shibuya/utils"
-
+	"github.com/harpratap/shibuya/config"
+	"github.com/harpratap/shibuya/controller"
+	"github.com/harpratap/shibuya/model"
+	"github.com/harpratap/shibuya/object_storage"
+	"github.com/harpratap/shibuya/scheduler"
+	utils "github.com/harpratap/shibuya/utils"
 	"github.com/julienschmidt/httprouter"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"

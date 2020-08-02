@@ -1,4 +1,4 @@
-module shibuya
+module github.com/harpratap/shibuya
 
 go 1.12
 

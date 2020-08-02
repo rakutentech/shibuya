@@ -3,9 +3,9 @@ package controller
 import (
 	"context"
 	"fmt"
-	"shibuya/config"
-	"shibuya/scheduler"
 
+	"github.com/harpratap/shibuya/config"
+	"github.com/harpratap/shibuya/scheduler"
 	log "github.com/sirupsen/logrus"
 	google "google.golang.org/api/container/v1"
 )

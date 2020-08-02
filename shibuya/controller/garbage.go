@@ -1,12 +1,11 @@
 package controller
 
 import (
-	"shibuya/config"
-	"shibuya/model"
 	"strconv"
-
 	"time"
 
+	"github.com/harpratap/shibuya/config"
+	"github.com/harpratap/shibuya/model"
 	log "github.com/sirupsen/logrus"
 )
 

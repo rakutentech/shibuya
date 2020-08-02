@@ -2,8 +2,8 @@ package object_storage
 
 import (
 	"fmt"
-	"shibuya/config"
 
+	"github.com/harpratap/shibuya/config"
 	log "github.com/sirupsen/logrus"
 )
 

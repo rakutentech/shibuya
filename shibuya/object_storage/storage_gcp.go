@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"shibuya/config"
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/harpratap/shibuya/config"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"shibuya/config"
 
+	"github.com/harpratap/shibuya/config"
 	ldap "gopkg.in/ldap.v2"
 )
 

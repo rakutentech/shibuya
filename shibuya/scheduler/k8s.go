@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
-	"shibuya/config"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/harpratap/shibuya/config"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
