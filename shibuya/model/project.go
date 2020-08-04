@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/harpratap/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 type Project struct {

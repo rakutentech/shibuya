@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/harpratap/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 type nexusStorage struct {

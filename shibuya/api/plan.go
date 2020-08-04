@@ -3,7 +3,7 @@ package api
 import (
 	"strconv"
 
-	"github.com/harpratap/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/model"
 )
 
 func getPlan(planID string) (*model.Plan, error) {

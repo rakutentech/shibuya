@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harpratap/shibuya/config"
-	"github.com/harpratap/shibuya/model"
-	"github.com/harpratap/shibuya/scheduler"
-	"github.com/harpratap/shibuya/utils"
+	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/scheduler"
+	"github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 )

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/harpratap/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/config"
 	log "github.com/sirupsen/logrus"
 )
 

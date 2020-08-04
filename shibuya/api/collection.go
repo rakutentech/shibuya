@@ -3,7 +3,7 @@ package api
 import (
 	"strconv"
 
-	"github.com/harpratap/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/model"
 )
 
 func getCollection(collectionID string) (*model.Collection, error) {

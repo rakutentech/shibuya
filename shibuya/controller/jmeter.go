@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/harpratap/shibuya/config"
-	"github.com/harpratap/shibuya/model"
-	"github.com/harpratap/shibuya/utils"
+	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
 )
 

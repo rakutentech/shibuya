@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/context"
-	"github.com/harpratap/shibuya/api"
-	"github.com/harpratap/shibuya/ui"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rakutentech/shibuya/shibuya/api"
+	"github.com/rakutentech/shibuya/shibuya/ui"
 	log "github.com/sirupsen/logrus"
 )
 

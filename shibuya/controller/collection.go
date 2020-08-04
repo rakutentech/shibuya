@@ -2,8 +2,8 @@ package controller
 
 import (
 	log "github.com/sirupsen/logrus"
-	"github.com/harpratap/shibuya/model"
-	"github.com/harpratap/shibuya/utils"
+	"github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/utils"
 )
 
 func prepareCollection(collection *model.Collection) (*ExecutionData, error) {
