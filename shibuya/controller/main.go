@@ -256,7 +256,13 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 	wg.Wait()
 	collection.StopRun()
 	collection.RunFinish(currRunID)
-	collection.MarkUsageFinished()
+
+	// if it's non on demand cluster, we record down the usage end time.
+	// If it's on demand cluster, the nodes are running,
+	// the endtime should be when the nodes are purged.
+	if !config.SC.ExecutorConfig.Cluster.OnDemand {
+		collection.MarkUsageFinished()
+	}
 	return e
 }
 
