@@ -534,3 +534,36 @@ func (c *Collection) FetchCollectionFiles() error {
 	wgFetchData.Wait()
 	return hasError
 }
+
+func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machinesCount int64) error {
+	DBC := config.SC.DBC
+	q, err := DBC.Prepare("insert collection_launch_history set collection_id=?,context=?,engines_count=?,nodes_count=?,owner=?")
+	if err != nil {
+		return err
+	}
+	defer q.Close()
+
+	_, err = q.Exec(c.ID, context, enginesCount, machinesCount, owner)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Collection) MarkUsageFinished() error {
+	db := config.SC.DBC
+
+	// in case there is failure in the previous update, we could have multiple entries with null endtime
+	// pick the latest one
+	q, err := db.Prepare("update collection_launch_history set end_time=NOW() where collection_id=? and end_time is null order by started_time desc limit 1")
+	if err != nil {
+		return err
+	}
+	defer q.Close()
+
+	_, err = q.Exec(c.ID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
