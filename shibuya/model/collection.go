@@ -535,7 +535,7 @@ func (c *Collection) FetchCollectionFiles() error {
 	return hasError
 }
 
-func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machinesCount int64) error {
+func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, nodesCount int64) error {
 	DBC := config.SC.DBC
 	q, err := DBC.Prepare("insert collection_launch_history set collection_id=?,context=?,engines_count=?,nodes_count=?,owner=?")
 	if err != nil {
@@ -543,7 +543,7 @@ func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machine
 	}
 	defer q.Close()
 
-	_, err = q.Exec(c.ID, context, enginesCount, machinesCount, owner)
+	_, err = q.Exec(c.ID, context, enginesCount, nodesCount, owner)
 	if err != nil {
 		return err
 	}
