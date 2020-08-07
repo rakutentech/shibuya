@@ -9,5 +9,5 @@ CREATE TABLE IF NOT EXISTS collection_launch_history
     nodes_count INT UNSIGNED,
     started_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     end_time TIMESTAMP NULL DEFAULT NULL,
-    key(collection_id, started_time)
+    key(collection_id, context, end_time)
 )CHARSET=utf8mb4;

@@ -550,18 +550,31 @@ func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, nodesCo
 	return nil
 }
 
-func (c *Collection) MarkUsageFinished() error {
-	db := config.SC.DBC
+func (c *Collection) HasLaunchEntry(context string) bool {
+	DBC := config.SC.DBC
+	q, err := DBC.Prepare("select 1 from collection_launch_history where collection_id=? and context=? and end_time is null")
+	if err != nil {
+		return false
+	}
+	defer q.Close()
 
-	// in case there is failure in the previous update, we could have multiple entries with null endtime
-	// pick the latest one
-	q, err := db.Prepare("update collection_launch_history set end_time=NOW() where collection_id=? and end_time is null order by started_time desc limit 1")
+	var t int
+	err = q.QueryRow(c.ID, context).Scan(&t)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func (c *Collection) MarkUsageFinished(context string) error {
+	db := config.SC.DBC
+	q, err := db.Prepare("update collection_launch_history set end_time=NOW() where collection_id=? and context=? and end_time is null")
 	if err != nil {
 		return err
 	}
 	defer q.Close()
 
-	_, err = q.Exec(c.ID)
+	_, err = q.Exec(c.ID, context)
 	if err != nil {
 		return err
 	}

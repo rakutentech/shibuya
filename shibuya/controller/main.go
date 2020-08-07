@@ -256,7 +256,10 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 	wg.Wait()
 	collection.StopRun()
 	collection.RunFinish(currRunID)
-	collection.MarkUsageFinished()
+
+	if !config.SC.ExecutorConfig.Cluster.OnDemand {
+		collection.MarkUsageFinished(config.SC.Context)
+	}
 	return e
 }
 
@@ -289,7 +292,10 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	if project, err := model.GetProject(collection.ProjectID); err == nil {
 		owner = project.Owner
 	}
-	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount)
+	ctx := config.SC.Context
+	if !collection.HasLaunchEntry(ctx) {
+		collection.NewLaunchEntry(owner, ctx, int64(enginesCount), nodesCount)
+	}
 	err = utils.Retry(func() error {
 		return c.DeployIngressController(collection.ID, collection.ProjectID, collection.Name)
 	})
@@ -440,7 +446,7 @@ func (c *Controller) PurgeNodes(collection *model.Collection) error {
 		if err := operator.destroyNodes(); err != nil {
 			return err
 		}
-		collection.MarkUsageFinished()
+		collection.MarkUsageFinished(config.SC.Context)
 		return nil
 	}
 	return nil
