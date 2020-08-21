@@ -91,8 +91,8 @@ func (c *Controller) cleanLocalStore() {
 }
 
 func isCollectionStale(rh *model.RunHistory, launchTime time.Time) (bool, error) {
-	// wait for 15 minutes before purging any collection
-	if time.Since(launchTime).Minutes() < 15 {
+	// wait for X minutes before purging any collection
+	if time.Since(launchTime).Minutes() < config.SC.ExecutorConfig.Cluster.GCDuration {
 		return false, nil
 	}
 	// if the collection has never been run before
@@ -100,8 +100,8 @@ func isCollectionStale(rh *model.RunHistory, launchTime time.Time) (bool, error)
 		return true, nil
 	}
 	// if collection is running or
-	// if 15 minutes haven't passed since last run, collection is still being used
-	if rh.EndTime.IsZero() || (time.Since(rh.EndTime).Minutes() < 15) {
+	// if X minutes haven't passed since last run, collection is still being used
+	if rh.EndTime.IsZero() || (time.Since(rh.EndTime).Minutes() < config.SC.ExecutorConfig.Cluster.GCDuration) {
 		return false, nil
 	}
 	return true, nil
