@@ -28,11 +28,12 @@ type AuthConfig struct {
 }
 
 type ClusterConfig struct {
-	Project     string `json:"project"`
-	Zone        string `json:"zone"`
-	ClusterID   string `json:"cluster_id"`
-	NodeCPUSpec int    `json:"node_cpu_spec"`
-	OnDemand    bool   `json:"on_demand"`
+	Project     string  `json:"project"`
+	Zone        string  `json:"zone"`
+	ClusterID   string  `json:"cluster_id"`
+	NodeCPUSpec int     `json:"node_cpu_spec"`
+	OnDemand    bool    `json:"on_demand"`
+	GCDuration  float64 `json:"gc_duration"` // in minutes
 }
 
 type HostAlias struct {
@@ -160,6 +161,9 @@ func loadConfig() *ShibuyaConfig {
 	sc.Context = loadContext()
 	sc.DevMode = sc.Context == "local"
 	sc.HTTPClient = makeHTTPClient()
+	if sc.ExecutorConfig.Cluster.GCDuration == 0 {
+		sc.ExecutorConfig.Cluster.GCDuration = 15
+	}
 	return sc
 }
 
