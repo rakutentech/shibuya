@@ -477,7 +477,6 @@ func (s *ShibuyaAPI) collectionGetHandler(w http.ResponseWriter, r *http.Request
 	// we ignore errors here as the front end will do the retry
 	collection.ExecutionPlans, _ = collection.GetExecutionPlans()
 	collection.RunHistories, _ = collection.GetRuns()
-	collection.Data, _ = collection.GenCollectionFileUrls()
 	s.jsonise(w, http.StatusOK, collection)
 }
 

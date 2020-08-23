@@ -15,9 +15,11 @@ import (
 )
 
 type ShibuyaFile struct {
-	Filename string `json:"filename"`
-	Filelink string `json:"filelink"`
-	RawFile  []byte
+	Filename     string `json:"filename"` // Name of the file - a.txt
+	Filepath     string `json:"filepath"` // Relative path of the file - /plan/22/a.txt
+	Filelink     string `json:"filelink"` // Full url for users to download the file - storage.com/shibuya/plan/22/a.txt
+	TotalSplits  int    `json:"total_splits"`
+	CurrentSplit int    `json:"current_split"`
 }
 
 type Collection struct {
@@ -61,6 +63,9 @@ func GetCollection(ID int64) (*Collection, error) {
 		&collection.CreatedTime, &collection.CSVSplit)
 	if err != nil {
 		return nil, &DBError{Err: err, Message: "collection not found"}
+	}
+	if collection.Data, err = collection.getCollectionFiles(); err != nil {
+		return collection, err
 	}
 	return collection, nil
 }
@@ -313,7 +318,7 @@ func (c *Collection) DeleteAllFiles() error {
 	return nil
 }
 
-func (c *Collection) GenCollectionFileUrls() ([]*ShibuyaFile, error) {
+func (c *Collection) getCollectionFiles() ([]*ShibuyaFile, error) {
 	db := config.SC.DBC
 	q, err := db.Prepare("select filename from collection_data where collection_id=?")
 	if err != nil {
@@ -329,7 +334,8 @@ func (c *Collection) GenCollectionFileUrls() ([]*ShibuyaFile, error) {
 	for rows.Next() {
 		f := new(ShibuyaFile)
 		rows.Scan(&f.Filename)
-		f.Filelink = object_storage.Client.Storage.GetUrl(c.MakeFileName(f.Filename))
+		f.Filepath = c.MakeFileName(f.Filename)
+		f.Filelink = object_storage.Client.Storage.GetUrl(f.Filepath)
 		r = append(r, f)
 	}
 	err = rows.Err()

@@ -1,16 +1,11 @@
 package controller
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -27,9 +22,7 @@ import (
 )
 
 type shibuyaEngine interface {
-	prepareTestData(fileName string, ep *model.ExecutionPlan, engineData map[string]*model.ShibuyaFile) (*bytes.Buffer, error)
-	zipFiles(engineFolder string) (*bytes.Buffer, error)
-	trigger(fileName string, ep *model.ExecutionPlan, engineData map[string]*model.ShibuyaFile) error
+	trigger(edc *EngineDataConfig) error
 	deploy(*scheduler.K8sClientManager) error
 	subscribe(runID int64) error
 	progress() bool
@@ -51,6 +44,41 @@ var engineHttpClient = &http.Client{
 	Timeout: 30 * time.Second,
 }
 
+type EngineDataConfig struct {
+	EngineData  map[string]*model.ShibuyaFile `json:"engine_data"`
+	Duration    string                        `json:"duration"`
+	Concurrency string                        `json:"concurrency"`
+	Rampup      string                        `json:"rampup"`
+}
+
+func (edc *EngineDataConfig) deepCopy() *EngineDataConfig {
+	edcCopy := EngineDataConfig{
+		EngineData:  map[string]*model.ShibuyaFile{},
+		Duration:    edc.Duration,
+		Concurrency: edc.Concurrency,
+		Rampup:      edc.Rampup,
+	}
+	for filename, ed := range edc.EngineData {
+		sf := model.ShibuyaFile{
+			Filename:     ed.Filename,
+			Filepath:     ed.Filepath,
+			Filelink:     ed.Filelink,
+			TotalSplits:  ed.TotalSplits,
+			CurrentSplit: ed.CurrentSplit,
+		}
+		edcCopy.EngineData[filename] = &sf
+	}
+	return &edcCopy
+}
+
+func (edc *EngineDataConfig) deepCopies(size int) []*EngineDataConfig {
+	edcCopies := []*EngineDataConfig{}
+	for i := 0; i < size; i++ {
+		edcCopies = append(edcCopies, edc.deepCopy())
+	}
+	return edcCopies
+}
+
 type shibuyaMetric struct {
 	threads      float64
 	latency      float64
@@ -66,38 +94,26 @@ type shibuyaMetric struct {
 const enginePlanRoot = "/test-data"
 
 type baseEngine struct {
-	name            string
-	serviceName     string
-	ingressName     string
-	engineUrl       string
-	ingressClass    string
-	collectionID    int64
-	planID          int64
-	projectID       int64
-	ID              int
-	folder          string
-	defaultPlanPath string
-	stream          *es.Stream
-	cancel          context.CancelFunc
-	runID           int64
+	name         string
+	serviceName  string
+	ingressName  string
+	engineUrl    string
+	ingressClass string
+	collectionID int64
+	planID       int64
+	projectID    int64
+	ID           int
+	stream       *es.Stream
+	cancel       context.CancelFunc
+	runID        int64
 	*config.ExecutorContainer
 }
 
-func sendTriggerRequest(url string, zipFileBuf *bytes.Buffer, testPlan string) (*http.Response, error) {
+func sendTriggerRequest(url string, edc *EngineDataConfig) (*http.Response, error) {
 	body := new(bytes.Buffer)
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("test-data", "test-data.zip")
-	if err != nil {
-		return nil, err
-	}
-	io.Copy(part, zipFileBuf)
-	writer.WriteField("plan", testPlan)
-	err = writer.Close()
-	if err != nil {
-		return nil, err
-	}
+	json.NewEncoder(body).Encode(&edc)
 	req, _ := http.NewRequest("POST", url, body)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Content-Type", "application/json")
 	return engineHttpClient.Do(req)
 }
 
@@ -171,48 +187,25 @@ func (be *baseEngine) deploy(manager *scheduler.K8sClientManager) error {
 		be.collectionID, be.projectID, be.ExecutorContainer)
 }
 
-func (be *baseEngine) zipFiles(engineFolder string) (*bytes.Buffer, error) {
-	buf := new(bytes.Buffer)
-	w := zip.NewWriter(buf)
-	defer w.Close()
-	files, err := ioutil.ReadDir(engineFolder)
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range files {
-		filePath := filepath.Join(engineFolder, f.Name())
-		file, err := os.Open(filePath)
+func (be *baseEngine) trigger(edc *EngineDataConfig) error {
+	engineUrl := be.engineUrl
+	url := fmt.Sprintf("http://%s/%s", engineUrl, "start")
+	return utils.Retry(func() error {
+		resp, err := sendTriggerRequest(url, edc)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		defer file.Close()
-		fileContents, err := ioutil.ReadAll(file)
-		if err != nil {
-			return nil, err
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusConflict {
+			log.Printf("%s is already triggered", engineUrl)
+			return nil
 		}
-		fs, err := file.Stat()
-		if err != nil {
-			return nil, err
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("Engine failed to trigger: %d %s", resp.StatusCode, resp.Status)
 		}
-		f, err := w.Create(fs.Name())
-		if err != nil {
-			return nil, err
-		}
-		f.Write(fileContents)
-	}
-	return buf, nil
-}
-
-func (be *baseEngine) prepareTestData(fileName string, ep *model.ExecutionPlan,
-	engineData map[string]*model.ShibuyaFile) (*bytes.Buffer, error) {
-	log.Println("BaseEngine does not implement prepareTestData(). Use an engine type.")
-	return nil, nil
-}
-
-func (be *baseEngine) trigger(fileName string, ep *model.ExecutionPlan,
-	engineData map[string]*model.ShibuyaFile) error {
-	log.Println("BaseEngine does not implement trigger(). Use an engine type.")
-	return nil
+		log.Printf("%s is triggered", engineUrl)
+		return nil
+	})
 }
 
 func (be *baseEngine) readMetrics() chan *shibuyaMetric {

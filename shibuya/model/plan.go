@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 	"time"
 
 	mysql "github.com/go-sql-driver/mysql"
@@ -74,7 +73,8 @@ func (p *Plan) GetPlanFiles() (*ShibuyaFile, []*ShibuyaFile, error) {
 	for rows.Next() {
 		f := new(ShibuyaFile)
 		rows.Scan(&f.Filename)
-		f.Filelink = object_storage.Client.Storage.GetUrl(p.MakeFileName(f.Filename))
+		f.Filepath = p.MakeFileName(f.Filename)
+		f.Filelink = object_storage.Client.Storage.GetUrl(f.Filepath)
 		r = append(r, f)
 	}
 	err = rows.Err()
@@ -91,7 +91,8 @@ func (p *Plan) GetPlanFiles() (*ShibuyaFile, []*ShibuyaFile, error) {
 	if err != nil {
 		return nil, r, err
 	}
-	t.Filelink = object_storage.Client.Storage.GetUrl(p.MakeFileName(t.Filename))
+	t.Filepath = p.MakeFileName(t.Filename)
+	t.Filelink = object_storage.Client.Storage.GetUrl(t.Filepath)
 	return t, r, nil
 }
 
@@ -311,28 +312,4 @@ func GetRunningPlansByCollection(collectionID int64) ([]*RunningPlan, error) {
 		rps = append(rps, rp)
 	}
 	return rps, nil
-}
-
-func (p *Plan) FetchPlanFiles() error {
-	var wgFetchData sync.WaitGroup
-	var hasError error
-	p.TestFile.RawFile, hasError = object_storage.Client.Storage.Download(p.MakeFileName(p.TestFile.Filename))
-	if hasError != nil {
-		return hasError
-	}
-	for _, d := range p.Data {
-		wgFetchData.Add(1)
-		go func(d *ShibuyaFile) {
-			defer wgFetchData.Done()
-			var err error
-			d.RawFile, err = object_storage.Client.Storage.Download(p.MakeFileName(d.Filename))
-			if err != nil {
-				log.Error(err)
-				hasError = err
-				return
-			}
-		}(d)
-	}
-	wgFetchData.Wait()
-	return hasError
 }

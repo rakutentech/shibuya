@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
@@ -43,44 +44,45 @@ func (pc *PlanController) deploy() error {
 	return nil
 }
 
-func (pc *PlanController) prepare(plan *model.Plan, commonData map[string]*model.ShibuyaFile) (*ExecutionData, error) {
-	err := plan.FetchPlanFiles()
-	if err != nil {
-		return &ExecutionData{}, err
-	}
-	splittedData := newExecutionData(pc.ep.Engines, pc.ep.CSVSplit)
-
-	// first iterate through all the common data uploaded in collection
-	for _, d := range commonData {
-		if err := splittedData.PrepareExecutionData(d); err != nil {
-			return &ExecutionData{}, err
-		}
-	}
-
-	// then go through all data uploaded in plans. This will override common data if same filename already exists
-	for _, d := range plan.Data {
-		if err := splittedData.PrepareExecutionData(d); err != nil {
-			return &ExecutionData{}, err
-		}
-	}
-	// Add test file to all engines
+func (pc *PlanController) prepare(plan *model.Plan, edc *EngineDataConfig) []*EngineDataConfig {
+	edc.Duration = strconv.Itoa(pc.ep.Duration)
+	edc.Concurrency = strconv.Itoa(pc.ep.Concurrency)
+	edc.Rampup = strconv.Itoa(pc.ep.Rampup)
+	engineDataConfigs := edc.deepCopies(pc.ep.Engines)
 	for i := 0; i < pc.ep.Engines; i++ {
-		splittedData.files[i][plan.TestFile.Filename] = plan.TestFile
+		// we split the data inherited from collection if the plan specifies split too
+		if pc.ep.CSVSplit {
+			for _, ed := range engineDataConfigs[i].EngineData {
+				ed.TotalSplits *= pc.ep.Engines
+				ed.CurrentSplit = (ed.CurrentSplit * pc.ep.Engines) + i
+			}
+		}
+		// Add test file to all engines
+		engineDataConfigs[i].EngineData[plan.TestFile.Filename] = plan.TestFile
+		// add all data uploaded in plans. This will override common data if same filename already exists
+		for _, d := range plan.Data {
+			sf := model.ShibuyaFile{
+				Filename:     d.Filename,
+				Filepath:     d.Filepath,
+				TotalSplits:  1,
+				CurrentSplit: 0,
+			}
+			if pc.ep.CSVSplit {
+				sf.TotalSplits = pc.ep.Engines
+				sf.CurrentSplit = i
+			}
+			engineDataConfigs[i].EngineData[d.Filename] = &sf
+		}
 	}
-	// dereference the data files so gc can remove them if not needed anymore
-	plan.Data = []*model.ShibuyaFile{}
-	return splittedData, nil
+	return engineDataConfigs
 }
 
-func (pc *PlanController) trigger(collectionExecutionData map[string]*model.ShibuyaFile) error {
+func (pc *PlanController) trigger(engineDataConfig *EngineDataConfig) error {
 	plan, err := model.GetPlan(pc.ep.PlanID)
 	if err != nil {
 		return err
 	}
-	planExecutionData, err := pc.prepare(plan, collectionExecutionData)
-	if err != nil {
-		return err
-	}
+	engineDataConfigs := pc.prepare(plan, engineDataConfig)
 	engines, err := generateEnginesWithUrl(pc.ep.Engines, pc.ep.PlanID, pc.collection.ID, pc.collection.ProjectID,
 		JmeterEngineType, pc.kcm)
 	if err != nil {
@@ -91,8 +93,7 @@ func (pc *PlanController) trigger(collectionExecutionData map[string]*model.Shib
 	planErrors := []error{}
 	for i, engine := range engines {
 		go func(engine shibuyaEngine, i int) {
-			// Is it a good idea to pass the ep into engine?
-			if err := engine.trigger(plan.TestFile.Filename, pc.ep, planExecutionData.files[i]); err != nil {
+			if err := engine.trigger(engineDataConfigs[i]); err != nil {
 				errs <- err
 				return
 			}

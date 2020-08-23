@@ -35,9 +35,8 @@ ARG proxy=""
 ENV http_proxy ${proxy}
 ENV https_proxy ${proxy}
 
-RUN mkdir /test-data
 COPY config/kube_configs /root/.kube
-COPY config_${env}.json /config.json
+COPY config.json /config.json
 COPY ./ui/ /
 COPY ./controller/mandatory.yaml /ingress/mandatory.yaml
 CMD ["shibuya"]
