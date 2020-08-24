@@ -35,15 +35,13 @@ grafana: grafana/
 
 .PHONY: shibuya
 shibuya: shibuya/ kubernetes/
-	cp config.json shibuya/config.json
 	docker build --build-arg env=local -t shibuya:local shibuya
-	rm shibuya/config.json
 	kind load docker-image shibuya:local --name shibuya
 	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/shibuya.yaml --force
 
 .PHONY: jmeter
-jmeter: jmeter/
-	docker build -t shibuya:jmeter jmeter
+jmeter: shibuya/engines/jmeter
+	docker build -t shibuya:jmeter -f shibuya/Dockerfile.engines.jmeter shibuya
 	kind load docker-image shibuya:jmeter --name shibuya
 
 .PHONY: expose

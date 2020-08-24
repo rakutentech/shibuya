@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
-	mysql "github.com/go-sql-driver/mysql"
 	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/object_storage"
+
+	mysql "github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -516,29 +516,6 @@ func (c *Collection) HasRunningPlan() (bool, error) {
 		return count > 0, nil
 	}
 	return false, nil
-}
-
-func (c *Collection) FetchCollectionFiles() error {
-	var hasError error
-
-	if c.Data, hasError = c.GenCollectionFileUrls(); hasError != nil {
-		return hasError
-	}
-	var wgFetchData sync.WaitGroup
-	for _, d := range c.Data {
-		wgFetchData.Add(1)
-		go func(d *ShibuyaFile) {
-			defer wgFetchData.Done()
-			var err error
-			d.RawFile, err = object_storage.Client.Storage.Download(c.MakeFileName(d.Filename))
-			if err != nil {
-				log.Error(err)
-				hasError = err
-			}
-		}(d)
-	}
-	wgFetchData.Wait()
-	return hasError
 }
 
 func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machinesCount int64) error {

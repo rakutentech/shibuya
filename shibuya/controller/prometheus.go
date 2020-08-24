@@ -4,11 +4,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/harpratap/shibuya/shibuya/config"
-	"github.com/harpratap/shibuya/shibuya/model"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/model"
+
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
