@@ -2,12 +2,21 @@
 
 Shibuya relies on below components:
 
+* shibuya-controller: The actual process that handles all the Shibuya business logic
 * Kubernetes: Shibuya deploys all the load generators into a kubernetes cluster
 * MySQL: all the session data and business logic
 * Grafana: Metrics collected by Prometheus will be rendered at Grafana
 * Prometheus: Metrics collected from the load generators will be scraped by Prom.
 
 We will discuss each of this dependencies separately.
+
+## Architecture Overview
+
+![image](../images/shibuya-architecture.png)
+
+## Shibuya-controller
+
+We don't limit how you deploy the shibuya controller. The process it self is listening on 8080 port. Each shibuya controller is configured by a configuration file called `config.json`. We will discuss in details in the next section. [link](./config.md)
 
 ## Kubernetes
 
