@@ -257,9 +257,9 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 	collection.StopRun()
 	collection.RunFinish(currRunID)
 
-	if !config.SC.ExecutorConfig.Cluster.OnDemand {
-		collection.MarkUsageFinished(config.SC.Context)
-	}
+	// for on-demand clusters, we rely on the billing of the public cloud providers
+	// Launch History here only is only for reference
+	err = collection.MarkUsageFinished(config.SC.Context)
 	return e
 }
 
@@ -293,9 +293,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 		owner = project.Owner
 	}
 	ctx := config.SC.Context
-	if !collection.HasLaunchEntry(ctx) {
-		collection.NewLaunchEntry(owner, ctx, int64(enginesCount), nodesCount)
-	}
+	collection.NewLaunchEntry(owner, ctx, int64(enginesCount), nodesCount)
 	err = utils.Retry(func() error {
 		return c.DeployIngressController(collection.ID, collection.ProjectID, collection.Name)
 	})
@@ -446,7 +444,6 @@ func (c *Controller) PurgeNodes(collection *model.Collection) error {
 		if err := operator.destroyNodes(); err != nil {
 			return err
 		}
-		collection.MarkUsageFinished(config.SC.Context)
 		return nil
 	}
 	return nil
