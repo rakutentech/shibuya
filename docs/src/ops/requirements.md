@@ -26,6 +26,22 @@ Please follow below steps to setup the k8s cluster:
 
 1. `kubect create ns shibuya-executors`
 
+## Load generators
+
+### Jmeter
+
+Currently Jmeter is the only engine Shibuya supports. (We need to provide a public Jmeter image)
+
+## Object Storage
+
+We use object storage to store all the test plans and their related files, for example, csv files.
+Currently we support two types of storage:
+
+1. HTTP REST based API object storage(Nexus)
+2. GCP bucket.
+
+Please go to [here](./object_storage.md) to see the detail guide.
+
 
 ## MySQL
 
