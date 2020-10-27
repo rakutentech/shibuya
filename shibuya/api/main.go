@@ -650,11 +650,7 @@ func (s *ShibuyaAPI) collectionPurgeHandler(w http.ResponseWriter, r *http.Reque
 		s.handleErrors(w, err)
 		return
 	}
-	if e := s.ctr.TermAndPurgeCollection(collection); e != nil {
-		s.handleErrors(w, makeInternalServerError(e.Error()))
-		return
-	}
-	s.jsonise(w, http.StatusOK, true)
+	s.ctr.TermAndPurgeCollectionAsync(collection)
 }
 
 func (s *ShibuyaAPI) collectionNodesGetHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {

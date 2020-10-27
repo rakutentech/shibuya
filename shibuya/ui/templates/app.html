@@ -101,6 +101,7 @@
                     <button type="button" @click="remove" class="btn btn-outline-danger float-right">Delete</button>
                     <span class="badge badge-warning" v-if="trigger_in_progress">Tests are being started</span>
                     <span class="badge badge-warning" v-if="stop_in_progress">Tests are being stopped</span>
+                    <span class="badge badge-warning" v-if="purge_tip">Engines are being purged</span>
                     <div class="alert alert-warning" v-if="on_demand_cluster" style="margin: 20px 0px 10px 0px; text-align:center; padding: .3rem .5rem">
                         <span>${collection_status.pool_size} ${nodes_plural} ${verb} ${collection_status.pool_status} in ${running_context}</span>
                         <button @click="purgeNodes" v-if="collection_status.pool_size > 0" class="btn btn-link" style="padding:0px; margin:0px;vertical-align:baseline;text-decoration:underline">Shut down</button>
