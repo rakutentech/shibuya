@@ -22,6 +22,7 @@ var Collection = Vue.component("collection", {
             collection_file: null,
             trigger_in_progress: false,
             stop_in_progress: false,
+            purge_in_progress: false,
             on_demand_cluster: on_demand_cluster,
             upload_file_help: upload_file_help,
             showing_log: false,
@@ -100,6 +101,16 @@ var Collection = Vue.component("collection", {
         },
         stoppable: function () {
             return this.triggered;
+        },
+        purge_tip: function () {
+            var t = true;
+            _.all(this.collection_status.status, function (plan) {
+                t = t && (plan.engines_deployed === plan.engines);
+            });
+            if (!t) {
+                this.purge_in_progress = false;
+            }
+            return this.purge_in_progress && t;
         }
     },
     created: function () {
@@ -184,6 +195,7 @@ var Collection = Vue.component("collection", {
         },
         purge: function () {
             var url = "collections/" + this.collection_id + "/purge"
+            this.purge_in_progress = true;
             this.$http.post(url).then(
                 function (resp) {
                     this.launched = false;

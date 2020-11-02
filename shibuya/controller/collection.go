@@ -3,6 +3,8 @@ package controller
 import (
 	"shibuya/model"
 	"shibuya/utils"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func prepareCollection(collection *model.Collection) (*ExecutionData, error) {
@@ -28,4 +30,14 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error 
 		return c.Kcm.PurgeCollection(collection.ID)
 	})
 	return err
+}
+
+func (c *Controller) TermAndPurgeCollectionAsync(collection *model.Collection) {
+	// This method is supposed to be only used by API side because for large collections, k8s api might take long time to respond
+	go func() {
+		err := c.TermAndPurgeCollection(collection)
+		if err != nil {
+			log.Print(err)
+		}
+	}()
 }
