@@ -70,7 +70,7 @@ All authentication related logic is configured by this block
 
 ```
     "auth_config": {
-        "admin_users": [], # admin 
+        "admin_users": [], # admin mailing list. A admin will have a dedicated page to view all the running collections
         "ldap_server": "", 
         "ldap_port": "",
         "system_user": "", # ldap system user
@@ -106,7 +106,7 @@ Once this is configured, all the traffic will pass through proxy. Including metr
 Shibuya supports two types of clusters:
 
 1. on demand, specifically, GKE in Google Cloud Platform. 
-2. on-premise cluster, which you can direcly connect to.
+2. on-premise cluster.
 
 With on demand mode, Shibuya is able to automatically create nodes and clean resources after usage. In most cases, the GKE cluster used by Shibuya has 0 worker nodes(to save money). 
 
