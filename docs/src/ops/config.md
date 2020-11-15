@@ -168,3 +168,7 @@ Please bear in mind, `local` should be only used by Shibuya developers.
 ```
 
 If you require logs to be in JSON format, you can set `json: true`.
+
+## GCP
+
+TODO
