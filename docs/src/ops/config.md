@@ -128,3 +128,43 @@ Shibuya controller can be run outside of a k8s cluster, which usually is the clu
         "pull_policy": "IfNotPresent"
     }
 ```
+
+## Metrics dashboard
+
+Shibuya uses external Grafana dashboard to visualise the metrics. 
+
+```
+    "dashboard": {
+        "url": "http://localhost:3000", # root of the dashboard url
+        "run_dashboard": "/d/RXY8nM1mk2/shibuya", # link to the metrics of all the runs.
+        "engine_dashboard": "/d/9EH6xqTZz/shibuya-engine-health" # link to the health of the engines.
+    }
+```
+
+## Object storage
+
+Shibuya uses object storage to store all the test plans. It supports two types storage:
+
+1. HTTP based storage service, like, Nexus. 
+2. GCP bucket. 
+
+```
+    "object_storage": {
+        "provider": "local", # either gcp, local, or Nexus
+        "url": "http://storage:8080",
+        "user": "", # HTTP basic authentication user and password
+        "password": ""
+    },
+```
+
+Please bear in mind, `local` should be only used by Shibuya developers. 
+
+## Logging support
+
+```
+    "log_format": {
+        "json": false
+    }
+```
+
+If you require logs to be in JSON format, you can set `json: true`.
