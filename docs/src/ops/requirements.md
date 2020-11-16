@@ -16,7 +16,7 @@ We will discuss each of this dependencies separately.
 
 ## Shibuya-controller
 
-We don't limit how you deploy the shibuya controller. The process it self is listening on 8080 port. Each shibuya controller is configured by a configuration file called `config.json`. We will discuss in details in the next section. [link](./config.md)
+We don't limit how you deploy the shibuya controller. The process it self is running inside a Docker container and is listening on 8080 port. In [this page](./docker.md), we will explain how you can build your own shibuya controller. Moreover, Each shibuya controller is configured by a configuration file called `config.json`. The details can be read [here](./config.md).
 
 ## Kubernetes
 
