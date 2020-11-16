@@ -1,4 +1,4 @@
-FROM golang:1.13.6-stretch AS builder
+FROM gcr.io/shibuya-214807/golang:1.13.6-stretch AS builder
 
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl \
     && chmod +x ./kubectl \
@@ -17,7 +17,7 @@ COPY . /go/src/shibuya
 RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/shibuya
 
 # Use only binaries from above image for running the app
-FROM ubuntu:18.04
+FROM gcr.io/shibuya-214807/ubuntu:18.04
 
 COPY --from=builder /go/bin/shibuya /usr/local/bin/shibuya
 COPY --from=builder /usr/local/bin/kubectl /usr/local/bin/kubectl
