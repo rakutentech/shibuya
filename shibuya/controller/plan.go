@@ -3,12 +3,12 @@ package controller
 import (
 	"errors"
 	"fmt"
-	"shibuya/config"
-	"shibuya/model"
-	"shibuya/scheduler"
-	_ "shibuya/utils"
 	"sync"
 
+	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/scheduler"
+	_ "github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -2,8 +2,9 @@ package model
 
 import (
 	"net/http"
-	"shibuya/auth"
-	"shibuya/config"
+
+	"github.com/rakutentech/shibuya/shibuya/auth"
+	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 type Account struct {

@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"shibuya/config"
-	"shibuya/model"
-	"shibuya/utils"
 	"strconv"
 	"strings"
 
+	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
 )
 

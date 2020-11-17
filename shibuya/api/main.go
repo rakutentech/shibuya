@@ -10,15 +10,13 @@ import (
 	"strconv"
 	"time"
 
-	"shibuya/config"
-	"shibuya/controller"
-	"shibuya/model"
-	"shibuya/object_storage"
-	"shibuya/scheduler"
-
-	utils "shibuya/utils"
-
 	"github.com/julienschmidt/httprouter"
+	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/controller"
+	"github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/object_storage"
+	"github.com/rakutentech/shibuya/shibuya/scheduler"
+	utils "github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 )

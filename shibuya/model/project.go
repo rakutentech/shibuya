@@ -2,9 +2,10 @@ package model
 
 import (
 	"fmt"
-	"shibuya/config"
 	"strings"
 	"time"
+
+	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 type Project struct {

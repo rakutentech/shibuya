@@ -5,14 +5,12 @@ import (
 	"html/template"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
-
-	"shibuya/api"
-	"shibuya/auth"
-	"shibuya/config"
-	"shibuya/model"
-
 	"github.com/julienschmidt/httprouter"
+	"github.com/rakutentech/shibuya/shibuya/api"
+	"github.com/rakutentech/shibuya/shibuya/auth"
+	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/model"
+	log "github.com/sirupsen/logrus"
 )
 
 type UI struct {

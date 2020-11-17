@@ -1,10 +1,9 @@
 package controller
 
 import (
-	"shibuya/model"
-	"shibuya/utils"
-
 	log "github.com/sirupsen/logrus"
+	"github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/utils"
 )
 
 func prepareCollection(collection *model.Collection) (*ExecutionData, error) {

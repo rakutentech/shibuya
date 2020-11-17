@@ -1,4 +1,4 @@
-module shibuya
+module github.com/rakutentech/shibuya/shibuya
 
 go 1.12
 

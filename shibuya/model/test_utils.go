@@ -1,7 +1,7 @@
 package model
 
 import (
-	"shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 func setupAndTeardown() error {

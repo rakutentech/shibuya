@@ -3,8 +3,9 @@ package controller
 import (
 	"bytes"
 	"encoding/csv"
-	"shibuya/model"
 	"strings"
+
+	"github.com/rakutentech/shibuya/shibuya/model"
 )
 
 type ExecutionData struct {

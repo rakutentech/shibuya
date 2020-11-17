@@ -1,8 +1,9 @@
 package api
 
 import (
-	"shibuya/model"
 	"strconv"
+
+	"github.com/rakutentech/shibuya/shibuya/model"
 )
 
 func getCollection(collectionID string) (*model.Collection, error) {

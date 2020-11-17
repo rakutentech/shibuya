@@ -8,10 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"shibuya/config"
-	"shibuya/object_storage"
-
 	mysql "github.com/go-sql-driver/mysql"
+	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/object_storage"
 	log "github.com/sirupsen/logrus"
 )
 

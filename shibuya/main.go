@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
-
-	"shibuya/api"
-	"shibuya/ui"
-
 	"github.com/gorilla/context"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rakutentech/shibuya/shibuya/api"
+	"github.com/rakutentech/shibuya/shibuya/ui"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {

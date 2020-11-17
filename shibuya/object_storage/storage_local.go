@@ -8,7 +8,8 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
-	"shibuya/config"
+
+	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 type localStorage struct {
