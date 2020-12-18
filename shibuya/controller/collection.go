@@ -1,17 +1,18 @@
 package controller
 
 import (
+	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
 )
 
-func prepareCollection(collection *model.Collection) []*EngineDataConfig {
+func prepareCollection(collection *model.Collection) []*controllerModel.EngineDataConfig {
 	planCount := len(collection.ExecutionPlans)
-	edc := EngineDataConfig{
+	edc := controllerModel.EngineDataConfig{
 		EngineData: map[string]*model.ShibuyaFile{},
 	}
-	engineDataConfigs := edc.deepCopies(planCount)
+	engineDataConfigs := edc.DeepCopies(planCount)
 	for i := 0; i < planCount; i++ {
 		for _, d := range collection.Data {
 			sf := model.ShibuyaFile{

@@ -19,7 +19,7 @@ import (
 
 	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
 
-	"github.com/rakutentech/shibuya/shibuya/controller"
+	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/utils"
 
@@ -333,7 +333,7 @@ func (sw *ShibuyaWrapper) downloadAndSaveFile(sf *model.ShibuyaFile) error {
 	return saveToDisk(sf.Filename, file)
 }
 
-func (sw *ShibuyaWrapper) prepareTestData(edc controller.EngineDataConfig) error {
+func (sw *ShibuyaWrapper) prepareTestData(edc controllerModel.EngineDataConfig) error {
 	for _, sf := range edc.EngineData {
 		fileType := filepath.Ext(sf.Filename)
 		switch fileType {
@@ -369,7 +369,7 @@ func (sw *ShibuyaWrapper) startHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-		var edc controller.EngineDataConfig
+		var edc controllerModel.EngineDataConfig
 		if err := json.Unmarshal(file, &edc); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusBadRequest)

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
+	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
 	"github.com/rakutentech/shibuya/shibuya/utils"
@@ -19,7 +20,7 @@ import (
 )
 
 type shibuyaEngine interface {
-	trigger(edc *EngineDataConfig) error
+	trigger(edc *controllerModel.EngineDataConfig) error
 	deploy(*scheduler.K8sClientManager) error
 	subscribe(runID int64) error
 	progress() bool
@@ -39,41 +40,6 @@ var JmeterEngineType engineType
 // deployed in the k8s cluster
 var engineHttpClient = &http.Client{
 	Timeout: 30 * time.Second,
-}
-
-type EngineDataConfig struct {
-	EngineData  map[string]*model.ShibuyaFile `json:"engine_data"`
-	Duration    string                        `json:"duration"`
-	Concurrency string                        `json:"concurrency"`
-	Rampup      string                        `json:"rampup"`
-}
-
-func (edc *EngineDataConfig) deepCopy() *EngineDataConfig {
-	edcCopy := EngineDataConfig{
-		EngineData:  map[string]*model.ShibuyaFile{},
-		Duration:    edc.Duration,
-		Concurrency: edc.Concurrency,
-		Rampup:      edc.Rampup,
-	}
-	for filename, ed := range edc.EngineData {
-		sf := model.ShibuyaFile{
-			Filename:     ed.Filename,
-			Filepath:     ed.Filepath,
-			Filelink:     ed.Filelink,
-			TotalSplits:  ed.TotalSplits,
-			CurrentSplit: ed.CurrentSplit,
-		}
-		edcCopy.EngineData[filename] = &sf
-	}
-	return &edcCopy
-}
-
-func (edc *EngineDataConfig) deepCopies(size int) []*EngineDataConfig {
-	edcCopies := []*EngineDataConfig{}
-	for i := 0; i < size; i++ {
-		edcCopies = append(edcCopies, edc.deepCopy())
-	}
-	return edcCopies
 }
 
 type shibuyaMetric struct {
@@ -106,7 +72,7 @@ type baseEngine struct {
 	*config.ExecutorContainer
 }
 
-func sendTriggerRequest(url string, edc *EngineDataConfig) (*http.Response, error) {
+func sendTriggerRequest(url string, edc *controllerModel.EngineDataConfig) (*http.Response, error) {
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(&edc)
 	req, _ := http.NewRequest("POST", url, body)
@@ -184,7 +150,7 @@ func (be *baseEngine) deploy(manager *scheduler.K8sClientManager) error {
 		be.collectionID, be.projectID, be.ExecutorContainer)
 }
 
-func (be *baseEngine) trigger(edc *EngineDataConfig) error {
+func (be *baseEngine) trigger(edc *controllerModel.EngineDataConfig) error {
 	engineUrl := be.engineUrl
 	url := fmt.Sprintf("http://%s/%s", engineUrl, "start")
 	return utils.Retry(func() error {

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
+	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
 	_ "github.com/rakutentech/shibuya/shibuya/utils"
@@ -44,11 +45,11 @@ func (pc *PlanController) deploy() error {
 	return nil
 }
 
-func (pc *PlanController) prepare(plan *model.Plan, edc *EngineDataConfig) []*EngineDataConfig {
+func (pc *PlanController) prepare(plan *model.Plan, edc *controllerModel.EngineDataConfig) []*controllerModel.EngineDataConfig {
 	edc.Duration = strconv.Itoa(pc.ep.Duration)
 	edc.Concurrency = strconv.Itoa(pc.ep.Concurrency)
 	edc.Rampup = strconv.Itoa(pc.ep.Rampup)
-	engineDataConfigs := edc.deepCopies(pc.ep.Engines)
+	engineDataConfigs := edc.DeepCopies(pc.ep.Engines)
 	for i := 0; i < pc.ep.Engines; i++ {
 		// we split the data inherited from collection if the plan specifies split too
 		if pc.ep.CSVSplit {
@@ -77,7 +78,7 @@ func (pc *PlanController) prepare(plan *model.Plan, edc *EngineDataConfig) []*En
 	return engineDataConfigs
 }
 
-func (pc *PlanController) trigger(engineDataConfig *EngineDataConfig) error {
+func (pc *PlanController) trigger(engineDataConfig *controllerModel.EngineDataConfig) error {
 	plan, err := model.GetPlan(pc.ep.PlanID)
 	if err != nil {
 		return err
