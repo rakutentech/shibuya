@@ -3,7 +3,7 @@ ARG jmeter_ver=3.3
 FROM gcr.io/shibuya-214807/alpine:3.10.2 AS jmeter
 ARG jmeter_ver
 ENV JMETER_VERSION=$jmeter_ver
-RUN wget https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.zip
+RUN wget archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.zip
 RUN unzip -qq apache-jmeter-${JMETER_VERSION}
 
 FROM gcr.io/shibuya-214807/golang:1.13.6-stretch AS shibuya-agent
