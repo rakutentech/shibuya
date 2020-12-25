@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 
@@ -73,11 +74,12 @@ type HttpConfig struct {
 }
 
 type ObjectStorage struct {
-	Provider string `json:"provider"`
-	Url      string `json:"url"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Bucket   string `json:"bucket"`
+	Provider 	 string `json:"provider"`
+	Url      	 string `json:"url"`
+	User     	 string `json:"user"`
+	Password 	 string `json:"password"`
+	Bucket   	 string `json:"bucket"`
+	RequireProxy bool 	`json:"require_proxy"`
 }
 
 type LogFormat struct {
@@ -110,6 +112,7 @@ type ShibuyaConfig struct {
 	DevMode    bool
 	Context    string
 	HTTPClient *http.Client
+	HTTPProxyClient *http.Client
 	DBC        *sql.DB
 	DBEndpoint string
 }
@@ -118,8 +121,19 @@ func loadContext() string {
 	return os.Getenv("env")
 }
 
-func makeHTTPClient() *http.Client {
-	return &http.Client{}
+func (sc *ShibuyaConfig) makeHTTPClients() {
+	sc.HTTPClient = &http.Client{}
+	if sc.HttpConfig.Proxy == "" {
+		return
+	}
+	proxyUrl, err := url.Parse(sc.HttpConfig.Proxy)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rt := &http.Transport{
+		Proxy: http.ProxyURL(proxyUrl),
+	}
+	sc.HTTPProxyClient = &http.Client{Transport: rt}
 }
 
 func applyJsonLogging() {
@@ -160,7 +174,7 @@ func loadConfig() *ShibuyaConfig {
 	}
 	sc.Context = loadContext()
 	sc.DevMode = sc.Context == "local"
-	sc.HTTPClient = makeHTTPClient()
+	sc.makeHTTPClients()
 	if sc.ExecutorConfig.Cluster.GCDuration == 0 {
 		sc.ExecutorConfig.Cluster.GCDuration = 15
 	}

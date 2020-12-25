@@ -25,4 +25,7 @@ COPY --from=shibuya-agent /go/bin/shibuya-agent /usr/local/bin/shibuya-agent
 COPY config.json config.json
 ADD engines/jmeter/shibuya.properties /test-conf/shibuya.properties
 ADD engines/jmeter/jmeter.sh /apache-jmeter-${JMETER_VERSION}/bin/jmeter
+RUN mkdir /auth
+ADD ./shibuya-gcp.json /auth/shibuya-gcp.json
+ENV GOOGLE_APPLICATION_CREDENTIALS /auth/shibuya-gcp.json
 CMD ["shibuya-agent"]
