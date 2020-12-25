@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
+	model "github.com/rakutentech/shibuya/shibuya/model"
+	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -23,10 +25,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	metricsc "k8s.io/metrics/pkg/client/clientset/versioned"
 )
-
-func GenerateName(name string, planID int64, collectionID int64, projectID int64, engineNo int) string {
-	return fmt.Sprintf("%s-%d-%d-%d-%d", name, projectID, collectionID, planID, engineNo)
-}
 
 type K8sClientManager struct {
 	*config.ExecutorConfig
@@ -88,26 +86,6 @@ func prepareAffinity(collectionID int64) *apiv1.Affinity {
 	return affinity
 }
 
-func makeBaseLabel(collectionID, projectID int64) map[string]string {
-	return map[string]string{
-		"collection": strconv.FormatInt(collectionID, 10),
-		"project":    strconv.FormatInt(projectID, 10),
-	}
-}
-func makeIngressLabel(collectionID, projectID int64) map[string]string {
-	base := makeBaseLabel(collectionID, projectID)
-	base["kind"] = "ingress-controller"
-	return base
-}
-
-func makeEngineLabel(planID, collectionID, projectID int64, app string) map[string]string {
-	base := makeBaseLabel(collectionID, projectID)
-	base["app"] = app
-	base["plan"] = strconv.FormatInt(planID, 10)
-	base["kind"] = "executor"
-	return base
-}
-
 func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 	if kcm.HostAliases != nil {
 		hostAliases := []apiv1.HostAlias{}
@@ -122,19 +100,17 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 	return []apiv1.HostAlias{}
 }
 
-func (kcm *K8sClientManager) generateEngineDeployment(replicas int32, name string, planID int64, collectionID int64,
-	projectID int64, containerConfig *config.ExecutorContainer) appsv1.Deployment {
-	affinity := prepareAffinity(collectionID)
+func (kcm *K8sClientManager) generateEngineDeployment(engineName string, labels map[string]string,
+	containerConfig *config.ExecutorContainer, affinity *apiv1.Affinity) appsv1.Deployment {
 	t := true
-	labels := makeEngineLabel(planID, collectionID, projectID, name)
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:                       name,
+			Name:                       engineName,
 			DeletionGracePeriodSeconds: new(int64),
 			Labels:                     labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(replicas),
+			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -155,7 +131,7 @@ func (kcm *K8sClientManager) generateEngineDeployment(replicas int32, name strin
 					HostAliases:                   kcm.makeHostAliases(),
 					Containers: []apiv1.Container{
 						{
-							Name:            name,
+							Name:            engineName,
 							Image:           containerConfig.Image,
 							ImagePullPolicy: kcm.ImagePullPolicy,
 							Resources: apiv1.ResourceRequirements{
@@ -258,29 +234,30 @@ func (kcm *K8sClientManager) CreateService(serviceName string, engine appsv1.Dep
 	return nil
 }
 
-func (kcm *K8sClientManager) DeployEngine(engineName, serviceName, ingressClass, ingressName string,
-	planID, collectionID, projectID int64, containerConfig *config.ExecutorContainer) error {
-	engineConfig := kcm.generateEngineDeployment(1, engineName, planID, collectionID, projectID, containerConfig)
-	err := kcm.deploy(&engineConfig)
-	if err != nil {
-		log.Error(err)
+func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
+	engineID int, containerConfig *config.ExecutorContainer) error {
+	engineName := makeEngineName(projectID, collectionID, planID, engineID)
+	labels := makeEngineLabel(projectID, collectionID, planID, engineName)
+	affinity := prepareAffinity(collectionID)
+	engineConfig := kcm.generateEngineDeployment(engineName, labels, containerConfig, affinity)
+	if err := kcm.deploy(&engineConfig); err != nil {
 		return err
 	}
-	err = kcm.CreateService(serviceName, engineConfig)
-	if err != nil {
-		log.Error(err)
+	engineSvcName := makeServiceName(projectID, collectionID, planID, engineID)
+	if err := kcm.CreateService(engineSvcName, engineConfig); err != nil {
 		return err
 	}
-	err = kcm.CreateIngress(ingressClass, ingressName, serviceName, collectionID, projectID)
-	if err != nil {
-		log.Error(err)
+	ingressClass := makeIngressClass(collectionID)
+	ingressName := makeIngressName(projectID, collectionID, planID, engineID)
+	if err := kcm.CreateIngress(ingressClass, ingressName, engineSvcName, collectionID, projectID); err != nil {
 		return err
 	}
 	log.Printf("Finish creating one engine for %s", engineName)
 	return nil
 }
 
-func (kcm *K8sClientManager) GetIngressUrl(igName string) (string, error) {
+func (kcm *K8sClientManager) GetIngressUrl(collectionID int64) (string, error) {
+	igName := makeIngressClass(collectionID)
 	serviceClient, err := kcm.client.CoreV1().Services(kcm.Namespace).
 		Get(igName, metav1.GetOptions{})
 	if err != nil {
@@ -325,6 +302,94 @@ func (kcm *K8sClientManager) GetPodsByCollection(collectionID int64, fieldSelect
 	return pods
 }
 
+func (kcm *K8sClientManager) FetchEngineUrlsByPlan(collectionID, planID int64, opts *smodel.EngineOwnerRef) ([]string, error) {
+	collectionUrl, err := kcm.GetIngressUrl(collectionID)
+	if err != nil {
+		return nil, err
+	}
+	urls := []string{}
+	for i := 0; i < opts.EnginesCount; i++ {
+		engineSvcName := makeServiceName(opts.ProjectID, collectionID, planID, i)
+		u := fmt.Sprintf("%s/%s", collectionUrl, engineSvcName)
+		urls = append(urls, u)
+	}
+	return urls, nil
+}
+
+func (kcm *K8sClientManager) CollectionStatus(projectID, collectionID int64, eps []*model.ExecutionPlan) (*smodel.CollectionStatus, error) {
+	planStatuses := make(map[int64]*smodel.PlanStatus)
+	var engineReachable bool
+	cs := &smodel.CollectionStatus{}
+	pods := kcm.GetPodsByCollection(collectionID, "")
+	ingressControllerDeployed := false
+	for _, ep := range eps {
+		ps := &smodel.PlanStatus{
+			PlanID:  ep.PlanID,
+			Engines: ep.Engines,
+		}
+		planStatuses[ep.PlanID] = ps
+	}
+	enginesReady := true
+	for _, pod := range pods {
+		if pod.Labels["kind"] == "ingress-controller" {
+			ingressControllerDeployed = true
+			continue
+		}
+		planID, err := strconv.Atoi(pod.Labels["plan"])
+		if err != nil {
+			log.Error(err)
+		}
+		ps, ok := planStatuses[int64(planID)]
+		if !ok {
+			log.Error("Could not find running pod in ExecutionPlan")
+			continue
+		}
+		ps.EnginesDeployed += 1
+		if pod.Status.Phase != apiv1.PodRunning {
+			enginesReady = false
+		}
+	}
+	// if it's unrechable, we can assume it's not in progress as well
+	fieldSelector := fmt.Sprintf("status.phase=Running")
+	ingressPods := kcm.GetPodsByCollection(collectionID, fieldSelector)
+	ingressControllerDeployed = len(ingressPods) >= 1
+	if !ingressControllerDeployed || !enginesReady {
+		for _, ps := range planStatuses {
+			cs.Plans = append(cs.Plans, ps)
+		}
+		return cs, nil
+	}
+	engineReachable = false
+	randomPlan := eps[0]
+	opts := &smodel.EngineOwnerRef{
+		ProjectID:    projectID,
+		EnginesCount: randomPlan.Engines,
+	}
+	engineUrls, err := kcm.FetchEngineUrlsByPlan(collectionID, randomPlan.PlanID, opts)
+	if err == nil {
+		randomEngine := engineUrls[0]
+		engineReachable = kcm.ServiceReachable(randomEngine)
+	}
+	jobs := make(chan *smodel.PlanStatus)
+	result := make(chan *smodel.PlanStatus)
+	for w := 0; w < len(eps); w++ {
+		go smodel.GetPlanStatus(collectionID, jobs, result)
+	}
+	for _, ps := range planStatuses {
+		jobs <- ps
+	}
+	defer close(jobs)
+	defer close(result)
+	for range eps {
+		ps := <-result
+		if ps.Engines == ps.EnginesDeployed && engineReachable {
+			ps.EnginesReachable = true
+		}
+		cs.Plans = append(cs.Plans, ps)
+	}
+	return cs, nil
+}
+
 func (kcm *K8sClientManager) GetPodsByCollectionPlan(collectionID, planID int64) ([]apiv1.Pod, error) {
 	labelSelector := fmt.Sprintf("plan=%d,collection=%d", planID, collectionID)
 	fieldSelector := ""
@@ -367,7 +432,8 @@ func (kcm *K8sClientManager) DownloadPodLog(collectionID, planID int64) (string,
 	return "", fmt.Errorf("Cannot find pod for the plan %d", planID)
 }
 
-func (kcm *K8sClientManager) PodReady(label string) int {
+func (kcm *K8sClientManager) PodReadyCount(collectionID int64) int {
+	label := makeCollectionLabel(collectionID)
 	podsClient, err := kcm.client.CoreV1().Pods(kcm.Namespace).
 		List(metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s", label),
@@ -384,12 +450,8 @@ func (kcm *K8sClientManager) PodReady(label string) int {
 	return ready
 }
 
-func (kcm *K8sClientManager) ServiceReachable(ingressClass, serviceName string) bool {
-	ingressUrl, err := kcm.GetIngressUrl(ingressClass)
-	if err != nil {
-		return false
-	}
-	resp, err := http.Get(fmt.Sprintf("http://%s/%s/start", ingressUrl, serviceName))
+func (kcm *K8sClientManager) ServiceReachable(engineUrl string) bool {
+	resp, err := http.Get(fmt.Sprintf("http://%s/start", engineUrl))
 	if err != nil {
 		log.Warn(err)
 		return false
@@ -530,17 +592,34 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 	return deployment
 }
 
-func (kcm *K8sClientManager) DeployIngressController(igName string, collectionID, projectID int64) (string, error) {
+func (kcm *K8sClientManager) ApplyIngressPrerequisite() {
+	mandatory := fmt.Sprintf("/ingress/mandatory.yaml")
+	namespace := kcm.Namespace
+	cmd := exec.Command("kubectl", "-n", namespace, "apply", "-f", mandatory)
+	o, err := cmd.Output()
+	if err != nil {
+		log.Printf("Cannot apply mandatory.yaml")
+		log.Error(err)
+	}
+	log.Print(string(o))
+	err = kcm.CreateRoleBinding()
+	if err != nil {
+		log.Error(err)
+	}
+	log.Printf("Prerequisites are applied to the cluster")
+}
+
+func (kcm *K8sClientManager) DeployIngressController(projectID, collectionID int64) error {
+	kcm.ApplyIngressPrerequisite()
+	igName := makeIngressClass(collectionID)
 	deployment := kcm.generateControllerDeployment(igName, collectionID, projectID)
-	err := kcm.deploy(&deployment)
-	if err != nil {
-		return "", err
+	if err := kcm.deploy(&deployment); err != nil {
+		return err
 	}
-	err = kcm.expose(igName, &deployment)
-	if err != nil {
-		return "", err
+	if err := kcm.expose(igName, &deployment); err != nil {
+		return err
 	}
-	return "", nil
+	return nil
 }
 
 func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceName string, collectionID, projectID int64) error {
@@ -633,24 +712,17 @@ func (kcm *K8sClientManager) getNodes(opts metav1.ListOptions) ([]apiv1.Node, er
 	return nodeList.Items, nil
 }
 
-type NodesInfo struct {
-	Size       int       `json:"size"`
-	LaunchTime time.Time `json:"launch_time"`
-}
-
-type AllNodesInfo map[string]*NodesInfo
-
-func (kcm *K8sClientManager) GetAllNodesInfo() (AllNodesInfo, error) {
+func (kcm *K8sClientManager) GetAllNodesInfo() (smodel.AllNodesInfo, error) {
 	opts := metav1.ListOptions{}
 	nodes, err := kcm.getNodes(opts)
 	if err != nil {
 		return nil, err
 	}
-	r := make(AllNodesInfo)
+	r := make(smodel.AllNodesInfo)
 	for _, node := range nodes {
 		nodeInfo := r[node.ObjectMeta.Labels["collection_id"]]
 		if nodeInfo == nil {
-			nodeInfo = &NodesInfo{}
+			nodeInfo = &smodel.NodesInfo{}
 			r[node.ObjectMeta.Labels["collection_id"]] = nodeInfo
 		}
 		nodeInfo.Size++

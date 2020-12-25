@@ -20,11 +20,16 @@
         "password": "root",
         "database": "shibuya"
     },
+    "scheduler": {
+        "kind": "cloudrun",
+        "project": "shibuya-214807",
+        "api_endpoint": "https://asia-northeast1-run.googleapis.com"
+    },
     "executors": {
         "cluster": {
             "on_demand": false
         },
-        "in_cluster": true,
+        "in_cluster": false,
         "namespace": "shibuya-executors",
         "jmeter": {
             "image": "shibuya:jmeter",

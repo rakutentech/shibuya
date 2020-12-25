@@ -15,7 +15,7 @@ func (c *Controller) checkRunningThenTerminate() {
 		go func(jobs <-chan *RunningPlan) {
 		jobLoop:
 			for j := range jobs {
-				pc := NewPlanController(j.ep, j.collection, c.Kcm)
+				pc := NewPlanController(j.ep, j.collection, c.Scheduler)
 				if running := pc.progress(); !running {
 					collection := j.collection
 					currRunID, err := collection.GetCurrentRun()
@@ -108,7 +108,7 @@ func isCollectionStale(rh *model.RunHistory, launchTime time.Time) (bool, error)
 
 func (c *Controller) autoPurgeDeployments() {
 	for {
-		deployedCollections, err := c.Kcm.GetDeployedCollections()
+		deployedCollections, err := c.Scheduler.GetDeployedCollections()
 		if err != nil {
 			log.Error(err)
 			continue
@@ -146,7 +146,7 @@ func (c *Controller) autoPurgeDeployments() {
 }
 
 func (c *Controller) autoPurgeNodes(deployedCollections map[int64]time.Time) {
-	launchedNodes, err := c.Kcm.GetAllNodesInfo()
+	launchedNodes, err := c.Scheduler.GetAllNodesInfo()
 	if err != nil {
 		log.Error(err)
 		return

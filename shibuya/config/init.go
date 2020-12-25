@@ -42,6 +42,12 @@ type HostAlias struct {
 	IP       string `json:"IP"`
 }
 
+type SchedulerConfig struct {
+	Kind        string `json:"kind"`
+	Project     string `json:"project"`
+	APIEndpoint string `json:"api_endpoint"`
+}
+
 type ExecutorConfig struct {
 	InCluster       bool                `json:"in_cluster"`
 	Namespace       string              `json:"namespace"`
@@ -100,6 +106,7 @@ type ShibuyaConfig struct {
 	UploadFileHelp   string           `json:"upload_file_help"`
 	DBConf           *MySQLConfig     `json:"db"`
 	ExecutorConfig   *ExecutorConfig  `json:"executors"`
+	SchedulerConfig  *SchedulerConfig `json:"scheduler"`
 	DashboardConfig  *DashboardConfig `json:"dashboard"`
 	HttpConfig       *HttpConfig      `json:"http_config"`
 	AuthConfig       *AuthConfig      `json:"auth_config"`

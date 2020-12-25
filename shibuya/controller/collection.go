@@ -3,7 +3,6 @@ package controller
 import (
 	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
-	"github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -34,10 +33,7 @@ func prepareCollection(collection *model.Collection) []*controllerModel.EngineDa
 func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error {
 	// This is a force remove so we ignore the errors happened at test termination
 	c.TermCollection(collection, true)
-	err := utils.Retry(func() error {
-		return c.Kcm.PurgeCollection(collection.ID)
-	}, nil)
-	return err
+	return c.Scheduler.PurgeCollection(collection.ID)
 }
 
 func (c *Controller) TermAndPurgeCollectionAsync(collection *model.Collection) {

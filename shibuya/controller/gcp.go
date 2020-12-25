@@ -6,6 +6,7 @@ import (
 
 	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
+	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	log "github.com/sirupsen/logrus"
 	google "google.golang.org/api/container/v1"
 )
@@ -62,7 +63,7 @@ func (o *GCPOperator) GetNodesSize() (int, error) {
 }
 
 type GCPNodesInfo struct {
-	scheduler.NodesInfo
+	smodel.NodesInfo
 	Status string
 }
 

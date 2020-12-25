@@ -10,7 +10,7 @@ cluster:
 	-kubectl create namespace $(shibuya-executor-ns)
 	kubectl apply -f kubernetes/metricServer.yaml
 	kubectl config set-context --current --namespace=$(shibuya-controller-ns)
-	touch shibuya/shibuya-gcp.json
+	#touch shibuya/shibuya-gcp.json
 
 .PHONY: clean
 clean:
