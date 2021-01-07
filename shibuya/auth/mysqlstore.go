@@ -43,11 +43,18 @@ type sessionRow struct {
 	expiresOn  time.Time
 }
 
+var SessionStore *MySQLStore
+
 func init() {
+	if config.SC.DBConf != nil {
+		var err error
+		SessionStore, err = NewMySQLStore(config.SC.DBEndpoint, "user_session", "/", 31536000, []byte(config.SC.DBConf.Keypairs))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	gob.Register(time.Time{})
 }
-
-var SessionStore, _ = NewMySQLStore(config.SC.DBEndpoint, "user_session", "/", 31536000, []byte(config.SC.DBConf.Keypairs))
 
 func NewMySQLStore(endpoint string, tableName string, path string, maxAge int, keyPairs ...[]byte) (*MySQLStore, error) {
 	db, err := sql.Open("mysql", endpoint)

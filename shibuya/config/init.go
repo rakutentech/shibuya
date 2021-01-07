@@ -175,7 +175,7 @@ func loadConfig() *ShibuyaConfig {
 	sc.Context = loadContext()
 	sc.DevMode = sc.Context == "local"
 	sc.makeHTTPClients()
-	if sc.ExecutorConfig.Cluster.GCDuration == 0 {
+	if sc.ExecutorConfig != nil && sc.ExecutorConfig.Cluster.GCDuration == 0 {
 		sc.ExecutorConfig.Cluster.GCDuration = 15
 	}
 	return sc
@@ -187,6 +187,8 @@ func init() {
 	sc := loadConfig()
 	SC = sc
 	setupLogging()
-	sc.DBC = createMySQLClient(sc.DBConf)
-	sc.DBEndpoint = sc.DBConf.Endpoint
+	if sc.DBConf != nil {
+		sc.DBC = createMySQLClient(sc.DBConf)
+		sc.DBEndpoint = sc.DBConf.Endpoint
+	}
 }
