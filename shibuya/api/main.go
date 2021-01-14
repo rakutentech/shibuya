@@ -103,12 +103,7 @@ func (s *ShibuyaAPI) projectsGetHandler(w http.ResponseWriter, r *http.Request, 
 	}
 	for _, p := range projects {
 		if includeCollections {
-			collection_ids, _ := p.GetCollections()
-			p.Collections = []*model.Collection{}
-			for _, cid := range collection_ids {
-				c, _ := model.GetCollection(cid)
-				p.Collections = append(p.Collections, c)
-			}
+			p.Collections, _ = p.GetCollections()
 		}
 		if includePlans {
 			p.Plans, _ = p.GetPlans()
