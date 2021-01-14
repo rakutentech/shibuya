@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 	"time"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2"
@@ -102,7 +103,7 @@ func (gs *gcpStorage) Download(filename string) ([]byte, error) {
 	defer cancel()
 	rc, err := gs.client.Bucket(gs.bucket).Object(filename).NewReader(ctx)
 	if err != nil {
-		return nil, err
+		return nil, gs.IfFileNotFoundWrapper(err)
 	}
 	defer rc.Close()
 	data, err := ioutil.ReadAll(rc)
@@ -110,4 +111,11 @@ func (gs *gcpStorage) Download(filename string) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+func (gs *gcpStorage) IfFileNotFoundWrapper(err error) error {
+	if strings.Contains(err.Error(), "object doesn't exist") {
+		return FileNotFoundError()
+	}
+	return err
 }

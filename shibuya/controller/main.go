@@ -220,6 +220,10 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 		}
 	}
 	collection.NewRun(runID)
+	if len(triggerErrors) == len(collection.ExecutionPlans) {
+		// every plan in collection has error
+		c.TermCollection(collection, true)
+	}
 	if len(triggerErrors) > 0 {
 		return fmt.Errorf("Triggering errors %v", triggerErrors)
 	}
@@ -287,7 +291,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount)
 	err = utils.Retry(func() error {
 		return c.DeployIngressController(collection.ID, collection.ProjectID, collection.Name)
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -300,7 +304,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 			pc := NewPlanController(ep, collection, c.Kcm)
 			utils.Retry(func() error {
 				return pc.deploy()
-			})
+			}, nil)
 		}(e)
 	}
 	wg.Wait()

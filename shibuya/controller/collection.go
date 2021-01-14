@@ -36,7 +36,7 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error 
 	c.TermCollection(collection, true)
 	err := utils.Retry(func() error {
 		return c.Kcm.PurgeCollection(collection.ID)
-	})
+	}, nil)
 	return err
 }
 

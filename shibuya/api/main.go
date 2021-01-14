@@ -747,6 +747,7 @@ func (s *ShibuyaAPI) fileDownloadHandler(w http.ResponseWriter, req *http.Reques
 
 	data, err := object_storage.Client.Storage.Download(filename)
 	if err != nil {
+		s.jsonise(w, http.StatusNotFound, "not found")
 		return
 	}
 	r := bytes.NewReader(data)

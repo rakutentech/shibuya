@@ -14,6 +14,7 @@ import (
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
 	"github.com/rakutentech/shibuya/shibuya/utils"
+	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
 
 	es "github.com/iandyh/eventsource"
 	log "github.com/sirupsen/logrus"
@@ -112,7 +113,7 @@ func (be *baseEngine) progress() bool {
 	err := utils.Retry(func() error {
 		resp, httpError = engineHttpClient.Get(progressEndpoint)
 		return httpError
-	})
+	}, nil)
 	if err != nil {
 		return false
 	}
@@ -163,12 +164,15 @@ func (be *baseEngine) trigger(edc *controllerModel.EngineDataConfig) error {
 			log.Printf("%s is already triggered", engineUrl)
 			return nil
 		}
+		if resp.StatusCode == http.StatusNotFound {
+			return fmt.Errorf("%w: Some test files are missing. Please stop collection re-upload them", sos.FileNotFoundError())
+		}
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("Engine failed to trigger: %d %s", resp.StatusCode, resp.Status)
 		}
 		log.Printf("%s is triggered", engineUrl)
 		return nil
-	})
+	}, sos.FileNotFoundError())
 }
 
 func (be *baseEngine) readMetrics() chan *shibuyaMetric {

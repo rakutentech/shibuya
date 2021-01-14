@@ -381,6 +381,10 @@ func (sw *ShibuyaWrapper) startHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := sw.prepareTestData(edc); err != nil {
+			if errors.Is(err, sos.FileNotFoundError()) {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
