@@ -1,25 +1,34 @@
 package controller
 
 import (
-	log "github.com/sirupsen/logrus"
+	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/utils"
+	log "github.com/sirupsen/logrus"
 )
 
-func prepareCollection(collection *model.Collection) (*ExecutionData, error) {
-	if err := collection.FetchCollectionFiles(); err != nil {
-		return &ExecutionData{}, err
-	}
+func prepareCollection(collection *model.Collection) []*controllerModel.EngineDataConfig {
 	planCount := len(collection.ExecutionPlans)
-	splittedData := newExecutionData(planCount, collection.CSVSplit)
-	for _, d := range collection.Data {
-		if err := splittedData.PrepareExecutionData(d); err != nil {
-			return &ExecutionData{}, err
+	edc := controllerModel.EngineDataConfig{
+		EngineData: map[string]*model.ShibuyaFile{},
+	}
+	engineDataConfigs := edc.DeepCopies(planCount)
+	for i := 0; i < planCount; i++ {
+		for _, d := range collection.Data {
+			sf := model.ShibuyaFile{
+				Filename:     d.Filename,
+				Filepath:     d.Filepath,
+				TotalSplits:  1,
+				CurrentSplit: 0,
+			}
+			if collection.CSVSplit {
+				sf.TotalSplits = planCount
+				sf.CurrentSplit = i
+			}
+			engineDataConfigs[i].EngineData[sf.Filename] = &sf
 		}
 	}
-	//dereference the data files so gc can remove them if not needed anymore
-	collection.Data = []*model.ShibuyaFile{}
-	return splittedData, nil
+	return engineDataConfigs
 }
 
 func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error {
@@ -27,7 +36,7 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error 
 	c.TermCollection(collection, true)
 	err := utils.Retry(func() error {
 		return c.Kcm.PurgeCollection(collection.ID)
-	})
+	}, nil)
 	return err
 }
 

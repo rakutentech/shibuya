@@ -3,7 +3,7 @@ module github.com/rakutentech/shibuya/shibuya
 go 1.12
 
 require (
-	cloud.google.com/go v0.38.0
+	cloud.google.com/go v0.74.0
 	github.com/Azure/go-autorest v11.1.2+incompatible // indirect
 	github.com/beevik/etree v1.1.0
 	github.com/donovanhide/eventsource v0.0.0-20171031113327-3ed64d21fb0b // indirect
@@ -22,7 +22,7 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.3.0
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
-	google.golang.org/api v0.8.0
+	google.golang.org/api v0.36.0
 	gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d // indirect
 	gopkg.in/ldap.v2 v2.5.1
 	gopkg.in/yaml.v2 v2.2.4

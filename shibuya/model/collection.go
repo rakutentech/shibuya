@@ -5,19 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
-	mysql "github.com/go-sql-driver/mysql"
 	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/object_storage"
+
+	mysql "github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
 )
 
 type ShibuyaFile struct {
-	Filename string `json:"filename"`
-	Filelink string `json:"filelink"`
-	RawFile  []byte
+	Filename     string `json:"filename"` // Name of the file - a.txt
+	Filepath     string `json:"filepath"` // Relative path of the file - /plan/22/a.txt
+	Filelink     string `json:"filelink"` // Full url for users to download the file - storage.com/shibuya/plan/22/a.txt
+	TotalSplits  int    `json:"total_splits"`
+	CurrentSplit int    `json:"current_split"`
 }
 
 type Collection struct {
@@ -61,6 +63,9 @@ func GetCollection(ID int64) (*Collection, error) {
 		&collection.CreatedTime, &collection.CSVSplit)
 	if err != nil {
 		return nil, &DBError{Err: err, Message: "collection not found"}
+	}
+	if collection.Data, err = collection.getCollectionFiles(); err != nil {
+		return collection, err
 	}
 	return collection, nil
 }
@@ -313,7 +318,7 @@ func (c *Collection) DeleteAllFiles() error {
 	return nil
 }
 
-func (c *Collection) GenCollectionFileUrls() ([]*ShibuyaFile, error) {
+func (c *Collection) getCollectionFiles() ([]*ShibuyaFile, error) {
 	db := config.SC.DBC
 	q, err := db.Prepare("select filename from collection_data where collection_id=?")
 	if err != nil {
@@ -329,7 +334,8 @@ func (c *Collection) GenCollectionFileUrls() ([]*ShibuyaFile, error) {
 	for rows.Next() {
 		f := new(ShibuyaFile)
 		rows.Scan(&f.Filename)
-		f.Filelink = object_storage.Client.Storage.GetUrl(c.MakeFileName(f.Filename))
+		f.Filepath = c.MakeFileName(f.Filename)
+		f.Filelink = object_storage.Client.Storage.GetUrl(f.Filepath)
 		r = append(r, f)
 	}
 	err = rows.Err()
@@ -510,29 +516,6 @@ func (c *Collection) HasRunningPlan() (bool, error) {
 		return count > 0, nil
 	}
 	return false, nil
-}
-
-func (c *Collection) FetchCollectionFiles() error {
-	var hasError error
-
-	if c.Data, hasError = c.GenCollectionFileUrls(); hasError != nil {
-		return hasError
-	}
-	var wgFetchData sync.WaitGroup
-	for _, d := range c.Data {
-		wgFetchData.Add(1)
-		go func(d *ShibuyaFile) {
-			defer wgFetchData.Done()
-			var err error
-			d.RawFile, err = object_storage.Client.Storage.Download(c.MakeFileName(d.Filename))
-			if err != nil {
-				log.Error(err)
-				hasError = err
-			}
-		}(d)
-	}
-	wgFetchData.Wait()
-	return hasError
 }
 
 func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machinesCount int64) error {

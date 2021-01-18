@@ -1,31 +1,27 @@
 package controller
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
-	es "github.com/iandyh/eventsource"
 	"github.com/rakutentech/shibuya/shibuya/config"
+	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
 	"github.com/rakutentech/shibuya/shibuya/utils"
+	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
+
+	es "github.com/iandyh/eventsource"
 	log "github.com/sirupsen/logrus"
 )
 
 type shibuyaEngine interface {
-	prepareTestData(fileName string, ep *model.ExecutionPlan, engineData map[string]*model.ShibuyaFile) (*bytes.Buffer, error)
-	zipFiles(engineFolder string) (*bytes.Buffer, error)
-	trigger(fileName string, ep *model.ExecutionPlan, engineData map[string]*model.ShibuyaFile) error
+	trigger(edc *controllerModel.EngineDataConfig) error
 	deploy(*scheduler.K8sClientManager) error
 	subscribe(runID int64) error
 	progress() bool
@@ -62,38 +58,26 @@ type shibuyaMetric struct {
 const enginePlanRoot = "/test-data"
 
 type baseEngine struct {
-	name            string
-	serviceName     string
-	ingressName     string
-	engineUrl       string
-	ingressClass    string
-	collectionID    int64
-	planID          int64
-	projectID       int64
-	ID              int
-	folder          string
-	defaultPlanPath string
-	stream          *es.Stream
-	cancel          context.CancelFunc
-	runID           int64
+	name         string
+	serviceName  string
+	ingressName  string
+	engineUrl    string
+	ingressClass string
+	collectionID int64
+	planID       int64
+	projectID    int64
+	ID           int
+	stream       *es.Stream
+	cancel       context.CancelFunc
+	runID        int64
 	*config.ExecutorContainer
 }
 
-func sendTriggerRequest(url string, zipFileBuf *bytes.Buffer, testPlan string) (*http.Response, error) {
+func sendTriggerRequest(url string, edc *controllerModel.EngineDataConfig) (*http.Response, error) {
 	body := new(bytes.Buffer)
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("test-data", "test-data.zip")
-	if err != nil {
-		return nil, err
-	}
-	io.Copy(part, zipFileBuf)
-	writer.WriteField("plan", testPlan)
-	err = writer.Close()
-	if err != nil {
-		return nil, err
-	}
+	json.NewEncoder(body).Encode(&edc)
 	req, _ := http.NewRequest("POST", url, body)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Content-Type", "application/json")
 	return engineHttpClient.Do(req)
 }
 
@@ -129,7 +113,7 @@ func (be *baseEngine) progress() bool {
 	err := utils.Retry(func() error {
 		resp, httpError = engineHttpClient.Get(progressEndpoint)
 		return httpError
-	})
+	}, nil)
 	if err != nil {
 		return false
 	}
@@ -167,48 +151,28 @@ func (be *baseEngine) deploy(manager *scheduler.K8sClientManager) error {
 		be.collectionID, be.projectID, be.ExecutorContainer)
 }
 
-func (be *baseEngine) zipFiles(engineFolder string) (*bytes.Buffer, error) {
-	buf := new(bytes.Buffer)
-	w := zip.NewWriter(buf)
-	defer w.Close()
-	files, err := ioutil.ReadDir(engineFolder)
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range files {
-		filePath := filepath.Join(engineFolder, f.Name())
-		file, err := os.Open(filePath)
+func (be *baseEngine) trigger(edc *controllerModel.EngineDataConfig) error {
+	engineUrl := be.engineUrl
+	url := fmt.Sprintf("http://%s/%s", engineUrl, "start")
+	return utils.Retry(func() error {
+		resp, err := sendTriggerRequest(url, edc)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		defer file.Close()
-		fileContents, err := ioutil.ReadAll(file)
-		if err != nil {
-			return nil, err
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusConflict {
+			log.Printf("%s is already triggered", engineUrl)
+			return nil
 		}
-		fs, err := file.Stat()
-		if err != nil {
-			return nil, err
+		if resp.StatusCode == http.StatusNotFound {
+			return fmt.Errorf("%w: Some test files are missing. Please stop collection re-upload them", sos.FileNotFoundError())
 		}
-		f, err := w.Create(fs.Name())
-		if err != nil {
-			return nil, err
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("Engine failed to trigger: %d %s", resp.StatusCode, resp.Status)
 		}
-		f.Write(fileContents)
-	}
-	return buf, nil
-}
-
-func (be *baseEngine) prepareTestData(fileName string, ep *model.ExecutionPlan,
-	engineData map[string]*model.ShibuyaFile) (*bytes.Buffer, error) {
-	log.Println("BaseEngine does not implement prepareTestData(). Use an engine type.")
-	return nil, nil
-}
-
-func (be *baseEngine) trigger(fileName string, ep *model.ExecutionPlan,
-	engineData map[string]*model.ShibuyaFile) error {
-	log.Println("BaseEngine does not implement trigger(). Use an engine type.")
-	return nil
+		log.Printf("%s is triggered", engineUrl)
+		return nil
+	}, sos.FileNotFoundError())
 }
 
 func (be *baseEngine) readMetrics() chan *shibuyaMetric {

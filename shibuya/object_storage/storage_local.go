@@ -89,6 +89,9 @@ func (l localStorage) Download(filename string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == 404 {
+		return nil, FileNotFoundError()
+	}
 	if resp.StatusCode != 200 {
 		return nil, errors.New("Bad response from Local storage")
 	}

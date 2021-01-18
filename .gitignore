@@ -1,5 +1,4 @@
 shibuya-bin
-config_local.json
 shibuya/db/all.sql
 shibuya/config/gcp
 docs/book

@@ -175,11 +175,7 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 	if err != nil {
 		return err
 	}
-	ed, err := prepareCollection(collection)
-	if err != nil {
-		return err
-	}
-	defer utils.DeleteFolder(strconv.FormatInt(collection.ID, 10))
+	engineDataConfigs := prepareCollection(collection)
 	for _, ep := range collection.ExecutionPlans {
 		plan, err := model.GetPlan(ep.PlanID)
 		if err != nil {
@@ -200,7 +196,7 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 			// We wait for all the engines. Because we can only all the plan into running status
 			// When all the engines are triggered
 			pc := NewPlanController(ep, collection, c.Kcm)
-			if err := pc.trigger(ed.files[i]); err != nil {
+			if err := pc.trigger(engineDataConfigs[i]); err != nil {
 				errs <- err
 				return
 			}
@@ -224,6 +220,10 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 		}
 	}
 	collection.NewRun(runID)
+	if len(triggerErrors) == len(collection.ExecutionPlans) {
+		// every plan in collection has error
+		c.TermCollection(collection, true)
+	}
 	if len(triggerErrors) > 0 {
 		return fmt.Errorf("Triggering errors %v", triggerErrors)
 	}
@@ -291,7 +291,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount)
 	err = utils.Retry(func() error {
 		return c.DeployIngressController(collection.ID, collection.ProjectID, collection.Name)
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -304,7 +304,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 			pc := NewPlanController(ep, collection, c.Kcm)
 			utils.Retry(func() error {
 				return pc.deploy()
-			})
+			}, nil)
 		}(e)
 	}
 	wg.Wait()

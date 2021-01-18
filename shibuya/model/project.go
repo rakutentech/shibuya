@@ -96,10 +96,10 @@ func (p *Project) Delete() error {
 	return nil
 }
 
-func (p *Project) GetCollections() ([]int64, error) {
+func (p *Project) GetCollections() ([]*Collection, error) {
 	db := config.SC.DBC
-	r := []int64{}
-	q, err := db.Prepare("select id from collection where project_id=?")
+	r := []*Collection{}
+	q, err := db.Prepare("select id, name from collection where project_id=?")
 	if err != nil {
 		return r, err
 	}
@@ -110,9 +110,9 @@ func (p *Project) GetCollections() ([]int64, error) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var collectionID int64
-		rows.Scan(&collectionID)
-		r = append(r, collectionID)
+		collection := new(Collection)
+		rows.Scan(&collection.ID, &collection.Name)
+		r = append(r, collection)
 	}
 	err = rows.Err()
 	if err != nil {
