@@ -207,14 +207,8 @@ func (be *baseEngine) updateEngineUrl(url string) {
 }
 
 func generateEngines(enginesRequired int, planID, collectionID, projectID int64, et engineType) (engines []shibuyaEngine, err error) {
-	//ingressClass := createIgName(collectionID)
 	for i := 0; i < enginesRequired; i++ {
-		//serviceName := scheduler.GenerateName("service", planID, collectionID, projectID, i)
 		engineC := &baseEngine{
-			//name:         scheduler.GenerateName("engine", planID, collectionID, projectID, i),
-			//serviceName:  serviceName,
-			//ingressName:  scheduler.GenerateName("ingress", planID, collectionID, projectID, i),
-			//ingressClass: ingressClass,
 			ID:           i,
 			projectID:    projectID,
 			collectionID: collectionID,

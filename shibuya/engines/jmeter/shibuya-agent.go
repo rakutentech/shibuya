@@ -89,7 +89,6 @@ func NewServer() (sw *ShibuyaWrapper) {
 
 func (sw *ShibuyaWrapper) readOutput() {
 	rd := bufio.NewReader(sw.reader)
-	//go io.Copy(sw.writer, os.Stdout)
 	for {
 		line, _, err := rd.ReadLine()
 		if err != nil {
@@ -433,10 +432,6 @@ func (sw *ShibuyaWrapper) progressHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (sw *ShibuyaWrapper) stdoutHandler(w http.ResponseWriter, r *http.Request) {
-	//pipe := sw.stdout
-	//var buf bytes.Buffer
-
-	//os.Stdout.Read(stdout)
 	w.Write(sw.buffer)
 }
 
