@@ -19,9 +19,12 @@ import (
 )
 
 type CloudRun struct {
-	rs              *run.APIService
-	projectID       string
-	nsProjectID     string
+	rs          *run.APIService
+	projectID   string
+	nsProjectID string
+
+	// cloud run admin api has quota. This queue is to protect we don't hit the quota
+	// If we hit the quota, we cannot do any operations
 	throttlingQueue chan *cloudRunRequest
 	httpClient      *http.Client
 }
@@ -107,9 +110,9 @@ func (cr *CloudRun) makeService(projectID, collectionID, planID int64, engineID 
 
 func (cr *CloudRun) startWriteRequestWorker() {
 	counter := 0
-	limit := 50
+	quota := 60
 	for item := range cr.throttlingQueue {
-		if counter >= limit {
+		if counter >= quota {
 			time.Sleep(1 * time.Minute)
 			counter = 0
 		}
@@ -121,6 +124,7 @@ func (cr *CloudRun) startWriteRequestWorker() {
 			if err := cr.createService(item.projectID, item.collectionID, item.planID, item.engineID, item.executorConfig); err != nil {
 				log.Print(err)
 			}
+			// For each create request, we actually have two operations against the api.
 			counter += 2
 		}
 	}
