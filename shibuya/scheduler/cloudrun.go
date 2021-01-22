@@ -42,9 +42,7 @@ func NewCloudRun(cfg *config.SchedulerConfig) *CloudRun {
 	queue := make(chan *cloudRunRequest, 1000)
 
 	cr := &CloudRun{rs: rs, projectID: projectID, nsProjectID: nsProjectID, throttlingQueue: queue}
-	cr.httpClient = &http.Client{
-		Timeout: 3 * time.Second,
-	}
+	cr.httpClient = config.SC.HTTPProxyClient
 	cr.kind = cfg.Kind
 	go cr.startWriteRequestWorker()
 	return cr
