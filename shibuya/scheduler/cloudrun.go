@@ -27,6 +27,7 @@ type CloudRun struct {
 	// If we hit the quota, we cannot do any operations
 	throttlingQueue chan *cloudRunRequest
 	httpClient      *http.Client
+	kind            string
 }
 
 func NewCloudRun(cfg *config.SchedulerConfig) *CloudRun {
@@ -44,8 +45,13 @@ func NewCloudRun(cfg *config.SchedulerConfig) *CloudRun {
 	cr.httpClient = &http.Client{
 		Timeout: 3 * time.Second,
 	}
+	cr.kind = cfg.Kind
 	go cr.startWriteRequestWorker()
 	return cr
+}
+
+func (cr *CloudRun) GetKind() string {
+	return cr.kind
 }
 
 func (cr *CloudRun) MakeName(projectID, collectionID, planID int64, engineID int) string {
@@ -274,6 +280,7 @@ func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model
 	return cs, nil
 }
 
+// This func is used by generateEngines as we need to fetch the engine urls per plan
 func (cr *CloudRun) FetchEngineUrlsByPlan(collectionID, planID int64, opts *smodel.EngineOwnerRef) ([]string, error) {
 	// need to make it get url by plan
 	items, err := cr.getEnginesByCollectionPlan(collectionID, planID)

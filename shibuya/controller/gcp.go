@@ -54,7 +54,7 @@ func (o *GCPOperator) GetNodePool() *google.NodePool {
 }
 
 func (o *GCPOperator) GetNodesSize() (int, error) {
-	kcm := scheduler.NewK8sClientManager()
+	kcm := scheduler.NewK8sClientManager(config.SC.SchedulerConfig)
 	nodes, err := kcm.GetNodesByCollection(o.collectionIDStr)
 	if err != nil {
 		return 0, err

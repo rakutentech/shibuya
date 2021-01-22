@@ -235,8 +235,15 @@ func generateEnginesWithUrl(enginesRequired int, planID, collectionID, projectID
 		ProjectID:    projectID,
 		EnginesCount: len(engines),
 	})
+	kind := scheduler.GetKind()
 	for i, e := range engines {
-		e.updateEngineUrlByCollection(engineUrls[i])
+		url := engineUrls[i]
+		switch kind {
+		case "k8s":
+			e.updateEngineUrlByCollection(url)
+		case "cloudrun":
+			e.updateEngineUrl(url)
+		}
 	}
 	return engines, nil
 }
