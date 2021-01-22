@@ -121,7 +121,7 @@ func (cr *CloudRun) startWriteRequestWorker() {
 			cr.deleteService(item.serviceID)
 			counter += 1
 		case "create":
-			if err := cr.createService(item.projectID, item.collectionID, item.planID, item.engineID, item.executorConfig); err != nil {
+			if err := cr.sendCreateServiceReq(item.projectID, item.collectionID, item.planID, item.engineID, item.executorConfig); err != nil {
 				log.Print(err)
 			}
 			// For each create request, we actually have two operations against the api.
@@ -140,7 +140,7 @@ type cloudRunRequest struct {
 	executorConfig *config.ExecutorContainer
 }
 
-func (cr *CloudRun) createService(projectID, collectionID, planID int64, engineID int, executorConfig *config.ExecutorContainer) error {
+func (cr *CloudRun) sendCreateServiceReq(projectID, collectionID, planID int64, engineID int, executorConfig *config.ExecutorContainer) error {
 	svc := cr.makeService(projectID, collectionID, planID, engineID, executorConfig)
 	_, err := cr.rs.Namespaces.Services.Create(cr.nsProjectID, svc).Do()
 	if err != nil {
