@@ -237,7 +237,7 @@ func (sw *ShibuyaWrapper) runCommand(w http.ResponseWriter) int {
 	sw.setPid(pid)
 	go func() {
 		cmd.Wait()
-		log.Printf("shibuya-agent: Shutdown is f finished, resetting pid to zero")
+		log.Printf("shibuya-agent: Shutdown is finished, resetting pid to zero")
 		sw.setPid(0)
 	}()
 	return pid
