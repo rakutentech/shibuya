@@ -31,7 +31,6 @@ type K8sClientManager struct {
 	client         *kubernetes.Clientset
 	metricClient   *metricsc.Clientset
 	serviceAccount string
-	kind           string
 }
 
 func NewK8sClientManager(cfg *config.SchedulerConfig) *K8sClientManager {
@@ -41,7 +40,7 @@ func NewK8sClientManager(cfg *config.SchedulerConfig) *K8sClientManager {
 	}
 	metricsc, err := config.GetMetricsClient()
 	return &K8sClientManager{
-		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount", cfg.Kind,
+		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount",
 	}
 
 }
@@ -85,10 +84,6 @@ func prepareAffinity(collectionID int64) *apiv1.Affinity {
 		return affinity
 	}
 	return affinity
-}
-
-func (kcm *K8sClientManager) GetKind() string {
-	return kcm.kind
 }
 
 func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {

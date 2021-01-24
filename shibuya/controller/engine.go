@@ -32,7 +32,6 @@ type shibuyaEngine interface {
 	closeStream()
 	terminate(force bool) error
 	EngineID() int
-	updateEngineUrlByCollection(url string)
 	updateEngineUrl(url string)
 }
 
@@ -198,12 +197,14 @@ func (be *baseEngine) readMetrics() chan *shibuyaMetric {
 	return nil
 }
 
-func (be *baseEngine) updateEngineUrlByCollection(collectionUrl string) {
-	be.engineUrl = fmt.Sprintf("%s/%s", collectionUrl, be.serviceName)
-}
-
 func (be *baseEngine) updateEngineUrl(url string) {
-	be.engineUrl = url
+	if be.serviceName == "" {
+		be.engineUrl = url
+		return
+	}
+	// for some of the schedulers, the url is not the direct url whicn can be used to
+	// access the engines. K8s is such a case.
+	be.engineUrl = fmt.Sprintf("%s/%s", url, be.serviceName)
 }
 
 func generateEngines(enginesRequired int, planID, collectionID, projectID int64, et engineType) (engines []shibuyaEngine, err error) {
@@ -235,15 +236,9 @@ func generateEnginesWithUrl(enginesRequired int, planID, collectionID, projectID
 		ProjectID:    projectID,
 		EnginesCount: len(engines),
 	})
-	kind := scheduler.GetKind()
 	for i, e := range engines {
 		url := engineUrls[i]
-		switch kind {
-		case "k8s":
-			e.updateEngineUrlByCollection(url)
-		case "cloudrun":
-			e.updateEngineUrl(url)
-		}
+		e.updateEngineUrl(url)
 	}
 	return engines, nil
 }

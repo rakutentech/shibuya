@@ -21,7 +21,6 @@ type EngineScheduler interface {
 	GetPodsMetrics(collectionID, planID int64) (map[string]apiv1.ResourceList, error)
 	PodReadyCount(collectionID int64) int
 	DownloadPodLog(collectionID, planID int64) (string, error)
-	GetKind() string
 }
 
 func NewEngineScheduler(cfg *config.SchedulerConfig) EngineScheduler {

@@ -45,13 +45,8 @@ func NewCloudRun(cfg *config.SchedulerConfig) *CloudRun {
 	cr.httpClient = &http.Client{
 		Timeout: 30 * time.Second,
 	}
-	cr.kind = cfg.Kind
 	go cr.startWriteRequestWorker()
 	return cr
-}
-
-func (cr *CloudRun) GetKind() string {
-	return cr.kind
 }
 
 func (cr *CloudRun) MakeName(projectID, collectionID, planID int64, engineID int) string {
