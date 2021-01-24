@@ -274,10 +274,6 @@ func (c *Controller) calNodesRequired(enginesNum int) int64 {
 	return int64(nodesRequired)
 }
 
-func (c *Controller) needIngress() bool {
-	return c.schedulerKind == "k8s"
-}
-
 func (c *Controller) DeployCollection(collection *model.Collection) error {
 	eps, err := collection.GetExecutionPlans()
 	if err != nil {
@@ -302,15 +298,12 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	}
 	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount)
 
-	if c.needIngress() {
-		err = utils.Retry(func() error {
-			return c.Scheduler.DeployIngressController(collection.ProjectID, collection.ID)
-		}, nil)
-		if err != nil {
-			return err
-		}
+	err = utils.Retry(func() error {
+		return c.Scheduler.ExposeCollection(collection.ProjectID, collection.ID)
+	}, nil)
+	if err != nil {
+		return err
 	}
-
 	// we will assume collection deployment will always be successful
 	var wg sync.WaitGroup
 	for _, e := range eps {

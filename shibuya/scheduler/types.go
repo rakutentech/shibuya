@@ -14,7 +14,7 @@ type EngineScheduler interface {
 	DeployEngine(projectID, collectionID, planID int64, engineID int, containerConfig *config.ExecutorContainer) error
 	CollectionStatus(projectID, collectionID int64, eps []*model.ExecutionPlan) (*smodel.CollectionStatus, error)
 	FetchEngineUrlsByPlan(collectionID, planID int64, opts *smodel.EngineOwnerRef) ([]string, error)
-	DeployIngressController(ProjectID, collectionID int64) error
+	ExposeCollection(ProjectID, collectionID int64) error
 	PurgeCollection(collectionID int64) error
 	GetDeployedCollections() (map[int64]time.Time, error)
 	GetAllNodesInfo() (smodel.AllNodesInfo, error)

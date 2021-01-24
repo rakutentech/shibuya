@@ -614,7 +614,7 @@ func (kcm *K8sClientManager) ApplyIngressPrerequisite() {
 	log.Printf("Prerequisites are applied to the cluster")
 }
 
-func (kcm *K8sClientManager) DeployIngressController(projectID, collectionID int64) error {
+func (kcm *K8sClientManager) ExposeCollection(projectID, collectionID int64) error {
 	kcm.ApplyIngressPrerequisite()
 	igName := makeIngressClass(collectionID)
 	deployment := kcm.generateControllerDeployment(igName, collectionID, projectID)

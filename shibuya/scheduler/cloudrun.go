@@ -294,7 +294,7 @@ func (cr *CloudRun) FetchEngineUrlsByPlan(collectionID, planID int64, opts *smod
 	return m, nil
 }
 
-func (cr *CloudRun) DeployIngressController(projectID, collectionID int64) error {
+func (cr *CloudRun) ExposeCollection(projectID, collectionID int64) error {
 	// For cloud run, ingress controller is not needed
 	return nil
 }
