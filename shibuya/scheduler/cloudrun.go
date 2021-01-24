@@ -325,7 +325,7 @@ func (cr *CloudRun) GetAllNodesInfo() (smodel.AllNodesInfo, error) {
 
 func (cr *CloudRun) GetPodsMetrics(collectionID, planID int64) (map[string]apiv1.ResourceList, error) {
 	// For cloud run, pod metrics is not supported
-	return nil, nil
+	return nil, FeatureUnavailable
 }
 
 //TODO: what we need is actually get the deployed engines account, not only ready ones.

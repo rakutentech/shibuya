@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"errors"
 	"log"
 	"time"
 
@@ -22,6 +23,8 @@ type EngineScheduler interface {
 	PodReadyCount(collectionID int64) int
 	DownloadPodLog(collectionID, planID int64) (string, error)
 }
+
+var FeatureUnavailable = errors.New("Feature unavailable")
 
 func NewEngineScheduler(cfg *config.ClusterConfig) EngineScheduler {
 	switch cfg.Kind {

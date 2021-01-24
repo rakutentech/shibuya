@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -263,6 +264,11 @@ func (ctr *Controller) fetchEngineMetrics() {
 			for _, ep := range eps {
 				podsMetrics, err := ctr.Scheduler.GetPodsMetrics(collectionID, ep.PlanID)
 				if err != nil {
+					// Some schedulers might not have the feature to expose the metrics
+					// We will return directly
+					if errors.Is(err, scheduler.FeatureUnavailable) {
+						return
+					}
 					continue
 				}
 				planID_str := strconv.FormatInt(ep.PlanID, 10)

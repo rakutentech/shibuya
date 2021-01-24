@@ -52,11 +52,7 @@ func NewController() *Controller {
 	go c.streamToApi()
 	go c.readConnectedEngines()
 	go c.checkRunningThenTerminate()
-
-	// cloudrun does not support metrics of the engines themselves
-	if c.schedulerKind != "cloudrun" {
-		go c.fetchEngineMetrics()
-	}
+	go c.fetchEngineMetrics()
 	go c.cleanLocalStore()
 	go c.autoPurgeDeployments()
 	return c
