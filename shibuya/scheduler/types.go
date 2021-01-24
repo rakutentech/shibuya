@@ -23,7 +23,7 @@ type EngineScheduler interface {
 	DownloadPodLog(collectionID, planID int64) (string, error)
 }
 
-func NewEngineScheduler(cfg *config.SchedulerConfig) EngineScheduler {
+func NewEngineScheduler(cfg *config.ClusterConfig) EngineScheduler {
 	switch cfg.Kind {
 	case "k8s":
 		return NewK8sClientManager(cfg)

@@ -43,8 +43,8 @@ func NewController() *Controller {
 		ApiStreamClients:   make(map[string]map[string]chan *ApiMetricStreamEvent),
 		readingEngines:     make(chan shibuyaEngine),
 	}
-	c.schedulerKind = config.SC.SchedulerConfig.Kind
-	c.Scheduler = scheduler.NewEngineScheduler(config.SC.SchedulerConfig)
+	c.schedulerKind = config.SC.ExecutorConfig.Cluster.Kind
+	c.Scheduler = scheduler.NewEngineScheduler(config.SC.ExecutorConfig.Cluster)
 
 	// First we do is to resume the running plans
 	// This method should not be moved as later goroutines rely on it.

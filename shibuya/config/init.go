@@ -32,6 +32,8 @@ type ClusterConfig struct {
 	Project     string  `json:"project"`
 	Zone        string  `json:"zone"`
 	ClusterID   string  `json:"cluster_id"`
+	Kind        string  `json:"kind"`
+	APIEndpoint string  `json:"api_endpoint"`
 	NodeCPUSpec int     `json:"node_cpu_spec"`
 	OnDemand    bool    `json:"on_demand"`
 	GCDuration  float64 `json:"gc_duration"` // in minutes
@@ -40,12 +42,6 @@ type ClusterConfig struct {
 type HostAlias struct {
 	Hostname string `json:"hostname"`
 	IP       string `json:"IP"`
-}
-
-type SchedulerConfig struct {
-	Kind        string `json:"kind"`
-	Project     string `json:"project"`
-	APIEndpoint string `json:"api_endpoint"`
 }
 
 type ExecutorConfig struct {
@@ -80,12 +76,12 @@ type HttpConfig struct {
 }
 
 type ObjectStorage struct {
-	Provider 	 string `json:"provider"`
-	Url      	 string `json:"url"`
-	User     	 string `json:"user"`
-	Password 	 string `json:"password"`
-	Bucket   	 string `json:"bucket"`
-	RequireProxy bool 	`json:"require_proxy"`
+	Provider     string `json:"provider"`
+	Url          string `json:"url"`
+	User         string `json:"user"`
+	Password     string `json:"password"`
+	Bucket       string `json:"bucket"`
+	RequireProxy bool   `json:"require_proxy"`
 }
 
 type LogFormat struct {
@@ -106,7 +102,6 @@ type ShibuyaConfig struct {
 	UploadFileHelp   string           `json:"upload_file_help"`
 	DBConf           *MySQLConfig     `json:"db"`
 	ExecutorConfig   *ExecutorConfig  `json:"executors"`
-	SchedulerConfig  *SchedulerConfig `json:"scheduler"`
 	DashboardConfig  *DashboardConfig `json:"dashboard"`
 	HttpConfig       *HttpConfig      `json:"http_config"`
 	AuthConfig       *AuthConfig      `json:"auth_config"`
@@ -116,12 +111,12 @@ type ShibuyaConfig struct {
 	IngressConfig    *IngressConfig   `json:"ingress"`
 
 	// below are configs generated from above values
-	DevMode    bool
-	Context    string
-	HTTPClient *http.Client
+	DevMode         bool
+	Context         string
+	HTTPClient      *http.Client
 	HTTPProxyClient *http.Client
-	DBC        *sql.DB
-	DBEndpoint string
+	DBC             *sql.DB
+	DBEndpoint      string
 }
 
 func loadContext() string {

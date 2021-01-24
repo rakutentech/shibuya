@@ -33,7 +33,7 @@ type K8sClientManager struct {
 	serviceAccount string
 }
 
-func NewK8sClientManager(cfg *config.SchedulerConfig) *K8sClientManager {
+func NewK8sClientManager(cfg *config.ClusterConfig) *K8sClientManager {
 	c, err := config.GetKubeClient()
 	if err != nil {
 		log.Warning(err)
