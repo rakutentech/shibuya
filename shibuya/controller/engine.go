@@ -88,11 +88,16 @@ func (be *baseEngine) EngineID() int {
 	return be.ID
 }
 
-func (be *baseEngine) subscribe(runID int64) error {
+func (be *baseEngine) makeBaseUrl() string {
 	base := "%s/%s"
-	if !strings.Contains(be.engineUrl, "http") {
-		base = "http://" + base
+	if strings.Contains(be.engineUrl, "http") {
+		return base
 	}
+	return "http://" + base
+}
+
+func (be *baseEngine) subscribe(runID int64) error {
+	base := be.makeBaseUrl()
 	streamUrl := fmt.Sprintf(base, be.engineUrl, "stream")
 	req, err := http.NewRequest("GET", streamUrl, nil)
 	if err != nil {
@@ -114,10 +119,7 @@ func (be *baseEngine) subscribe(runID int64) error {
 }
 
 func (be *baseEngine) progress() bool {
-	base := "%s/%s"
-	if !strings.Contains(be.engineUrl, "http") {
-		base = "http://" + base
-	}
+	base := be.makeBaseUrl()
 	progressEndpoint := fmt.Sprintf(base, be.engineUrl, "progress")
 	var resp *http.Response
 	var httpError error
@@ -147,11 +149,8 @@ func (be *baseEngine) terminate(force bool) error {
 	if force {
 		return nil
 	}
-	base := "%s/stop"
-	if !strings.Contains(be.engineUrl, "http") {
-		base = "http://" + base
-	}
-	stopUrl := fmt.Sprintf(base, be.engineUrl)
+	base := be.makeBaseUrl()
+	stopUrl := fmt.Sprintf(base, be.engineUrl, "stop")
 	resp, err := engineHttpClient.Post(stopUrl, "application/x-www-form-urlencoded", nil)
 	if err != nil {
 		return err
@@ -167,11 +166,8 @@ func (be *baseEngine) deploy(manager scheduler.EngineScheduler) error {
 
 func (be *baseEngine) trigger(edc *controllerModel.EngineDataConfig) error {
 	engineUrl := be.engineUrl
-	base := "%s/start"
-	if !strings.Contains(engineUrl, "http") {
-		base = "http://" + base
-	}
-	url := fmt.Sprintf(base, engineUrl)
+	base := be.makeBaseUrl()
+	url := fmt.Sprintf(base, engineUrl, "start")
 	return utils.Retry(func() error {
 		resp, err := sendTriggerRequest(url, edc)
 		if err != nil {
