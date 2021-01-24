@@ -180,6 +180,10 @@ func loadConfig() *ShibuyaConfig {
 	if sc.ExecutorConfig != nil && sc.ExecutorConfig.Cluster.GCDuration == 0 {
 		sc.ExecutorConfig.Cluster.GCDuration = 15
 	}
+	if sc.ExecutorConfig.Cluster.Kind == "" {
+		// if not specified, use k8s as default
+		sc.ExecutorConfig.Cluster.Kind = "k8s"
+	}
 	return sc
 }
 
