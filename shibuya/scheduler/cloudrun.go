@@ -236,7 +236,7 @@ func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model
 	// This is just a trick here. We cannot set ps.EnginesReachable = true at the beginning because that will be true
 	// for a collection that has no engines deployed. If the engines of the plan are not ready,
 	// it will be set to false by ps.EnginesReachable = ps.EnginesReachable && engineReachable
-	hasEnginesDeployed := len(items) > 0
+	hasEnginesDeployed := len(items) == len(eps)
 	for _, ep := range eps {
 		ps := &smodel.PlanStatus{
 			PlanID:           ep.PlanID,
