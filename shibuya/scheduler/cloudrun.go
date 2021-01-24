@@ -152,6 +152,8 @@ func (cr *CloudRun) sendCreateServiceReq(projectID, collectionID, planID int64, 
 	if err != nil {
 		return err
 	}
+	// This is required by cloud run as we need to allow our engines to be triggered by all users
+	// https://cloud.google.com/run/docs/reference/rest/v1/projects.locations.services/setIamPolicy
 	policy := &run.Policy{
 		Bindings: []*run.Binding{
 			&run.Binding{
