@@ -248,13 +248,17 @@ func (cr *CloudRun) getReadyEnginesByCollection(collectionID int64) ([]*run.Serv
 }
 
 func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model.ExecutionPlan) (*smodel.CollectionStatus, error) {
-	items, err := cr.getReadyEnginesByCollection(collectionID)
+	items, err := cr.getEnginesByCollection(collectionID)
 	if err != nil {
 		return nil, err
 	}
 	cs := &smodel.CollectionStatus{}
 	planStatuses := make(map[int64]*smodel.PlanStatus)
 
+	// The reason we need this is we want to show users the progress of deployment
+	// Usually the engines deployment is quick but network access might be slow.
+	// So users should be able to see their engines deployed and later become reachable
+	planReachable := make(map[int64]int)
 	for _, ep := range eps {
 		ps := &smodel.PlanStatus{
 			PlanID:  ep.PlanID,
@@ -274,11 +278,19 @@ func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model
 			continue
 		}
 		ps.EnginesDeployed += 1
+		ready := true
+		for _, c := range item.Status.Conditions {
+			if c.Status != "True" {
+				ready = false
+			}
+		}
+		if ready {
+			planReachable[pid] += 1
+		}
 	}
 	for planID, ps := range planStatuses {
-		if ps.EnginesDeployed == ps.Engines {
-			ps.EnginesReachable = true
-		}
+		reachableEngines, _ := planReachable[planID]
+		ps.EnginesReachable = reachableEngines == ps.Engines
 		// we only check if the plan is in progress if the engines are reachable
 		if ps.EnginesReachable {
 			rp, err := model.GetRunningPlan(collectionID, planID)
