@@ -233,6 +233,10 @@ func generateEnginesWithUrl(enginesRequired int, planID, collectionID, projectID
 		ProjectID:    projectID,
 		EnginesCount: len(engines),
 	})
+	// This could happen during purging as there are still some engines lingering in the scheduler
+	if len(engineUrls) != len(engines) {
+		return nil, errors.New("Engines in scheduler does not match")
+	}
 	for i, e := range engines {
 		url := engineUrls[i]
 		e.updateEngineUrl(url)
