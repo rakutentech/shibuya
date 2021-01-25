@@ -31,6 +31,7 @@ type AuthConfig struct {
 type ClusterConfig struct {
 	Project     string  `json:"project"`
 	Zone        string  `json:"zone"`
+	Region      string  `json:"region"`
 	ClusterID   string  `json:"cluster_id"`
 	Kind        string  `json:"kind"`
 	APIEndpoint string  `json:"api_endpoint"`

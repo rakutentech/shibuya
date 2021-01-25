@@ -22,7 +22,7 @@ type CloudRun struct {
 	rs          *run.APIService
 	projectID   string
 	nsProjectID string
-	zone        string
+	region      string
 
 	// cloud run admin api has quota. This queue is to protect we don't hit the quota
 	// If we hit the quota, we cannot do any operations
@@ -46,7 +46,7 @@ func NewCloudRun(cfg *config.ClusterConfig) *CloudRun {
 		projectID:       projectID,
 		nsProjectID:     nsProjectID,
 		throttlingQueue: queue,
-		zone:            cfg.Zone}
+		region:          cfg.Region}
 	cr.httpClient = &http.Client{
 		Timeout: 30 * time.Second,
 	}
@@ -162,7 +162,7 @@ func (cr *CloudRun) sendCreateServiceReq(projectID, collectionID, planID int64, 
 			},
 		},
 	}
-	name := fmt.Sprintf("projects/%s/locations/%s/services/%s", cr.projectID, cr.zone, svc.Metadata.Name)
+	name := fmt.Sprintf("projects/%s/locations/%s/services/%s", cr.projectID, cr.region, svc.Metadata.Name)
 	iamRequest := &run.SetIamPolicyRequest{
 		Policy: policy,
 	}
