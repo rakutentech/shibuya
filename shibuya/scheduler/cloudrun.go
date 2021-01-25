@@ -116,7 +116,7 @@ func (cr *CloudRun) makeService(projectID, collectionID, planID int64, engineID 
 
 func (cr *CloudRun) startWriteRequestWorker() {
 	counter := 0
-	quota := 60
+	quota := 150
 	for item := range cr.throttlingQueue {
 		if counter >= quota {
 			time.Sleep(1 * time.Minute)
