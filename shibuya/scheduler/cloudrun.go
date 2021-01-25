@@ -255,15 +255,10 @@ func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model
 	cs := &smodel.CollectionStatus{}
 	planStatuses := make(map[int64]*smodel.PlanStatus)
 
-	// This is just a trick here. We cannot set ps.EnginesReachable = true at the beginning because that will be true
-	// for a collection that has no engines deployed. If the engines of the plan are not ready,
-	// it will be set to false by ps.EnginesReachable = ps.EnginesReachable && engineReachable
-	hasEnginesDeployed := len(items) == len(eps)
 	for _, ep := range eps {
 		ps := &smodel.PlanStatus{
-			PlanID:           ep.PlanID,
-			Engines:          ep.Engines,
-			EnginesReachable: hasEnginesDeployed,
+			PlanID:  ep.PlanID,
+			Engines: ep.Engines,
 		}
 		planStatuses[ep.PlanID] = ps
 	}
@@ -279,17 +274,19 @@ func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model
 			continue
 		}
 		ps.EnginesDeployed += 1
-		ps.EnginesReachable = ps.EnginesReachable && true
-		if !ps.EnginesReachable {
-			continue
-		}
-		rp, err := model.GetRunningPlan(collectionID, pid)
-		if err == nil {
-			ps.StartedTime = rp.StartedTime
-			ps.InProgress = true
-		}
 	}
-	for _, ps := range planStatuses {
+	for planID, ps := range planStatuses {
+		if ps.EnginesDeployed == ps.Engines {
+			ps.EnginesReachable = true
+		}
+		// we only check if the plan is in progress if the engines are reachable
+		if ps.EnginesReachable {
+			rp, err := model.GetRunningPlan(collectionID, planID)
+			if err == nil {
+				ps.StartedTime = rp.StartedTime
+				ps.InProgress = true
+			}
+		}
 		cs.Plans = append(cs.Plans, ps)
 	}
 	return cs, nil
