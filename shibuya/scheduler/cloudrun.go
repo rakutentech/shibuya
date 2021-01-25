@@ -227,8 +227,28 @@ func (cr *CloudRun) getEnginesByCollectionPlan(collectionID, planID int64) ([]*r
 	return resp.Items, nil
 }
 
-func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model.ExecutionPlan) (*smodel.CollectionStatus, error) {
+func (cr *CloudRun) getReadyEnginesByCollection(collectionID int64) ([]*run.Service, error) {
 	items, err := cr.getEnginesByCollection(collectionID)
+	if err != nil {
+		return items, err
+	}
+	r := []*run.Service{}
+	for _, item := range items {
+		ready := true
+		for _, c := range item.Status.Conditions {
+			if c.Status != "True" {
+				ready = false
+			}
+		}
+		if ready {
+			r = append(r, item)
+		}
+	}
+	return r, nil
+}
+
+func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model.ExecutionPlan) (*smodel.CollectionStatus, error) {
+	items, err := cr.getReadyEnginesByCollection(collectionID)
 	if err != nil {
 		return nil, err
 	}
@@ -259,14 +279,7 @@ func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model
 			continue
 		}
 		ps.EnginesDeployed += 1
-		engineReachable := true
-		for _, c := range item.Status.Conditions {
-			if c.Status != "True" {
-				engineReachable = false
-				break
-			}
-		}
-		ps.EnginesReachable = ps.EnginesReachable && engineReachable
+		ps.EnginesReachable = ps.EnginesReachable && true
 		if !ps.EnginesReachable {
 			continue
 		}
