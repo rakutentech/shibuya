@@ -145,7 +145,7 @@
                             <th>Concurrency</th>
                             <th>Ramp up</th>
                             <th>Duration</th>
-                            <th>Engines (<a :href="engineHealthGrafanaUrl()" target="_blank">Health <i class="fas fa-external-link-alt"></i></a>)</th>
+                            <th>Engines <span v-if="hasEngineDashboard()">(<a :href="engineHealthGrafanaUrl()" target="_blank">Health <i class="fas fa-external-link-alt"></i></a>)</span></th>
                             <th>CSV Split</th>
                             <th>Launch Status</th>
                             <th>Testing progress</th>
