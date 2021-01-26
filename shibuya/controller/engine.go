@@ -195,13 +195,7 @@ func (be *baseEngine) readMetrics() chan *shibuyaMetric {
 }
 
 func (be *baseEngine) updateEngineUrl(url string) {
-	if be.serviceName == "" {
-		be.engineUrl = url
-		return
-	}
-	// for some of the schedulers, the url is not the direct url whicn can be used to
-	// access the engines. K8s is such a case.
-	be.engineUrl = fmt.Sprintf("%s/%s", url, be.serviceName)
+	be.engineUrl = url
 }
 
 func generateEngines(enginesRequired int, planID, collectionID, projectID int64, et engineType) (engines []shibuyaEngine, err error) {
