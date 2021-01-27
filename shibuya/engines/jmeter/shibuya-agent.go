@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -55,6 +57,10 @@ type ShibuyaWrapper struct {
 	handlerLock    sync.RWMutex
 	currentPid     int
 	storageClient  sos.StorageInterface
+	//stderr         io.ReadCloser
+	reader io.ReadCloser
+	writer io.Writer
+	buffer []byte
 }
 
 func NewServer() (sw *ShibuyaWrapper) {
@@ -70,11 +76,28 @@ func NewServer() (sw *ShibuyaWrapper) {
 		storageClient:  sos.Client.Storage,
 	}
 
+	reader, writer, _ := os.Pipe()
+	mw := io.MultiWriter(writer, os.Stderr)
+	sw.reader = reader
+	sw.writer = mw
+	log.SetOutput(mw)
 	// Set it running - listening and broadcasting events
 	go sw.listen()
+	go sw.readOutput()
 	return
 }
 
+func (sw *ShibuyaWrapper) readOutput() {
+	rd := bufio.NewReader(sw.reader)
+	for {
+		line, _, err := rd.ReadLine()
+		if err != nil {
+			continue
+		}
+		line = append(line, '\n')
+		sw.buffer = append(sw.buffer, line...)
+	}
+}
 func (sw *ShibuyaWrapper) listen() {
 	for {
 		select {
@@ -205,8 +228,7 @@ func (sw *ShibuyaWrapper) runCommand(w http.ResponseWriter) int {
 	logFile := sw.makeLogFile()
 	cmd := exec.Command(JMETER_EXECUTABLE, "-n", "-t", JMX_FILEPATH, "-l", logFile,
 		"-q", PROPERTY_FILE, "-G", PROPERTY_FILE, "-j", STDERR)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = sw.writer
 	err := cmd.Start()
 	if err != nil {
 		log.Panic(err)
@@ -357,6 +379,7 @@ func (sw *ShibuyaWrapper) prepareTestData(edc controllerModel.EngineDataConfig) 
 func (sw *ShibuyaWrapper) startHandler(w http.ResponseWriter, r *http.Request) {
 	sw.handlerLock.Lock()
 	defer sw.handlerLock.Unlock()
+
 	if r.Method == "POST" {
 		if sw.getPid() != 0 {
 			w.WriteHeader(http.StatusConflict)
@@ -408,11 +431,16 @@ func (sw *ShibuyaWrapper) progressHandler(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
+func (sw *ShibuyaWrapper) stdoutHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write(sw.buffer)
+}
+
 func main() {
 	sw := NewServer()
 	http.HandleFunc("/start", sw.startHandler)
 	http.HandleFunc("/stop", sw.stopHandler)
 	http.HandleFunc("/stream", sw.streamHandler)
 	http.HandleFunc("/progress", sw.progressHandler)
+	http.HandleFunc("/output", sw.stdoutHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/rakutentech/shibuya/shibuya/controller"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/object_storage"
-	"github.com/rakutentech/shibuya/shibuya/scheduler"
+	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	utils "github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
@@ -209,8 +209,8 @@ func (s *ShibuyaAPI) planUpdateHandler(w http.ResponseWriter, _ *http.Request, _
 }
 
 type AdminCollectionResponse struct {
-	RunningCollections []*model.RunningPlan   `json:"running_collections"`
-	NodePools          scheduler.AllNodesInfo `json:"node_pools"`
+	RunningCollections []*model.RunningPlan `json:"running_collections"`
+	NodePools          smodel.AllNodesInfo  `json:"node_pools"`
 }
 
 func (s *ShibuyaAPI) collectionAdminGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -223,7 +223,7 @@ func (s *ShibuyaAPI) collectionAdminGetHandler(w http.ResponseWriter, r *http.Re
 	acr.RunningCollections = collections
 	if config.SC.ExecutorConfig.Cluster.OnDemand {
 		// we ignore errors here for simplicity
-		acr.NodePools, _ = s.ctr.Kcm.GetAllNodesInfo()
+		acr.NodePools, _ = s.ctr.Scheduler.GetAllNodesInfo()
 	}
 	s.jsonise(w, http.StatusOK, acr)
 }
@@ -446,8 +446,7 @@ func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Requ
 			return
 		}
 	}
-	collectionLabel := fmt.Sprintf("collection=%d", collection.ID)
-	if s.ctr.Kcm.PodReady(collectionLabel) > 0 {
+	if s.ctr.Scheduler.PodReadyCount(collection.ID) > 0 {
 		s.handleErrors(w, makeInvalidRequestError("You cannot launch engines when there are engines already deployed"))
 		return
 	}
@@ -568,8 +567,7 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 			return
 		}
 	}
-	collectionLabel := fmt.Sprintf("collection=%d", collection.ID)
-	if s.ctr.Kcm.PodReady(collectionLabel) > 0 {
+	if s.ctr.Scheduler.PodReadyCount(collection.ID) > 0 {
 		currentPlans, err := collection.GetExecutionPlans()
 		if err != nil {
 			s.handleErrors(w, err)
@@ -655,8 +653,7 @@ func (s *ShibuyaAPI) collectionNodesShutdownHandler(w http.ResponseWriter, r *ht
 		s.handleErrors(w, err)
 		return
 	}
-	collectionLabel := fmt.Sprintf("collection=%d", collection.ID)
-	if s.ctr.Kcm.PodReady(collectionLabel) > 0 {
+	if s.ctr.Scheduler.PodReadyCount(collection.ID) > 0 {
 		s.handleErrors(w, makeInvalidRequestError("You cannot shut down nodes while you have engines deployed. Please purge collection first."))
 		return
 	}
@@ -678,7 +675,7 @@ func (s *ShibuyaAPI) planLogHandler(w http.ResponseWriter, r *http.Request, para
 		s.handleErrors(w, makeInvalidResourceError("plan_id"))
 		return
 	}
-	content, err := s.ctr.Kcm.DownloadPodLog(int64(collectionID), int64(planID))
+	content, err := s.ctr.Scheduler.DownloadPodLog(int64(collectionID), int64(planID))
 	if err != nil {
 		s.handleErrors(w, makeInvalidRequestError(err.Error()))
 		return

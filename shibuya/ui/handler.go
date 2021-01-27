@@ -55,6 +55,9 @@ outer:
 	}
 	resultDashboardURL := config.SC.DashboardConfig.Url + config.SC.DashboardConfig.RunDashboard
 	engineHealthDashboardURL := config.SC.DashboardConfig.Url + config.SC.DashboardConfig.EnginesDashboard
+	if config.SC.DashboardConfig.EnginesDashboard == "" {
+		engineHealthDashboardURL = ""
+	}
 	template := u.tmpl.Lookup("app.html")
 	sc := config.SC
 	template.Execute(w, &HomeResp{account.Name, sc.BackgroundColour, sc.Context,

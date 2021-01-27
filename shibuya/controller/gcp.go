@@ -6,6 +6,7 @@ import (
 
 	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
+	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	log "github.com/sirupsen/logrus"
 	google "google.golang.org/api/container/v1"
 )
@@ -53,7 +54,7 @@ func (o *GCPOperator) GetNodePool() *google.NodePool {
 }
 
 func (o *GCPOperator) GetNodesSize() (int, error) {
-	kcm := scheduler.NewK8sClientManager()
+	kcm := scheduler.NewK8sClientManager(config.SC.ExecutorConfig.Cluster)
 	nodes, err := kcm.GetNodesByCollection(o.collectionIDStr)
 	if err != nil {
 		return 0, err
@@ -62,7 +63,7 @@ func (o *GCPOperator) GetNodesSize() (int, error) {
 }
 
 type GCPNodesInfo struct {
-	scheduler.NodesInfo
+	smodel.NodesInfo
 	Status string
 }
 

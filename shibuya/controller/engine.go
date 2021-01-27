@@ -4,17 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
 	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
-	"github.com/rakutentech/shibuya/shibuya/scheduler"
-	"github.com/rakutentech/shibuya/shibuya/utils"
 	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
+	"github.com/rakutentech/shibuya/shibuya/scheduler"
+	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
+	"github.com/rakutentech/shibuya/shibuya/utils"
 
 	es "github.com/iandyh/eventsource"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +25,7 @@ import (
 
 type shibuyaEngine interface {
 	trigger(edc *controllerModel.EngineDataConfig) error
-	deploy(*scheduler.K8sClientManager) error
+	deploy(scheduler.EngineScheduler) error
 	subscribe(runID int64) error
 	progress() bool
 	readMetrics() chan *shibuyaMetric
@@ -85,8 +88,17 @@ func (be *baseEngine) EngineID() int {
 	return be.ID
 }
 
+func (be *baseEngine) makeBaseUrl() string {
+	base := "%s/%s"
+	if strings.Contains(be.engineUrl, "http") {
+		return base
+	}
+	return "http://" + base
+}
+
 func (be *baseEngine) subscribe(runID int64) error {
-	streamUrl := fmt.Sprintf("http://%s/%s", be.engineUrl, "stream")
+	base := be.makeBaseUrl()
+	streamUrl := fmt.Sprintf(base, be.engineUrl, "stream")
 	req, err := http.NewRequest("GET", streamUrl, nil)
 	if err != nil {
 		return err
@@ -107,7 +119,8 @@ func (be *baseEngine) subscribe(runID int64) error {
 }
 
 func (be *baseEngine) progress() bool {
-	progressEndpoint := fmt.Sprintf("http://%s/%s", be.engineUrl, "progress")
+	base := be.makeBaseUrl()
+	progressEndpoint := fmt.Sprintf(base, be.engineUrl, "progress")
 	var resp *http.Response
 	var httpError error
 	err := utils.Retry(func() error {
@@ -122,7 +135,7 @@ func (be *baseEngine) progress() bool {
 }
 
 func (be *baseEngine) reachable(manager *scheduler.K8sClientManager) bool {
-	return manager.ServiceReachable(be.ingressClass, be.serviceName)
+	return manager.ServiceReachable(be.engineUrl)
 }
 
 func (be *baseEngine) closeStream() {
@@ -136,7 +149,8 @@ func (be *baseEngine) terminate(force bool) error {
 	if force {
 		return nil
 	}
-	stopUrl := fmt.Sprintf("http://%s/stop", be.engineUrl)
+	base := be.makeBaseUrl()
+	stopUrl := fmt.Sprintf(base, be.engineUrl, "stop")
 	resp, err := engineHttpClient.Post(stopUrl, "application/x-www-form-urlencoded", nil)
 	if err != nil {
 		return err
@@ -146,14 +160,14 @@ func (be *baseEngine) terminate(force bool) error {
 	return nil
 }
 
-func (be *baseEngine) deploy(manager *scheduler.K8sClientManager) error {
-	return manager.DeployEngine(be.name, be.serviceName, be.ingressClass, be.ingressName, be.planID,
-		be.collectionID, be.projectID, be.ExecutorContainer)
+func (be *baseEngine) deploy(manager scheduler.EngineScheduler) error {
+	return manager.DeployEngine(be.projectID, be.collectionID, be.planID, be.ID, be.ExecutorContainer)
 }
 
 func (be *baseEngine) trigger(edc *controllerModel.EngineDataConfig) error {
 	engineUrl := be.engineUrl
-	url := fmt.Sprintf("http://%s/%s", engineUrl, "start")
+	base := be.makeBaseUrl()
+	url := fmt.Sprintf(base, engineUrl, "start")
 	return utils.Retry(func() error {
 		resp, err := sendTriggerRequest(url, edc)
 		if err != nil {
@@ -180,19 +194,13 @@ func (be *baseEngine) readMetrics() chan *shibuyaMetric {
 	return nil
 }
 
-func (be *baseEngine) updateEngineUrl(collectionUrl string) {
-	be.engineUrl = fmt.Sprintf("%s/%s", collectionUrl, be.serviceName)
+func (be *baseEngine) updateEngineUrl(url string) {
+	be.engineUrl = url
 }
 
 func generateEngines(enginesRequired int, planID, collectionID, projectID int64, et engineType) (engines []shibuyaEngine, err error) {
-	ingressClass := createIgName(collectionID)
 	for i := 0; i < enginesRequired; i++ {
-		serviceName := scheduler.GenerateName("service", planID, collectionID, projectID, i)
 		engineC := &baseEngine{
-			name:         scheduler.GenerateName("engine", planID, collectionID, projectID, i),
-			serviceName:  serviceName,
-			ingressName:  scheduler.GenerateName("ingress", planID, collectionID, projectID, i),
-			ingressClass: ingressClass,
 			ID:           i,
 			projectID:    projectID,
 			collectionID: collectionID,
@@ -210,17 +218,22 @@ func generateEngines(enginesRequired int, planID, collectionID, projectID int64,
 	return engines, nil
 }
 
-func generateEnginesWithUrl(enginesRequired int, planID, collectionID, projectID int64, et engineType, kcm *scheduler.K8sClientManager) (engines []shibuyaEngine, err error) {
+func generateEnginesWithUrl(enginesRequired int, planID, collectionID, projectID int64, et engineType, scheduler scheduler.EngineScheduler) (engines []shibuyaEngine, err error) {
 	engines, err = generateEngines(enginesRequired, planID, collectionID, projectID, et)
 	if err != nil {
 		return nil, err
 	}
-	collectionUrl, err := kcm.GetIngressUrl(createIgName(collectionID))
-	if err != nil {
-		return engines, err
+	engineUrls, err := scheduler.FetchEngineUrlsByPlan(collectionID, planID, &smodel.EngineOwnerRef{
+		ProjectID:    projectID,
+		EnginesCount: len(engines),
+	})
+	// This could happen during purging as there are still some engines lingering in the scheduler
+	if len(engineUrls) != len(engines) {
+		return nil, errors.New("Engines in scheduler does not match")
 	}
-	for _, e := range engines {
-		e.updateEngineUrl(collectionUrl)
+	for i, e := range engines {
+		url := engineUrls[i]
+		e.updateEngineUrl(url)
 	}
 	return engines, nil
 }
@@ -228,7 +241,7 @@ func generateEnginesWithUrl(enginesRequired int, planID, collectionID, projectID
 func (ctr *Controller) fetchEngineMetrics() {
 	for {
 		time.Sleep(5 * time.Second)
-		deployedCollections, err := ctr.Kcm.GetDeployedCollections()
+		deployedCollections, err := ctr.Scheduler.GetDeployedCollections()
 		if err != nil {
 			continue
 		}
@@ -243,8 +256,13 @@ func (ctr *Controller) fetchEngineMetrics() {
 			}
 			collectionID_str := strconv.FormatInt(collectionID, 10)
 			for _, ep := range eps {
-				podsMetrics, err := ctr.Kcm.GetPodsMetrics(collectionID, ep.PlanID)
+				podsMetrics, err := ctr.Scheduler.GetPodsMetrics(collectionID, ep.PlanID)
 				if err != nil {
+					// Some schedulers might not have the feature to expose the metrics
+					// We will return directly
+					if errors.Is(err, scheduler.FeatureUnavailable) {
+						return
+					}
 					continue
 				}
 				planID_str := strconv.FormatInt(ep.PlanID, 10)

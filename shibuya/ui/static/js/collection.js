@@ -316,6 +316,9 @@ var Collection = Vue.component("collection", {
             end.setMinutes(end.getMinutes() + 1);
             return result_dashboard + "?var-runID=" + run.id + "&from=" + start.getTime() + "&to=" + end.getTime();
         },
+        hasEngineDashboard: function () {
+            return engine_health_dashboard !== "";
+        },
         engineHealthGrafanaUrl: function () {
             return engine_health_dashboard + "?var-collectionID=" + this.collection_id;
         },

@@ -31,7 +31,10 @@ type AuthConfig struct {
 type ClusterConfig struct {
 	Project     string  `json:"project"`
 	Zone        string  `json:"zone"`
+	Region      string  `json:"region"`
 	ClusterID   string  `json:"cluster_id"`
+	Kind        string  `json:"kind"`
+	APIEndpoint string  `json:"api_endpoint"`
 	NodeCPUSpec int     `json:"node_cpu_spec"`
 	OnDemand    bool    `json:"on_demand"`
 	GCDuration  float64 `json:"gc_duration"` // in minutes
@@ -74,12 +77,12 @@ type HttpConfig struct {
 }
 
 type ObjectStorage struct {
-	Provider 	 string `json:"provider"`
-	Url      	 string `json:"url"`
-	User     	 string `json:"user"`
-	Password 	 string `json:"password"`
-	Bucket   	 string `json:"bucket"`
-	RequireProxy bool 	`json:"require_proxy"`
+	Provider     string `json:"provider"`
+	Url          string `json:"url"`
+	User         string `json:"user"`
+	Password     string `json:"password"`
+	Bucket       string `json:"bucket"`
+	RequireProxy bool   `json:"require_proxy"`
 }
 
 type LogFormat struct {
@@ -109,12 +112,12 @@ type ShibuyaConfig struct {
 	IngressConfig    *IngressConfig   `json:"ingress"`
 
 	// below are configs generated from above values
-	DevMode    bool
-	Context    string
-	HTTPClient *http.Client
+	DevMode         bool
+	Context         string
+	HTTPClient      *http.Client
 	HTTPProxyClient *http.Client
-	DBC        *sql.DB
-	DBEndpoint string
+	DBC             *sql.DB
+	DBEndpoint      string
 }
 
 func loadContext() string {
@@ -177,6 +180,10 @@ func loadConfig() *ShibuyaConfig {
 	sc.makeHTTPClients()
 	if sc.ExecutorConfig != nil && sc.ExecutorConfig.Cluster.GCDuration == 0 {
 		sc.ExecutorConfig.Cluster.GCDuration = 15
+	}
+	if sc.ExecutorConfig.Cluster.Kind == "" {
+		// if not specified, use k8s as default
+		sc.ExecutorConfig.Cluster.Kind = "k8s"
 	}
 	return sc
 }

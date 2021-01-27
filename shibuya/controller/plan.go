@@ -17,14 +17,14 @@ import (
 type PlanController struct {
 	ep         *model.ExecutionPlan
 	collection *model.Collection
-	kcm        *scheduler.K8sClientManager
+	scheduler  scheduler.EngineScheduler
 }
 
-func NewPlanController(ep *model.ExecutionPlan, collection *model.Collection, kcm *scheduler.K8sClientManager) *PlanController {
+func NewPlanController(ep *model.ExecutionPlan, collection *model.Collection, scheduler scheduler.EngineScheduler) *PlanController {
 	return &PlanController{
 		ep:         ep,
 		collection: collection,
-		kcm:        kcm,
+		scheduler:  scheduler,
 	}
 }
 
@@ -38,9 +38,10 @@ func (pc *PlanController) deploy() error {
 	// not the deployment
 	for _, engine := range engines {
 		// need to move the jmeter image into earlier stage. k8s client should not care about the image
-		if err := engine.deploy(pc.kcm); err != nil {
+		if err := engine.deploy(pc.scheduler); err != nil {
 			return err
 		}
+		//pc.cr.DeployEngine(pc.collection.ProjectID, pc.collection.ID, pc.ep.PlanID, eid)
 	}
 	return nil
 }
@@ -85,7 +86,7 @@ func (pc *PlanController) trigger(engineDataConfig *controllerModel.EngineDataCo
 	}
 	engineDataConfigs := pc.prepare(plan, engineDataConfig)
 	engines, err := generateEnginesWithUrl(pc.ep.Engines, pc.ep.PlanID, pc.collection.ID, pc.collection.ProjectID,
-		JmeterEngineType, pc.kcm)
+		JmeterEngineType, pc.scheduler)
 	if err != nil {
 		return err
 	}
@@ -121,7 +122,7 @@ func (pc *PlanController) subscribe(connectedEngines *sync.Map, readingEngines c
 	ep := pc.ep
 	collection := pc.collection
 	engines, err := generateEnginesWithUrl(ep.Engines, ep.PlanID, collection.ID, collection.ProjectID,
-		JmeterEngineType, pc.kcm)
+		JmeterEngineType, pc.scheduler)
 	if err != nil {
 		return err
 	}
@@ -158,7 +159,7 @@ func (pc *PlanController) progress() bool {
 	r := true
 	ep := pc.ep
 	collection := pc.collection
-	engines, err := generateEnginesWithUrl(ep.Engines, ep.PlanID, collection.ID, collection.ProjectID, JmeterEngineType, pc.kcm)
+	engines, err := generateEnginesWithUrl(ep.Engines, ep.PlanID, collection.ID, collection.ProjectID, JmeterEngineType, pc.scheduler)
 	if errors.Is(err, scheduler.IngressError) {
 		log.Error(err)
 		return true
