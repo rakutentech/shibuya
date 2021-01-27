@@ -178,12 +178,18 @@ func loadConfig() *ShibuyaConfig {
 	sc.Context = loadContext()
 	sc.DevMode = sc.Context == "local"
 	sc.makeHTTPClients()
-	if sc.ExecutorConfig != nil && sc.ExecutorConfig.Cluster.GCDuration == 0 {
-		sc.ExecutorConfig.Cluster.GCDuration = 15
-	}
-	if sc.ExecutorConfig.Cluster.Kind == "" {
-		// if not specified, use k8s as default
-		sc.ExecutorConfig.Cluster.Kind = "k8s"
+
+	// In jmeter agent, we also rely on this module, therefore we need to check whether this is nil or not. As jmeter
+	// configuration might provide an empty struct here
+	// TODO: we should not let jmeter code rely on this part
+	if sc.ExecutorConfig != nil {
+		if sc.ExecutorConfig.Cluster.GCDuration == 0 {
+			sc.ExecutorConfig.Cluster.GCDuration = 15
+		}
+		if sc.ExecutorConfig.Cluster.Kind == "" {
+			// if not specified, use k8s as default
+			sc.ExecutorConfig.Cluster.Kind = "k8s"
+		}
 	}
 	return sc
 }
