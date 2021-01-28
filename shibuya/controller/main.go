@@ -79,6 +79,8 @@ func (c *Controller) fetchCollectionStatus() {
 			collectionID := key.(int64)
 			keyCreatedTime := value.(time.Time)
 			expiredTime := keyCreatedTime.Add(20 * time.Minute)
+
+			// we also need to delete the item in the list periodically otherwise it will keep growing
 			if expiredTime.Before(time.Now()) {
 				c.collectionStatusProcessingList.Delete(collectionID)
 				c.collectionStatusCache.Delete(collectionID)
