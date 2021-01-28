@@ -78,15 +78,13 @@ func (c *Controller) fetchCollectionStatus() {
 		c.collectionStatusProcessingList.Range(func(key, value interface{}) bool {
 			collectionID := key.(int64)
 			keyCreatedTime := value.(time.Time)
-			expiredTime := keyCreatedTime.Add(30 * time.Minute)
+			expiredTime := keyCreatedTime.Add(20 * time.Minute)
 			if expiredTime.Before(time.Now()) {
 				c.collectionStatusProcessingList.Delete(collectionID)
 				c.collectionStatusCache.Delete(collectionID)
-				log.Printf("deleting %d", collectionID)
 			} else {
 				collection, err := model.GetCollection(collectionID)
 				if err == nil {
-					log.Printf("getting %d", collectionID)
 					cs, err := c.CollectionStatus(collection)
 					if err == nil {
 						c.collectionStatusCache.Store(collectionID, cs)
