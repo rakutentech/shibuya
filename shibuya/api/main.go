@@ -630,6 +630,7 @@ func (s *ShibuyaAPI) collectionStatusHandler(w http.ResponseWriter, r *http.Requ
 	collectionStatus, err := s.ctr.CollectionStatus(collection)
 	if err != nil {
 		s.handleErrors(w, err)
+		return
 	}
 	s.jsonise(w, http.StatusOK, collectionStatus)
 }
