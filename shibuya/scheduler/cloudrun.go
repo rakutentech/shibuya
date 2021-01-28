@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
@@ -29,6 +30,9 @@ type CloudRun struct {
 	throttlingQueue chan *cloudRunRequest
 	httpClient      *http.Client
 	kind            string
+
+	// This is to cache the urls locally so we are not limited by the cloud run api quota
+	urlCache sync.Map
 }
 
 func NewCloudRun(cfg *config.ClusterConfig) *CloudRun {
@@ -200,11 +204,18 @@ func (cr *CloudRun) PurgeCollection(collectionID int64) error {
 	if err != nil {
 		return err
 	}
+	plans := make(map[int64]struct{})
 	for _, item := range items {
 		cr.throttlingQueue <- &cloudRunRequest{
 			method:    "delete",
 			serviceID: item.Metadata.Name,
 		}
+		planID, _ := strconv.Atoi(item.Metadata.Labels["plan"])
+		plans[int64(planID)] = struct{}{}
+	}
+	for pid := range plans {
+		key := cr.makeCacheKey(collectionID, pid)
+		cr.urlCache.Delete(key)
 	}
 	return nil
 }
@@ -304,18 +315,31 @@ func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model
 	return cs, nil
 }
 
+func (cr *CloudRun) makeCacheKey(collectionID, planID int64) string {
+	return fmt.Sprintf("%s-%d-%d", config.SC.Context, collectionID, planID)
+}
+
 // This func is used by generateEngines as we need to fetch the engine urls per plan
 func (cr *CloudRun) FetchEngineUrlsByPlan(collectionID, planID int64, opts *smodel.EngineOwnerRef) ([]string, error) {
-	// need to make it get url by plan
-	items, err := cr.getEnginesByCollectionPlan(collectionID, planID)
-	if err != nil {
-		return nil, err
+	key := cr.makeCacheKey(collectionID, planID)
+
+	// When the engines are being purged, the cache might still be there so the checkRunningAndResume function will try to confirm
+	// the engine progress and result a 404, then it will try to terminate and purge against
+	// It should be ok as purge/terminate is idempotent
+	raw, ok := cr.urlCache.Load(key)
+	if !ok {
+		items, err := cr.getEnginesByCollectionPlan(collectionID, planID)
+		if err != nil {
+			return nil, err
+		}
+		m := []string{}
+		for _, item := range items {
+			m = append(m, item.Status.Url)
+		}
+		cr.urlCache.Store(key, m)
+		return m, nil
 	}
-	m := []string{}
-	for _, item := range items {
-		m = append(m, item.Status.Url)
-	}
-	return m, nil
+	return raw.([]string), nil
 }
 
 func (cr *CloudRun) ExposeCollection(projectID, collectionID int64) error {
