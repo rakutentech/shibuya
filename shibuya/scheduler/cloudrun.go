@@ -2,10 +2,12 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
@@ -29,6 +31,12 @@ type CloudRun struct {
 	throttlingQueue chan *cloudRunRequest
 	httpClient      *http.Client
 	kind            string
+
+	// We also cache the collection status to avoid the quota limit
+	collectionStatusCache sync.Map
+
+	// item in this map will be fetched periodically
+	collectionStatusProcessingList sync.Map
 }
 
 func NewCloudRun(cfg *config.ClusterConfig) *CloudRun {
@@ -50,6 +58,7 @@ func NewCloudRun(cfg *config.ClusterConfig) *CloudRun {
 	cr.httpClient = &http.Client{
 		Timeout: 30 * time.Second,
 	}
+	go cr.startCollectionStatusJob()
 	go cr.startWriteRequestWorker()
 	return cr
 }
@@ -111,6 +120,31 @@ func (cr *CloudRun) makeService(projectID, collectionID, planID int64, engineID 
 				},
 			},
 		},
+	}
+}
+
+func (cr *CloudRun) startCollectionStatusJob() {
+	for {
+		cr.collectionStatusProcessingList.Range(func(key, value interface{}) bool {
+			collectionID := key.(int64)
+			job := value.(*collectionStatusJob)
+			jobCreatedTime := job.createdTime
+			expiredTime := jobCreatedTime.Add(20 * time.Minute)
+			// we also need to delete the item in the list periodically otherwise it will keep growing
+			if expiredTime.Before(time.Now()) {
+				cr.collectionStatusProcessingList.Delete(collectionID)
+				cr.collectionStatusCache.Delete(collectionID)
+			} else {
+				go func(collectionID int64, job *collectionStatusJob) {
+					cs, err := cr.fetchCollectionStatus(job.projectID, collectionID, job.eps)
+					if err == nil {
+						cr.collectionStatusCache.Store(collectionID, cs)
+					}
+				}(collectionID, job)
+			}
+			return true
+		})
+		time.Sleep(3 * time.Second)
 	}
 }
 
@@ -206,6 +240,7 @@ func (cr *CloudRun) PurgeCollection(collectionID int64) error {
 			serviceID: item.Metadata.Name,
 		}
 	}
+	cr.collectionStatusCache.Delete(collectionID)
 	return nil
 }
 
@@ -247,7 +282,26 @@ func (cr *CloudRun) getReadyEnginesByCollection(collectionID int64) ([]*run.Serv
 	return r, nil
 }
 
+type collectionStatusJob struct {
+	projectID   int64
+	eps         []*model.ExecutionPlan
+	createdTime time.Time
+}
+
 func (cr *CloudRun) CollectionStatus(projectID, collectionID int64, eps []*model.ExecutionPlan) (*smodel.CollectionStatus, error) {
+	cr.collectionStatusProcessingList.Store(collectionID, &collectionStatusJob{
+		projectID:   projectID,
+		eps:         eps,
+		createdTime: time.Now(),
+	})
+	raw, ok := cr.collectionStatusCache.Load(collectionID)
+	if !ok {
+		return nil, errors.New("No collection in the cache")
+	}
+	return raw.(*smodel.CollectionStatus), nil
+}
+
+func (cr *CloudRun) fetchCollectionStatus(projectID, collectionID int64, eps []*model.ExecutionPlan) (*smodel.CollectionStatus, error) {
 	items, err := cr.getEnginesByCollection(collectionID)
 	if err != nil {
 		return nil, err
