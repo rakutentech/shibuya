@@ -87,10 +87,12 @@ func (c *Controller) fetchCollectionStatus() {
 			} else {
 				collection, err := model.GetCollection(collectionID)
 				if err == nil {
-					cs, err := c.CollectionStatus(collection)
-					if err == nil {
-						c.collectionStatusCache.Store(collectionID, cs)
-					}
+					go func(collection *model.Collection) {
+						cs, err := c.CollectionStatus(collection)
+						if err == nil {
+							c.collectionStatusCache.Store(collectionID, cs)
+						}
+					}(collection)
 				}
 			}
 			return true
