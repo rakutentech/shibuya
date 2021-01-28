@@ -17,18 +17,20 @@ import (
 )
 
 type Controller struct {
-	LabelStore         sync.Map
-	StatusStore        sync.Map
-	ApiNewClients      chan *ApiMetricStream
-	ApiStreamClients   map[string]map[string]chan *ApiMetricStreamEvent
-	ApiMetricStreamBus chan *ApiMetricStreamEvent
-	ApiClosingClients  chan *ApiMetricStream
-	readingEngines     chan shibuyaEngine
-	connectedEngines   sync.Map
-	filePath           string
-	httpClient         *http.Client
-	schedulerKind      string
-	Scheduler          scheduler.EngineScheduler
+	LabelStore                     sync.Map
+	StatusStore                    sync.Map
+	ApiNewClients                  chan *ApiMetricStream
+	ApiStreamClients               map[string]map[string]chan *ApiMetricStreamEvent
+	ApiMetricStreamBus             chan *ApiMetricStreamEvent
+	ApiClosingClients              chan *ApiMetricStream
+	readingEngines                 chan shibuyaEngine
+	connectedEngines               sync.Map
+	filePath                       string
+	httpClient                     *http.Client
+	schedulerKind                  string
+	Scheduler                      scheduler.EngineScheduler
+	collectionStatusCache          sync.Map
+	collectionStatusProcessingList sync.Map
 }
 
 func NewController() *Controller {
@@ -55,6 +57,7 @@ func NewController() *Controller {
 	go c.fetchEngineMetrics()
 	go c.cleanLocalStore()
 	go c.autoPurgeDeployments()
+	go c.fetchCollectionStatus()
 	return c
 }
 
@@ -68,6 +71,32 @@ type ApiMetricStreamEvent struct {
 	CollectionID string `json:"collection_id"`
 	Raw          string `json:"metrics"`
 	PlanID       string `json:"plan_id"`
+}
+
+func (c *Controller) fetchCollectionStatus() {
+	for {
+		c.collectionStatusProcessingList.Range(func(key, value interface{}) bool {
+			collectionID := key.(int64)
+			keyCreatedTime := value.(time.Time)
+			expiredTime := keyCreatedTime.Add(30 * time.Minute)
+			if expiredTime.Before(time.Now()) {
+				c.collectionStatusProcessingList.Delete(collectionID)
+				c.collectionStatusCache.Delete(collectionID)
+				log.Printf("deleting %d", collectionID)
+			} else {
+				collection, err := model.GetCollection(collectionID)
+				if err == nil {
+					log.Printf("getting %d", collectionID)
+					cs, err := c.CollectionStatus(collection)
+					if err == nil {
+						c.collectionStatusCache.Store(collectionID, cs)
+					}
+				}
+			}
+			return true
+		})
+		time.Sleep(3 * time.Second)
+	}
 }
 
 func (c *Controller) streamToApi() {
@@ -339,6 +368,15 @@ func (c *Controller) CollectionStatus(collection *model.Collection) (*smodel.Col
 		cs.PoolStatus = "running"
 	}
 	return cs, nil
+}
+
+func (c *Controller) CollectionStatusWrapper(collection *model.Collection) *smodel.CollectionStatus {
+	c.collectionStatusProcessingList.Store(collection.ID, time.Now())
+	raw, ok := c.collectionStatusCache.Load(collection.ID)
+	if !ok {
+		return nil
+	}
+	return raw.(*smodel.CollectionStatus)
 }
 
 func (c *Controller) PurgeNodes(collection *model.Collection) error {
