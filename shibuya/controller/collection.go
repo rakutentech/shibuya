@@ -36,7 +36,11 @@ func prepareCollection(collection *model.Collection) []*controllerModel.EngineDa
 func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error {
 	// This is a force remove so we ignore the errors happened at test termination
 	c.TermCollection(collection, true)
-	return c.Scheduler.PurgeCollection(collection.ID)
+	err := c.Scheduler.PurgeCollection(collection.ID)
+	if err == nil {
+		collection.MarkUsageFinished()
+	}
+	return err
 }
 
 func (c *Controller) TriggerCollection(collection *model.Collection) error {
@@ -130,7 +134,6 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 	wg.Wait()
 	collection.StopRun()
 	collection.RunFinish(currRunID)
-	collection.MarkUsageFinished()
 	return e
 }
 
