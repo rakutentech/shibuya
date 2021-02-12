@@ -68,6 +68,7 @@ permissions-gcp: node-permissions permissions
 node-permissions:
 	kubectl apply -f kubernetes/clusterrole.yaml
 	-kubectl create clusterrolebinding shibuya --clusterrole=shibuya --serviceaccount $(shibuya-controller-ns):shibuya
+	kubectl apply -f kubernetes/pdb.yaml
 
 .PHONY: local_storage
 local_storage:

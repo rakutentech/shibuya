@@ -1,0 +1,19 @@
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: engine
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      kind: executor
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: ingress
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      kind: ingress-controller

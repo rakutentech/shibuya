@@ -192,10 +192,10 @@ func (kcm *K8sClientManager) expose(name string, deployment *appsv1.Deployment) 
 		},
 	}
 	if deployment.Labels["kind"] == "ingress-controller" {
-		if !kcm.InCluster {
+		switch kcm.Cluster.ServiceType {
+		case "NodePort":
 			service.Spec.Type = apiv1.ServiceTypeNodePort
-		}
-		if kcm.Cluster.OnDemand {
+		case "LoadBalancer":
 			service.Spec.ExternalTrafficPolicy = "Local"
 			service.Spec.Type = apiv1.ServiceTypeLoadBalancer
 		}
@@ -266,7 +266,7 @@ func (kcm *K8sClientManager) GetIngressUrl(collectionID int64) (string, error) {
 	if kcm.InCluster {
 		return serviceClient.Spec.ClusterIP, nil
 	}
-	if kcm.Cluster.OnDemand {
+	if kcm.Cluster.ServiceType == "LoadBalancer" {
 		// in case of GCP getting public IP is enough since it exposes to port 80
 		if len(serviceClient.Status.LoadBalancer.Ingress) == 0 {
 			return "", makeIPNotAssignedError()
