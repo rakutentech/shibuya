@@ -9,7 +9,6 @@ WORKDIR /go/src/shibuya
 ENV GO111MODULE on
 ADD go.mod .
 ADD go.sum .
-ENV GOPROXY=https://goproxy.io
 RUN go mod download
 
 COPY . /go/src/shibuya
