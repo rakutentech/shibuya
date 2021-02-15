@@ -38,6 +38,7 @@ type ClusterConfig struct {
 	NodeCPUSpec int     `json:"node_cpu_spec"`
 	OnDemand    bool    `json:"on_demand"`
 	GCDuration  float64 `json:"gc_duration"` // in minutes
+	ServiceType string  `json:"service_type"`
 }
 
 type HostAlias struct {
@@ -126,6 +127,7 @@ func loadContext() string {
 
 func (sc *ShibuyaConfig) makeHTTPClients() {
 	sc.HTTPClient = &http.Client{}
+	sc.HTTPProxyClient = sc.HTTPClient
 	if sc.HttpConfig.Proxy == "" {
 		return
 	}
