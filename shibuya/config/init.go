@@ -127,6 +127,7 @@ func loadContext() string {
 
 func (sc *ShibuyaConfig) makeHTTPClients() {
 	sc.HTTPClient = &http.Client{}
+	sc.HTTPProxyClient = sc.HTTPClient
 	if sc.HttpConfig.Proxy == "" {
 		return
 	}
