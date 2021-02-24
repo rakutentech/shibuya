@@ -518,33 +518,33 @@ func (c *Collection) HasRunningPlan() (bool, error) {
 	return false, nil
 }
 
-func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machinesCount int64) error {
+func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machinesCount, vu int64) error {
 	DBC := config.SC.DBC
-	q, err := DBC.Prepare("insert collection_launch_history set collection_id=?,context=?,engines_count=?,nodes_count=?,owner=?")
+	q, err := DBC.Prepare("insert collection_launch_history2 set collection_id=?,context=?,engines_count=?,nodes_count=?,vu=?,owner=?")
 	if err != nil {
 		return err
 	}
 	defer q.Close()
 
-	_, err = q.Exec(c.ID, context, enginesCount, machinesCount, owner)
+	_, err = q.Exec(c.ID, context, enginesCount, machinesCount, vu, owner)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *Collection) MarkUsageFinished() error {
+func (c *Collection) MarkUsageFinished(context string, vu int64) error {
 	db := config.SC.DBC
 
 	// in case there is failure in the previous update, we could have multiple entries with null endtime
 	// pick the latest one
-	q, err := db.Prepare("update collection_launch_history set end_time=NOW() where collection_id=? and end_time is null order by started_time desc limit 1")
+	q, err := db.Prepare("update collection_launch_history2 set end_time=NOW(), vu=? where collection_id=? and end_time is null and context=? order by started_time desc limit 1")
 	if err != nil {
 		return err
 	}
 	defer q.Close()
 
-	_, err = q.Exec(c.ID)
+	_, err = q.Exec(vu, c.ID, context)
 	if err != nil {
 		return err
 	}

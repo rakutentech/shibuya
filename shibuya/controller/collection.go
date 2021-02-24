@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/rakutentech/shibuya/shibuya/config"
 	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	log "github.com/sirupsen/logrus"
@@ -38,7 +39,15 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error 
 	c.TermCollection(collection, true)
 	err := c.Scheduler.PurgeCollection(collection.ID)
 	if err == nil {
-		collection.MarkUsageFinished()
+		eps, err := collection.GetExecutionPlans()
+		if err != nil {
+			return nil
+		}
+		vu := 0
+		for _, ep := range eps {
+			vu += ep.Engines * ep.Concurrency
+		}
+		collection.MarkUsageFinished(config.SC.Context, int64(vu))
 	}
 	return err
 }
