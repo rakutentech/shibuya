@@ -253,6 +253,7 @@ func (c *Controller) PurgeNodes(collection *model.Collection) error {
 		if err := operator.destroyNodes(); err != nil {
 			return err
 		}
+		// we don't bill for on-demand cluster as for now.
 		//collection.MarkUsageFinished()
 		return nil
 	}

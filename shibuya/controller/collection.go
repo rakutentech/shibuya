@@ -40,6 +40,8 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error 
 	err := c.Scheduler.PurgeCollection(collection.ID)
 	if err == nil {
 		eps, err := collection.GetExecutionPlans()
+
+		// if we cannot get the eps, we ignore as we don't want billing to have impact on UX.
 		if err != nil {
 			return nil
 		}
