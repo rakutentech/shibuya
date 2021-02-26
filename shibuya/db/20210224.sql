@@ -11,5 +11,5 @@ CREATE TABLE IF NOT EXISTS collection_launch_history2
     started_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     end_time TIMESTAMP NULL DEFAULT NULL,
     key(collection_id, context, end_time),
-    key(collection_id, end_time)
+    key(started_time, end_time)
 )CHARSET=utf8mb4;
