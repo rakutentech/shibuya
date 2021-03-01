@@ -181,8 +181,10 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	}
 	nodesCount := int64(0)
 	enginesCount := 0
+	vu := 0
 	for _, e := range eps {
 		enginesCount += e.Engines
+		vu += e.Engines * e.Concurrency
 	}
 	if config.SC.ExecutorConfig.Cluster.OnDemand {
 		nodesCount = c.calNodesRequired(enginesCount)
@@ -196,7 +198,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	if project, err := model.GetProject(collection.ProjectID); err == nil {
 		owner = project.Owner
 	}
-	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount)
+	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount, int64(vu))
 
 	err = utils.Retry(func() error {
 		return c.Scheduler.ExposeCollection(collection.ProjectID, collection.ID)
@@ -251,7 +253,8 @@ func (c *Controller) PurgeNodes(collection *model.Collection) error {
 		if err := operator.destroyNodes(); err != nil {
 			return err
 		}
-		collection.MarkUsageFinished()
+		// we don't bill for on-demand cluster as for now.
+		//collection.MarkUsageFinished()
 		return nil
 	}
 	return nil
