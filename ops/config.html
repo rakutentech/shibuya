@@ -163,7 +163,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#configuration-explanation" id="configuration-explanation">Configuration Explanation</a></h1>
+                        <h1 id="configuration-explanation"><a class="header" href="#configuration-explanation">Configuration Explanation</a></h1>
 <p>Below is a sample configuration of Shibuya. We will explain them by sections.</p>
 <pre><code>{
     &quot;bg_color&quot;: &quot;#fff&quot;,
@@ -217,12 +217,12 @@
     }
 }
 </code></pre>
-<h2><a class="header" href="#general-configs" id="general-configs">General Configs</a></h2>
+<h2 id="general-configs"><a class="header" href="#general-configs">General Configs</a></h2>
 <pre><code>    &quot;bg_color&quot;: &quot;#fff&quot;,  # UI bg colour. Could be useful when you are using Shibuya in multiple networking environments.
     &quot;project_home&quot;: &quot;&quot;,
     &quot;upload_file_help&quot;: &quot;&quot;, # Document link for uploading the file
 </code></pre>
-<h2><a class="header" href="#auth-related" id="auth-related">Auth related</a></h2>
+<h2 id="auth-related"><a class="header" href="#auth-related">Auth related</a></h2>
 <p>All authentication related logic is configured by this block</p>
 <pre><code>    &quot;auth_config&quot;: {
         &quot;admin_users&quot;: [], # admin 
@@ -234,13 +234,13 @@
         &quot;no_auth&quot;: true # Turn off auth completely
     }
 </code></pre>
-<h2><a class="header" href="#http-client" id="http-client">HTTP client</a></h2>
+<h2 id="http-client"><a class="header" href="#http-client">HTTP client</a></h2>
 <p>Once this is configured, all the traffic will pass through proxy. Including metrics streaming and requests to k8s cluster.</p>
 <pre><code>    &quot;http_config&quot;: {
         &quot;proxy&quot;: &quot;&quot;
     }
 </code></pre>
-<h2><a class="header" href="#db-configurations" id="db-configurations">DB configurations</a></h2>
+<h2 id="db-configurations"><a class="header" href="#db-configurations">DB configurations</a></h2>
 <pre><code>    &quot;db&quot;: {
         &quot;host&quot;: &quot;db&quot;,
         &quot;user&quot;: &quot;root&quot;,
@@ -248,7 +248,7 @@
         &quot;database&quot;: &quot;shibuya&quot;
     }
 </code></pre>
-<h2><a class="header" href="#executor-configurations" id="executor-configurations">Executor configurations</a></h2>
+<h2 id="executor-configurations"><a class="header" href="#executor-configurations">Executor configurations</a></h2>
 <p>Shibuya supports two types of clusters:</p>
 <ol>
 <li>on demand, specifically, GKE in Google Cloud Platform. </li>

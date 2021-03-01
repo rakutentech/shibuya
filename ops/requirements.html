@@ -163,7 +163,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#setup-the-dependencies" id="setup-the-dependencies">Setup the dependencies</a></h1>
+                        <h1 id="setup-the-dependencies"><a class="header" href="#setup-the-dependencies">Setup the dependencies</a></h1>
 <p>Shibuya relies on below components:</p>
 <ul>
 <li>shibuya-controller: The actual process that handles all the Shibuya business logic</li>
@@ -173,20 +173,20 @@
 <li>Prometheus: Metrics collected from the load generators will be scraped by Prom.</li>
 </ul>
 <p>We will discuss each of this dependencies separately.</p>
-<h2><a class="header" href="#architecture-overview" id="architecture-overview">Architecture Overview</a></h2>
+<h2 id="architecture-overview"><a class="header" href="#architecture-overview">Architecture Overview</a></h2>
 <p><img src="../images/shibuya-architecture.png" alt="image" /></p>
-<h2><a class="header" href="#shibuya-controller" id="shibuya-controller">Shibuya-controller</a></h2>
+<h2 id="shibuya-controller"><a class="header" href="#shibuya-controller">Shibuya-controller</a></h2>
 <p>We don't limit how you deploy the shibuya controller. The process it self is listening on 8080 port. Each shibuya controller is configured by a configuration file called <code>config.json</code>. We will discuss in details in the next section. <a href="./config.html">link</a></p>
-<h2><a class="header" href="#kubernetes" id="kubernetes">Kubernetes</a></h2>
+<h2 id="kubernetes"><a class="header" href="#kubernetes">Kubernetes</a></h2>
 <p>Current supported versions should work well with Shibuya.</p>
 <p>Please follow below steps to setup the k8s cluster:</p>
 <ol>
 <li><code>kubect create ns shibuya-executors</code></li>
 </ol>
-<h2><a class="header" href="#load-generators" id="load-generators">Load generators</a></h2>
-<h3><a class="header" href="#jmeter" id="jmeter">Jmeter</a></h3>
+<h2 id="load-generators"><a class="header" href="#load-generators">Load generators</a></h2>
+<h3 id="jmeter"><a class="header" href="#jmeter">Jmeter</a></h3>
 <p>Currently Jmeter is the only engine Shibuya supports. (We need to provide a public Jmeter image)</p>
-<h2><a class="header" href="#object-storage" id="object-storage">Object Storage</a></h2>
+<h2 id="object-storage"><a class="header" href="#object-storage">Object Storage</a></h2>
 <p>We use object storage to store all the test plans and their related files, for example, csv files.
 Currently we support two types of storage:</p>
 <ol>
@@ -194,11 +194,11 @@ Currently we support two types of storage:</p>
 <li>GCP bucket.</li>
 </ol>
 <p>Please go to <a href="./object_storage.html">here</a> to see the detail guide.</p>
-<h2><a class="header" href="#mysql" id="mysql">MySQL</a></h2>
+<h2 id="mysql"><a class="header" href="#mysql">MySQL</a></h2>
 <p>Internally, we are using fork of MySQL, MariaDB. But current versions of MySQL should work well with Shibuya.</p>
 <p>All the schema files are stored under db folder. You just need to load the schemas into the database.</p>
-<h2><a class="header" href="#grafana" id="grafana">Grafana</a></h2>
-<h2><a class="header" href="#prometheus" id="prometheus">Prometheus</a></h2>
+<h2 id="grafana"><a class="header" href="#grafana">Grafana</a></h2>
+<h2 id="prometheus"><a class="header" href="#prometheus">Prometheus</a></h2>
 
                     </main>
 

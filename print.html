@@ -165,7 +165,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
+                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
 <p>Shibuya is a load test scheduling tool.</p>
 <p>This book will provide two types of guides(Please check the links in the left index):</p>
 <ol>
@@ -173,10 +173,10 @@
 <li>People who are using Shibuya. <a href="user/user_guide_intro.html">click here</a></li>
 <li>People who are Shibuya developers.</li>
 </ol>
-<h1><a class="header" href="#how-to-run-shibuya" id="how-to-run-shibuya">How to Run Shibuya</a></h1>
+<h1 id="how-to-run-shibuya"><a class="header" href="#how-to-run-shibuya">How to Run Shibuya</a></h1>
 <p>In this chapter, we will discuss how you can setup Shibuya as a service, internally or on public cloud, so that you can provide Shibuya as a service to your users.</p>
 <p>Let's start with basic requirements.</p>
-<h1><a class="header" href="#setup-the-dependencies" id="setup-the-dependencies">Setup the dependencies</a></h1>
+<h1 id="setup-the-dependencies"><a class="header" href="#setup-the-dependencies">Setup the dependencies</a></h1>
 <p>Shibuya relies on below components:</p>
 <ul>
 <li>shibuya-controller: The actual process that handles all the Shibuya business logic</li>
@@ -186,20 +186,20 @@
 <li>Prometheus: Metrics collected from the load generators will be scraped by Prom.</li>
 </ul>
 <p>We will discuss each of this dependencies separately.</p>
-<h2><a class="header" href="#architecture-overview" id="architecture-overview">Architecture Overview</a></h2>
+<h2 id="architecture-overview"><a class="header" href="#architecture-overview">Architecture Overview</a></h2>
 <p><img src="ops/../images/shibuya-architecture.png" alt="image" /></p>
-<h2><a class="header" href="#shibuya-controller" id="shibuya-controller">Shibuya-controller</a></h2>
+<h2 id="shibuya-controller"><a class="header" href="#shibuya-controller">Shibuya-controller</a></h2>
 <p>We don't limit how you deploy the shibuya controller. The process it self is listening on 8080 port. Each shibuya controller is configured by a configuration file called <code>config.json</code>. We will discuss in details in the next section. <a href="ops/./config.html">link</a></p>
-<h2><a class="header" href="#kubernetes" id="kubernetes">Kubernetes</a></h2>
+<h2 id="kubernetes"><a class="header" href="#kubernetes">Kubernetes</a></h2>
 <p>Current supported versions should work well with Shibuya.</p>
 <p>Please follow below steps to setup the k8s cluster:</p>
 <ol>
 <li><code>kubect create ns shibuya-executors</code></li>
 </ol>
-<h2><a class="header" href="#load-generators" id="load-generators">Load generators</a></h2>
-<h3><a class="header" href="#jmeter" id="jmeter">Jmeter</a></h3>
+<h2 id="load-generators"><a class="header" href="#load-generators">Load generators</a></h2>
+<h3 id="jmeter"><a class="header" href="#jmeter">Jmeter</a></h3>
 <p>Currently Jmeter is the only engine Shibuya supports. (We need to provide a public Jmeter image)</p>
-<h2><a class="header" href="#object-storage" id="object-storage">Object Storage</a></h2>
+<h2 id="object-storage"><a class="header" href="#object-storage">Object Storage</a></h2>
 <p>We use object storage to store all the test plans and their related files, for example, csv files.
 Currently we support two types of storage:</p>
 <ol>
@@ -207,12 +207,12 @@ Currently we support two types of storage:</p>
 <li>GCP bucket.</li>
 </ol>
 <p>Please go to <a href="ops/./object_storage.html">here</a> to see the detail guide.</p>
-<h2><a class="header" href="#mysql" id="mysql">MySQL</a></h2>
+<h2 id="mysql"><a class="header" href="#mysql">MySQL</a></h2>
 <p>Internally, we are using fork of MySQL, MariaDB. But current versions of MySQL should work well with Shibuya.</p>
 <p>All the schema files are stored under db folder. You just need to load the schemas into the database.</p>
-<h2><a class="header" href="#grafana" id="grafana">Grafana</a></h2>
-<h2><a class="header" href="#prometheus" id="prometheus">Prometheus</a></h2>
-<h1><a class="header" href="#configuration-explanation" id="configuration-explanation">Configuration Explanation</a></h1>
+<h2 id="grafana"><a class="header" href="#grafana">Grafana</a></h2>
+<h2 id="prometheus"><a class="header" href="#prometheus">Prometheus</a></h2>
+<h1 id="configuration-explanation"><a class="header" href="#configuration-explanation">Configuration Explanation</a></h1>
 <p>Below is a sample configuration of Shibuya. We will explain them by sections.</p>
 <pre><code>{
     &quot;bg_color&quot;: &quot;#fff&quot;,
@@ -266,12 +266,12 @@ Currently we support two types of storage:</p>
     }
 }
 </code></pre>
-<h2><a class="header" href="#general-configs" id="general-configs">General Configs</a></h2>
+<h2 id="general-configs"><a class="header" href="#general-configs">General Configs</a></h2>
 <pre><code>    &quot;bg_color&quot;: &quot;#fff&quot;,  # UI bg colour. Could be useful when you are using Shibuya in multiple networking environments.
     &quot;project_home&quot;: &quot;&quot;,
     &quot;upload_file_help&quot;: &quot;&quot;, # Document link for uploading the file
 </code></pre>
-<h2><a class="header" href="#auth-related" id="auth-related">Auth related</a></h2>
+<h2 id="auth-related"><a class="header" href="#auth-related">Auth related</a></h2>
 <p>All authentication related logic is configured by this block</p>
 <pre><code>    &quot;auth_config&quot;: {
         &quot;admin_users&quot;: [], # admin 
@@ -283,13 +283,13 @@ Currently we support two types of storage:</p>
         &quot;no_auth&quot;: true # Turn off auth completely
     }
 </code></pre>
-<h2><a class="header" href="#http-client" id="http-client">HTTP client</a></h2>
+<h2 id="http-client"><a class="header" href="#http-client">HTTP client</a></h2>
 <p>Once this is configured, all the traffic will pass through proxy. Including metrics streaming and requests to k8s cluster.</p>
 <pre><code>    &quot;http_config&quot;: {
         &quot;proxy&quot;: &quot;&quot;
     }
 </code></pre>
-<h2><a class="header" href="#db-configurations" id="db-configurations">DB configurations</a></h2>
+<h2 id="db-configurations"><a class="header" href="#db-configurations">DB configurations</a></h2>
 <pre><code>    &quot;db&quot;: {
         &quot;host&quot;: &quot;db&quot;,
         &quot;user&quot;: &quot;root&quot;,
@@ -297,7 +297,7 @@ Currently we support two types of storage:</p>
         &quot;database&quot;: &quot;shibuya&quot;
     }
 </code></pre>
-<h2><a class="header" href="#executor-configurations" id="executor-configurations">Executor configurations</a></h2>
+<h2 id="executor-configurations"><a class="header" href="#executor-configurations">Executor configurations</a></h2>
 <p>Shibuya supports two types of clusters:</p>
 <ol>
 <li>on demand, specifically, GKE in Google Cloud Platform. </li>
@@ -320,10 +320,10 @@ Currently we support two types of storage:</p>
         &quot;pull_policy&quot;: &quot;IfNotPresent&quot;
     }
 </code></pre>
-<h1><a class="header" href="#object-storage-1" id="object-storage-1">Object Storage</a></h1>
-<h1><a class="header" href="#how-to-use-shibuya" id="how-to-use-shibuya">How to use Shibuya</a></h1>
-<h1><a class="header" href="#basic-concepts" id="basic-concepts">Basic Concepts</a></h1>
-<h1><a class="header" href="#shibuya-developers" id="shibuya-developers">Shibuya developers</a></h1>
+<h1 id="object-storage-1"><a class="header" href="#object-storage-1">Object Storage</a></h1>
+<h1 id="how-to-use-shibuya"><a class="header" href="#how-to-use-shibuya">How to use Shibuya</a></h1>
+<h1 id="basic-concepts"><a class="header" href="#basic-concepts">Basic Concepts</a></h1>
+<h1 id="shibuya-developers"><a class="header" href="#shibuya-developers">Shibuya developers</a></h1>
 
                     </main>
 
