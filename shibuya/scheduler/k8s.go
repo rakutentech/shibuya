@@ -516,7 +516,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 			Labels: labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(1),
+			Replicas: int32Ptr(config.SC.IngressConfig.Replicas),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},

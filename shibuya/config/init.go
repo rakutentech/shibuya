@@ -92,11 +92,13 @@ type LogFormat struct {
 }
 
 type IngressConfig struct {
-	Image string `json:"image"`
+	Image    string `json:"image"`
+	Replicas int32  `json:"replicas"`
 }
 
 var defaultIngressConfig = IngressConfig{
-	Image: "quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.20.0",
+	Image:    "quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.20.0",
+	Replicas: 1,
 }
 
 type ShibuyaConfig struct {
