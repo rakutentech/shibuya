@@ -128,7 +128,16 @@ func loadContext() string {
 }
 
 func (sc *ShibuyaConfig) makeHTTPClients() {
-	sc.HTTPClient = &http.Client{}
+	// Customize the Transport to have larger connection pool
+	defaultRoundTripper := http.DefaultTransport
+	defaultTransportPointer, ok := defaultRoundTripper.(*http.Transport)
+	if !ok {
+		log.Fatalln("defaultRoundTripper not an *http.Transport")
+	}
+	defaultTransport := *defaultTransportPointer
+	defaultTransport.MaxIdleConns = 1000
+	defaultTransport.MaxIdleConnsPerHost = 100
+	sc.HTTPClient = &http.Client{Transport: &defaultTransport}
 	sc.HTTPProxyClient = sc.HTTPClient
 	if sc.HttpConfig.Proxy == "" {
 		return
@@ -138,7 +147,9 @@ func (sc *ShibuyaConfig) makeHTTPClients() {
 		log.Fatal(err)
 	}
 	rt := &http.Transport{
-		Proxy: http.ProxyURL(proxyUrl),
+		Proxy:               http.ProxyURL(proxyUrl),
+		MaxIdleConns:        1000,
+		MaxIdleConnsPerHost: 100,
 	}
 	sc.HTTPProxyClient = &http.Client{Transport: rt}
 }
