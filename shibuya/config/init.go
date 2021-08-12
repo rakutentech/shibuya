@@ -46,6 +46,12 @@ type HostAlias struct {
 	IP       string `json:"IP"`
 }
 
+type Toleration struct {
+	Key	 string		    `json:"key"`
+	Value	 string 	    `json:"value"`
+	Effect   apiv1.TaintEffect  `json:"effect"`
+}
+
 type ExecutorConfig struct {
 	InCluster       bool                `json:"in_cluster"`
 	Namespace       string              `json:"namespace"`
@@ -55,6 +61,7 @@ type ExecutorConfig struct {
 	JmeterContainer *JmeterContainer    `json:"jmeter"`
 	HostAliases     []*HostAlias        `json:"host_aliases,omitempty"`
 	NodeAffinity    []map[string]string `json:"node_affinity"`
+	Tolerations     []Toleration	    `json:"tolerations"`
 }
 
 type ExecutorContainer struct {
