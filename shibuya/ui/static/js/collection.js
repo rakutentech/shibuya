@@ -111,6 +111,9 @@ var Collection = Vue.component("collection", {
                 this.purge_in_progress = false;
             }
             return this.purge_in_progress && t;
+        },
+        collectionConfigDownloadUrl: function () {
+            return "api/collections/" + this.collection_id + "/config";
         }
     },
     created: function () {

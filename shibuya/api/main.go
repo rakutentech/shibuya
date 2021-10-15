@@ -798,6 +798,7 @@ func (s *ShibuyaAPI) InitRoutes() Routes {
 		&Route{"stream", "GET", "/api/collections/:collection_id/stream", s.streamCollectionMetrics},
 		&Route{"get_plan_log", "GET", "/api/collections/:collection_id/logs/:plan_id", s.planLogHandler},
 		&Route{"upload_collection_config", "PUT", "/api/collections/:collection_id/config", s.collectionUploadHandler},
+		&Route{"get_collection_config", "GET", "/api/collections/:collection_id/config", s.collectionConfigGetHandler},
 
 		&Route{"files", "GET", "/api/files/:kind/:id/:name", s.fileDownloadHandler},
 
