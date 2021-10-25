@@ -10,6 +10,7 @@ import (
 	"github.com/rakutentech/shibuya/shibuya/api"
 	"github.com/rakutentech/shibuya/shibuya/ui"
 	log "github.com/sirupsen/logrus"
+	_ "go.uber.org/automaxprocs"
 )
 
 func main() {

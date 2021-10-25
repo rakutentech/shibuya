@@ -18,6 +18,7 @@ require (
 	github.com/prometheus/client_golang v1.1.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.5.1
+	go.uber.org/automaxprocs v1.4.0
 	golang.org/x/net v0.0.0-20201216054612-986b41b23924 // indirect
 	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
 	golang.org/x/sys v0.0.0-20201221093633-bc327ba9c2f0 // indirect
