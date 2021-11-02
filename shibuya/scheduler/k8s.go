@@ -100,9 +100,8 @@ func prepareAffinity(collectionID int64) *apiv1.Affinity {
 	if config.SC.ExecutorConfig.Cluster.OnDemand {
 		affinity.NodeAffinity = collectionNodeAffinity(collectionID)
 		return affinity
-	} else {
-		affinity.PodAffinity = collectionPodAffinity(collectionID)
 	}
+	affinity.PodAffinity = collectionPodAffinity(collectionID)
 	na := config.SC.ExecutorConfig.NodeAffinity
 	if len(na) > 0 {
 		t := na[0]
