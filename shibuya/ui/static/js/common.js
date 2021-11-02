@@ -1,5 +1,5 @@
 var EventBus = new Vue();
-var SYNC_INTERVAL = 10000;
+var SYNC_INTERVAL = 5000;
 Vue.http.options.root = "/api";
 Vue.http.options.emulateJSON = true;
 
