@@ -562,6 +562,13 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 						{
 							Name:  "nginx-ingress-controller",
 							Image: config.SC.IngressConfig.Image,
+							Resources: apiv1.ResourceRequirements{
+								// Limits are whatever Kubernetes sets as the max value
+								Requests: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(config.SC.IngressConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(config.SC.IngressConfig.Mem),
+								},
+							},
 							Args: []string{
 								"/nginx-ingress-controller",
 								fmt.Sprintf("--ingress-class=%s", igName),
