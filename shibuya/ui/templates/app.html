@@ -114,7 +114,7 @@
                             <i class="far fa-question-circle fa-xs" style="color:black;"></i>
                         </a>
                         <form enctype="multipart/form-data" style="display: inline-flex; padding-left: 1em;" novalidate>
-                            <label for="collectionFile" class="btn btn-outline-dark" style="border-radius: 1.5em;" title=".csv .json etc"><i class="fas fa-file-upload"></i></label>
+                            <label for="collectionFile" class="btn btn-outline-dark" style="cursor: pointer; border-radius: 1.5em;" title=".csv .json etc"><i class="fas fa-file-upload"></i></label>
                             <input type="file" name="collectionFile" @click="makeUploadURL('data')" @change="upload($event)" id="collectionFile" accept=".csv, .json, .txt" style="display: none"/>
                         </form>
                     </div>
@@ -129,16 +129,21 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="card-title" style="display: inline-flex; align-items: center;" title="Upload your config.yaml">
+                    <div class="card-title" style="display: inline-flex; align-items: center; margin-bottom: 1em" title="Manage your config files">
                         <h5>Plan config</h5>
                         <a :href="upload_file_help" target="_blank">
                             <i class="far fa-question-circle fa-xs" style="color:black; padding-left:0.3em;"></i>
                         </a>
                         <form enctype="multipart/form-data" style="padding-left: 1em;" novalidate>
-                            <label for="collectionYAML" class="btn btn-outline-dark" style="border-radius: 1.5em;"><i class="fas fa-cog"></i></label>
+                            <!-- use some trick to make the icon smaller(38px instead of 42px) -->
+                            <label for="collectionYAML" class="btn btn-outline-dark" style="cursor: pointer; border-radius: 1.5em; width: 38px; margin-bottom: 0px;"><i class="fas fa-cog" style="margin-left: -2px"></i></label>
                             <input type="file" name="collectionYAML" @click="makeUploadURL('yaml')" @change="upload($event)" id="collectionYAML" accept=".yaml, .yml" style="display: none"/>
                         </form>
+                        <a class="btn btn-outline-dark" title="Download YAML config file" v-bind:href="collectionConfigDownloadUrl" style="border-radius: 1.5em; margin-left: 0.3em">
+                            <i class="fas fa-file-download"></i>
+                        </a>
                     </div>
+
                     <table class="table table-striped table-hover table-sm">
                         <thead>
                             <th>Plan ID</th>
