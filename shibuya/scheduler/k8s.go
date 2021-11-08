@@ -71,12 +71,37 @@ func collectionNodeAffinity(collectionID int64) *apiv1.NodeAffinity {
 	return makeNodeAffinity("collection_id", collectionIDStr)
 }
 
+func makePodAffinity(key, value string) *apiv1.PodAffinity {
+	podAffinity := &apiv1.PodAffinity{
+		PreferredDuringSchedulingIgnoredDuringExecution: []apiv1.WeightedPodAffinityTerm{
+			{
+				Weight: 100,
+				PodAffinityTerm: apiv1.PodAffinityTerm{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							key: value,
+						},
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
+	return podAffinity
+}
+
+func collectionPodAffinity(collectionID int64) *apiv1.PodAffinity {
+	collectionIDStr := fmt.Sprintf("%d", collectionID)
+	return makePodAffinity("collection", collectionIDStr)
+}
+
 func prepareAffinity(collectionID int64) *apiv1.Affinity {
 	affinity := &apiv1.Affinity{}
 	if config.SC.ExecutorConfig.Cluster.OnDemand {
 		affinity.NodeAffinity = collectionNodeAffinity(collectionID)
 		return affinity
 	}
+	affinity.PodAffinity = collectionPodAffinity(collectionID)
 	na := config.SC.ExecutorConfig.NodeAffinity
 	if len(na) > 0 {
 		t := na[0]
@@ -516,7 +541,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 			Labels: labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(1),
+			Replicas: int32Ptr(config.SC.IngressConfig.Replicas),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -537,6 +562,13 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 						{
 							Name:  "nginx-ingress-controller",
 							Image: config.SC.IngressConfig.Image,
+							Resources: apiv1.ResourceRequirements{
+								// Limits are whatever Kubernetes sets as the max value
+								Requests: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(config.SC.IngressConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(config.SC.IngressConfig.Mem),
+								},
+							},
 							Args: []string{
 								"/nginx-ingress-controller",
 								fmt.Sprintf("--ingress-class=%s", igName),
