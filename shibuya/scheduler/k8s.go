@@ -67,11 +67,11 @@ func makeNodeAffinity(key, value string) *apiv1.NodeAffinity {
 }
 
 func makeTolerations(key string, value string, effect apiv1.TaintEffect) apiv1.Toleration {
-	toleration := apiv1.Toleration {
-		Effect: effect,
-		Key: key,
+	toleration := apiv1.Toleration{
+		Effect:   effect,
+		Key:      key,
 		Operator: apiv1.TolerationOpEqual,
-		Value: value,
+		Value:    value,
 	}
 	return toleration
 }
@@ -124,7 +124,7 @@ func prepareAffinity(collectionID int64) *apiv1.Affinity {
 func prepareTolerations() []apiv1.Toleration {
 	tolerations := []apiv1.Toleration{}
 	na := config.SC.ExecutorConfig.Tolerations
-        
+
 	if len(na) > 0 {
 		for _, t := range na {
 			tolerations = append(tolerations, makeTolerations(t.Key, t.Value, t.Effect))
@@ -592,6 +592,10 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 							Resources: apiv1.ResourceRequirements{
 								// Limits are whatever Kubernetes sets as the max value
 								Requests: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(config.SC.IngressConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(config.SC.IngressConfig.Mem),
+								},
+								Limits: apiv1.ResourceList{
 									apiv1.ResourceCPU:    resource.MustParse(config.SC.IngressConfig.CPU),
 									apiv1.ResourceMemory: resource.MustParse(config.SC.IngressConfig.Mem),
 								},
