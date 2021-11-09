@@ -66,6 +66,16 @@ func makeNodeAffinity(key, value string) *apiv1.NodeAffinity {
 	return nodeAffinity
 }
 
+func makeTolerations(key string, value string, effect apiv1.TaintEffect) apiv1.Toleration {
+	toleration := apiv1.Toleration {
+		Effect: effect,
+		Key: key,
+		Operator: apiv1.TolerationOpEqual,
+		Value: value,
+	}
+	return toleration
+}
+
 func collectionNodeAffinity(collectionID int64) *apiv1.NodeAffinity {
 	collectionIDStr := fmt.Sprintf("%d", collectionID)
 	return makeNodeAffinity("collection_id", collectionIDStr)
@@ -111,6 +121,18 @@ func prepareAffinity(collectionID int64) *apiv1.Affinity {
 	return affinity
 }
 
+func prepareTolerations() []apiv1.Toleration {
+	tolerations := []apiv1.Toleration{}
+	na := config.SC.ExecutorConfig.Tolerations
+        
+	if len(na) > 0 {
+		for _, t := range na {
+			tolerations = append(tolerations, makeTolerations(t.Key, t.Value, t.Effect))
+		}
+	}
+	return tolerations
+}
+
 func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 	if kcm.HostAliases != nil {
 		hostAliases := []apiv1.HostAlias{}
@@ -126,7 +148,8 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 }
 
 func (kcm *K8sClientManager) generateEngineDeployment(engineName string, labels map[string]string,
-	containerConfig *config.ExecutorContainer, affinity *apiv1.Affinity) appsv1.Deployment {
+	containerConfig *config.ExecutorContainer, affinity *apiv1.Affinity,
+	tolerations []apiv1.Toleration) appsv1.Deployment {
 	t := true
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -145,6 +168,7 @@ func (kcm *K8sClientManager) generateEngineDeployment(engineName string, labels 
 				},
 				Spec: apiv1.PodSpec{
 					Affinity:                     affinity,
+					Tolerations:                  tolerations,
 					ServiceAccountName:           kcm.serviceAccount,
 					AutomountServiceAccountToken: &t,
 					ImagePullSecrets: []apiv1.LocalObjectReference{
@@ -264,7 +288,8 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	engineName := makeEngineName(projectID, collectionID, planID, engineID)
 	labels := makeEngineLabel(projectID, collectionID, planID, engineName)
 	affinity := prepareAffinity(collectionID)
-	engineConfig := kcm.generateEngineDeployment(engineName, labels, containerConfig, affinity)
+	tolerations := prepareTolerations()
+	engineConfig := kcm.generateEngineDeployment(engineName, labels, containerConfig, affinity, tolerations)
 	if err := kcm.deploy(&engineConfig); err != nil {
 		return err
 	}
@@ -533,6 +558,7 @@ func int32Ptr(i int32) *int32 { return &i }
 func (kcm *K8sClientManager) generateControllerDeployment(igName string, collectionID, projectID int64) appsv1.Deployment {
 	publishService := fmt.Sprintf("--publish-service=$(POD_NAMESPACE)/%s", igName)
 	affinity := prepareAffinity(collectionID)
+	tolerations := prepareTolerations()
 	t := true
 	labels := makeIngressLabel(collectionID, projectID)
 	deployment := appsv1.Deployment{
@@ -555,6 +581,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 				},
 				Spec: apiv1.PodSpec{
 					Affinity:                      affinity,
+					Tolerations:                   tolerations,
 					ServiceAccountName:            kcm.serviceAccount,
 					TerminationGracePeriodSeconds: new(int64),
 					AutomountServiceAccountToken:  &t,
