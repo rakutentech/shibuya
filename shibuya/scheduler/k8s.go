@@ -829,6 +829,57 @@ func (kcm *K8sClientManager) GetPodsMetrics(collectionID, planID int64) (map[str
 	return result, nil
 }
 
+func (kcm *K8sClientManager) GetCollectionEnginesDetail(collectionID int64) (*smodel.CollectionDetails, error) {
+	labelSelector := fmt.Sprintf("collection=%d", collectionID)
+	pods, err := kcm.GetPods(labelSelector, "")
+	if err != nil {
+		return nil, err
+	}
+	if len(pods) == 0 {
+		return nil, &NoResourcesFoundErr{Err: err, Message: "Cannot find the engines"}
+	}
+	collectionDetails := new(smodel.CollectionDetails)
+	ingressUrl, err := kcm.GetIngressUrl(collectionID)
+	if err != nil {
+		collectionDetails.IngressIP = err.Error()
+	} else {
+		collectionDetails.IngressIP = ingressUrl
+	}
+	engines := []*smodel.EngineStatus{}
+	for _, p := range pods {
+		es := new(smodel.EngineStatus)
+		es.Name = p.Name
+		es.CreatedTime = p.ObjectMeta.CreationTimestamp.Time
+		es.Status = string(p.Status.Phase)
+		engines = append(engines, es)
+	}
+	collectionDetails.Engines = engines
+	return collectionDetails, nil
+}
+
+func (kcm *K8sClientManager) ResetIngress(projectID, collectionID int64) error {
+	igName := makeIngressClass(collectionID)
+	if err := kcm.client.CoreV1().Services(kcm.Namespace).Delete(igName, &metav1.DeleteOptions{}); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	go func() {
+		for {
+			// we should only recreate the svc when the previous svc was deleted otherwise the newly created svc
+			// could be deleted again.
+			time.Sleep(3 * time.Second)
+			if _, err := kcm.client.CoreV1().Services(kcm.Namespace).Get(igName, metav1.GetOptions{}); err != nil {
+				deployment := kcm.generateControllerDeployment(igName, collectionID, projectID)
+				kcm.expose(igName, &deployment)
+				return
+			}
+			continue
+		}
+	}()
+	return nil
+}
+
 func getEngineNumber(podName string) string {
 	return strings.Split(podName, "-")[4]
 }

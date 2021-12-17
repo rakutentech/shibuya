@@ -26,8 +26,10 @@ var Collection = Vue.component("collection", {
             on_demand_cluster: on_demand_cluster,
             upload_file_help: upload_file_help,
             showing_log: false,
+            showing_engines_detail: false,
             log_content: "",
             log_modal_title: "",
+            engines_detail: {},
             upload_url: ""
         }
     },
@@ -114,6 +116,18 @@ var Collection = Vue.component("collection", {
         },
         collectionConfigDownloadUrl: function () {
             return "api/collections/" + this.collection_id + "/config";
+        },
+        engine_remaining_time: function () {
+            var engines_detail = this.engines_detail;
+            var engine_life_span = gcDuration; // value we get from the ui handler
+            if (engines_detail.engines.length > 0) {
+                var e = engines_detail.engines[0],
+                    now = Date.now(),
+                    created_time = new Date(e.created_time)
+                var running_time = (now - created_time) / 1000 / 60;
+                return Math.ceil(engine_life_span - running_time);
+            }
+            return engine_life_span;
         }
     },
     created: function () {
@@ -289,6 +303,33 @@ var Collection = Vue.component("collection", {
             return {
                 width: p
             }
+        },
+        showEnginesDetail: function (e) {
+            e.preventDefault();
+            var url = "collections/" + this.collection.id + "/engines_detail";
+            this.$http.get(url).then(
+                function (resp) {
+                    this.showing_engines_detail = true;
+                    this.engines_detail = resp.body;
+                },
+                function (resp) {
+                    alert(resp.body.message);
+                }
+            );
+        },
+        resetIngress: function (e) {
+            e.preventDefault();
+            var url = "collections/" + this.collection.id + "/engines/ingress";
+            this.$http.put(url).then(
+                function (resp) {
+                    alert("Resetting ingress in progress, please wait and check again...Going to close the dialog after 3 seconds.");
+                    var self = this;
+                    setTimeout(function () { self.showing_engines_detail = false; }, 3000);
+                },
+                function (resp) {
+
+                }
+            );
         },
         viewPlanLog: function (e, plan_id) {
             e.preventDefault();

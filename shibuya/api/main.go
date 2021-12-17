@@ -15,6 +15,7 @@ import (
 	"github.com/rakutentech/shibuya/shibuya/controller"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/object_storage"
+	"github.com/rakutentech/shibuya/shibuya/scheduler"
 	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	utils "github.com/rakutentech/shibuya/shibuya/utils"
 	log "github.com/sirupsen/logrus"
@@ -52,20 +53,36 @@ func (s *ShibuyaAPI) makeFailMessage(w http.ResponseWriter, message string, stat
 	s.jsonise(w, statusCode, messageObj)
 }
 
-func (s *ShibuyaAPI) handleErrors(w http.ResponseWriter, err error) {
-	var dbe *model.DBError
-	if errors.As(err, &dbe) {
-		s.makeFailMessage(w, dbe.Error(), http.StatusNotFound)
-		return
-	}
+// handles errors from other packages, like model, scheduler, etc.
+// unhandle errors will be returned
+func (s *ShibuyaAPI) handleErrorsFromExt(w http.ResponseWriter, err error) error {
+	var (
+		dbe                   *model.DBError
+		noResourcesFoundError *scheduler.NoResourcesFoundErr
+	)
 	switch {
-	case errors.Is(err, noPermissionErr):
-		s.makeFailMessage(w, err.Error(), http.StatusForbidden)
-	case errors.Is(err, invalidRequestErr):
-		s.makeFailMessage(w, err.Error(), http.StatusBadRequest)
-	default:
-		log.Printf("api error: %v", err)
-		s.makeFailMessage(w, err.Error(), http.StatusInternalServerError)
+	case errors.As(err, &dbe):
+		s.makeFailMessage(w, dbe.Error(), http.StatusNotFound)
+		return nil
+	case errors.As(err, &noResourcesFoundError):
+		s.makeFailMessage(w, noResourcesFoundError.Message, http.StatusNotFound)
+		return nil
+	}
+	return err
+}
+
+func (s *ShibuyaAPI) handleErrors(w http.ResponseWriter, err error) {
+	unhandledError := s.handleErrorsFromExt(w, err)
+	if unhandledError != nil { // if unhandleError is not nil, it's the same as original error
+		switch {
+		case errors.Is(err, noPermissionErr):
+			s.makeFailMessage(w, err.Error(), http.StatusForbidden)
+		case errors.Is(err, invalidRequestErr):
+			s.makeFailMessage(w, err.Error(), http.StatusBadRequest)
+		default:
+			log.Printf("api error: %v", err)
+			s.makeFailMessage(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -585,6 +602,33 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	collection, err := getCollection(params.ByName("collection_id"))
+	if err != nil {
+		s.handleErrors(w, err)
+		return
+	}
+	collectionDetails, err := s.ctr.Scheduler.GetCollectionEnginesDetail(collection.ID)
+	if err != nil {
+		s.handleErrors(w, err)
+		return
+	}
+	s.jsonise(w, http.StatusOK, collectionDetails)
+}
+
+func (s *ShibuyaAPI) collectionIngressUrlHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	collection, err := getCollection(params.ByName("collection_id"))
+	if err != nil {
+		s.handleErrors(w, err)
+		return
+	}
+	err = s.ctr.Scheduler.ResetIngress(collection.ProjectID, collection.ID)
+	if err != nil {
+		s.handleErrors(w, err)
+		return
+	}
+}
+
 func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	collection, err := getCollection(params.ByName("collection_id"))
 	if err != nil {
@@ -784,6 +828,8 @@ func (s *ShibuyaAPI) InitRoutes() Routes {
 		&Route{"get_collection_files", "GET", "/api/collections/:collection_id/files", s.collectionFilesGetHandler},
 		&Route{"upload_collection_files", "PUT", "/api/collections/:collection_id/files", s.collectionFilesUploadHandler},
 		&Route{"delete_collection_files", "DELETE", "/api/collections/:collection_id/files", s.collectionFilesDeleteHandler},
+		&Route{"get_collection_engines_detail", "GET", "/api/collections/:collection_id/engines_detail", s.collectionEnginesDetailHandler},
+		&Route{"reset_collection_ingress", "PUT", "/api/collections/:collection_id/engines/ingress", s.collectionIngressUrlHandler},
 		&Route{"deploy", "POST", "/api/collections/:collection_id/deploy", s.collectionDeploymentHandler},
 		&Route{"trigger", "POST", "/api/collections/:collection_id/trigger", s.collectionTriggerHandler},
 		&Route{"stop", "POST", "/api/collections/:collection_id/stop", s.collectionTermHandler},

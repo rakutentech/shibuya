@@ -22,6 +22,8 @@ type EngineScheduler interface {
 	GetPodsMetrics(collectionID, planID int64) (map[string]apiv1.ResourceList, error)
 	PodReadyCount(collectionID int64) int
 	DownloadPodLog(collectionID, planID int64) (string, error)
+	GetCollectionEnginesDetail(collectionID int64) (*smodel.CollectionDetails, error)
+	ResetIngress(projectID, collectionID int64) error
 }
 
 var FeatureUnavailable = errors.New("Feature unavailable")

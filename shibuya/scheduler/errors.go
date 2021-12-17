@@ -16,3 +16,12 @@ func makeSchedulerIngressError(err error) error {
 func makeIPNotAssignedError() error {
 	return fmt.Errorf("%w%s", IngressError, "IP is not assigned yet")
 }
+
+type NoResourcesFoundErr struct {
+	Err     error
+	Message string
+}
+
+func (e *NoResourcesFoundErr) Error() string {
+	return e.Message
+}

@@ -34,6 +34,17 @@ type NodesInfo struct {
 
 type AllNodesInfo map[string]*NodesInfo
 
+type EngineStatus struct {
+	Name        string    `json:"name"`
+	Status      string    `json:"status"`
+	CreatedTime time.Time `json:"created_time"`
+}
+
+type CollectionDetails struct {
+	IngressIP string          `json:"ingress_ip"`
+	Engines   []*EngineStatus `json:"engines"`
+}
+
 func GetPlanStatus(collectionID int64, jobs <-chan *PlanStatus, result chan<- *PlanStatus) {
 	for ps := range jobs {
 		if ps.Engines != ps.EnginesDeployed {
