@@ -360,6 +360,14 @@ func (cr *CloudRun) PodReadyCount(collectionID int64) int {
 	return len(items)
 }
 
+func (cr *CloudRun) GetCollectionEnginesDetail(collectionID int64) (*smodel.CollectionDetails, error) {
+	return nil, nil
+}
+
+func (cr *CloudRun) ResetIngress(projectID, collectionID int64) error {
+	return nil
+}
+
 func (cr *CloudRun) DownloadPodLog(collectionID, planID int64) (string, error) {
 	// Cloud run API does not support fetching the logs now.
 	engines, err := cr.getEnginesByCollectionPlan(collectionID, planID)

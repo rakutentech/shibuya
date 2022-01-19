@@ -15,6 +15,7 @@
         var is_admin = {{ .IsAdmin }}
         var project_home = {{ .ProjectHome }}
         var upload_file_help = {{ .UploadFileHelp }}
+        var gcDuration = {{ .GCDuration }}
     </script>
     <link href="/static/fontawesome/css/all.min.css" rel="stylesheet">
 </head>
@@ -152,8 +153,8 @@
                             <th>Duration</th>
                             <th>Engines <span v-if="hasEngineDashboard()">(<a :href="engineHealthGrafanaUrl()" target="_blank">Health <i class="fas fa-external-link-alt"></i></a>)</span></th>
                             <th>CSV Split</th>
-                            <th>Launch Status</th>
-                            <th>Testing progress</th>
+                            <th>Engine Status(<a href=":javascript;" @click="showEnginesDetail($event)">Detail</a>)</th>
+                            <th width="200px">Testing progress</th>
                             <th>logs</th>
                         </thead>
                         <tbody>
@@ -165,7 +166,7 @@
                                 <td>${p.engines}</td>
                                 <td>${p.csv_split}</td>
                                 <td>
-                                    <div class="progress" style="margin-top:4px;">
+                                    <div class="progress" style="margin-top:4px; width: 175px">
                                         <div class="progress-bar" role="progressbar" :style="progressBarStyle(p.plan_id)">${calPlanLaunchProgress(p.plan_id) + "%"}</div>
                                         <div :class="reachableClass(p.plan_id)" :style="reachableStyle(p.plan_id)">${reachableText(p.plan_id)}</div>
                                     </div>
@@ -209,6 +210,39 @@
                     <div slot="header">${log_modal_title}</div>
                     <div slot="body">
                         <pre>${log_content}</pre>
+                    </div>
+                </modal>
+                <modal v-if="showing_engines_detail" @close="showing_engines_detail = false">
+                    <div slot="header">
+                        <h4>Collection: ${collection.name}</h4>
+                    </div>
+                    <div slot="body">
+                        <p>Ingress IP: ${engines_detail.ingress_ip} <a href=";javascript" @click="resetIngress">reset</a></p>
+                        <div class="text-muted w-75">
+                            <p>If you encounter the following scenarios, please reset the ingress.</p>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item"><ins>Error with Ingress-IP is not assigned yet</ins> for long time</li>
+                                <li class="list-group-item"><ins>Error with Ingress-services not found</ins></li>
+                            </ul>
+                            <p class="mt-3">If resetting could not help, please purge and launch again.</p>
+                        </div>
+                        <p class="mt-2">Engines will be deleted after ${engine_remaining_time} mins.</p>
+                        <table class="table table-sm table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Engine Name</th>
+                                    <th>Status</th>
+                                    <th>Created Time(GMT)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="e in engines_detail.engines">
+                                    <td>${e.name}</td>
+                                    <td>${e.status}</td>
+                                    <td>${e.created_time}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </modal>
             </div>
@@ -291,7 +325,7 @@
             <div class="modal" style="display:block;">
                 <div class="modal-dialog modal-dialog-scrollable" style="max-width: 800px">
                     <div class="modal-content">
-                        <div class="modal-header">
+                        <div class="modal-header card-header">
                             <h4 class="modal-title"><slot name="header"></slot></h4>
                             <button @click="$emit('close')" type="button" class="close"><span aria-hidden="true">&times;</span></button>
                         </div>

@@ -35,6 +35,7 @@ type HomeResp struct {
 	EngineHealthDashboard string
 	ProjectHome           string
 	UploadFileHelp        string
+	GCDuration            float64
 }
 
 func (u *UI) homeHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -60,8 +61,10 @@ outer:
 	}
 	template := u.tmpl.Lookup("app.html")
 	sc := config.SC
+	gcDuration := config.SC.ExecutorConfig.Cluster.GCDuration
 	template.Execute(w, &HomeResp{account.Name, sc.BackgroundColour, sc.Context,
-		config.SC.ExecutorConfig.Cluster.OnDemand, IsAdmin, resultDashboardURL, engineHealthDashboardURL, sc.ProjectHome, sc.UploadFileHelp})
+		config.SC.ExecutorConfig.Cluster.OnDemand, IsAdmin, resultDashboardURL, engineHealthDashboardURL,
+		sc.ProjectHome, sc.UploadFileHelp, gcDuration})
 }
 
 func (u *UI) loginHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
