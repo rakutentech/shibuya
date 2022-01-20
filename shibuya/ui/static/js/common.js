@@ -29,7 +29,8 @@ var UploadMixin = {
                             alert("upload success!");
                             break;
                         default:
-                            alert(req.responseText);
+                            var resp = JSON.parse(req.response);
+                            alert(resp.message);
                     }
                     event.target.value = "";
                 });
