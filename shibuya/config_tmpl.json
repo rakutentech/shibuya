@@ -32,7 +32,8 @@
             "mem": "512Mi"
         },
         "pull_secret": "",
-        "pull_policy": "IfNotPresent"
+        "pull_policy": "IfNotPresent",
+        "max_engines_in_collection": 10
     },
     "dashboard": {
         "url": "http://localhost:3000",
