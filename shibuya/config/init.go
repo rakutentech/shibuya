@@ -47,21 +47,22 @@ type HostAlias struct {
 }
 
 type Toleration struct {
-	Key	 string		    `json:"key"`
-	Value	 string 	    `json:"value"`
-	Effect   apiv1.TaintEffect  `json:"effect"`
+	Key    string            `json:"key"`
+	Value  string            `json:"value"`
+	Effect apiv1.TaintEffect `json:"effect"`
 }
 
 type ExecutorConfig struct {
-	InCluster       bool                `json:"in_cluster"`
-	Namespace       string              `json:"namespace"`
-	Cluster         *ClusterConfig      `json:"cluster"`
-	ImagePullSecret string              `json:"pull_secret"`
-	ImagePullPolicy apiv1.PullPolicy    `json:"pull_policy"`
-	JmeterContainer *JmeterContainer    `json:"jmeter"`
-	HostAliases     []*HostAlias        `json:"host_aliases,omitempty"`
-	NodeAffinity    []map[string]string `json:"node_affinity"`
-	Tolerations     []Toleration	    `json:"tolerations"`
+	InCluster              bool                `json:"in_cluster"`
+	Namespace              string              `json:"namespace"`
+	Cluster                *ClusterConfig      `json:"cluster"`
+	ImagePullSecret        string              `json:"pull_secret"`
+	ImagePullPolicy        apiv1.PullPolicy    `json:"pull_policy"`
+	JmeterContainer        *JmeterContainer    `json:"jmeter"`
+	HostAliases            []*HostAlias        `json:"host_aliases,omitempty"`
+	NodeAffinity           []map[string]string `json:"node_affinity"`
+	Tolerations            []Toleration        `json:"tolerations"`
+	MaxEnginesInCollection int                 `json:"max_engines_in_collection"`
 }
 
 type ExecutorContainer struct {
@@ -204,6 +205,9 @@ func loadConfig() *ShibuyaConfig {
 		if sc.ExecutorConfig.Cluster.Kind == "" {
 			// if not specified, use k8s as default
 			sc.ExecutorConfig.Cluster.Kind = "k8s"
+		}
+		if sc.ExecutorConfig.MaxEnginesInCollection == 0 {
+			sc.ExecutorConfig.MaxEnginesInCollection = 500
 		}
 	}
 	return sc

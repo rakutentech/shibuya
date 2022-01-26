@@ -553,6 +553,7 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, makeNoPermissionErr("You don't own the project"))
 		return
 	}
+	totalEnginesRequired := 0
 	for _, ep := range e.Content.Tests {
 		plan, err := model.GetPlan(ep.PlanID)
 		if err != nil {
@@ -568,6 +569,13 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 			s.handleErrors(w, makeInvalidRequestError("You can only add plan within the same project"))
 			return
 		}
+		totalEnginesRequired += ep.Engines
+	}
+	if totalEnginesRequired > config.SC.ExecutorConfig.MaxEnginesInCollection {
+		errMsg := fmt.Sprintf("You are reaching the resource limit of the cluster. Requesting engines: %d, limit: %d.",
+			totalEnginesRequired, config.SC.ExecutorConfig.MaxEnginesInCollection)
+		s.handleErrors(w, makeInvalidRequestError(errMsg))
+		return
 	}
 	runningPlans, err := model.GetRunningPlansByCollection(collection.ID)
 	if err != nil {
