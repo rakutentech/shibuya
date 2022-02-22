@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	e "errors"
 	"fmt"
 	"io/ioutil"
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
@@ -28,9 +30,18 @@ import (
 
 type K8sClientManager struct {
 	*config.ExecutorConfig
-	client         *kubernetes.Clientset
-	metricClient   *metricsc.Clientset
-	serviceAccount string
+	client               *kubernetes.Clientset
+	metricClient         *metricsc.Clientset
+	serviceAccount       string
+	launchingCollections chan int64
+	purgingCollections   chan int64
+	localCache           sync.Map
+}
+
+type collectionLocalCache struct {
+	url          string
+	ingressError error
+	pods         []apiv1.Pod
 }
 
 func NewK8sClientManager(cfg *config.ClusterConfig) *K8sClientManager {
@@ -39,10 +50,13 @@ func NewK8sClientManager(cfg *config.ClusterConfig) *K8sClientManager {
 		log.Warning(err)
 	}
 	metricsc, err := config.GetMetricsClient()
-	return &K8sClientManager{
-		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount",
+	launchingCollections := make(chan int64)
+	purgingCollections := make(chan int64)
+	k := &K8sClientManager{
+		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount", launchingCollections, purgingCollections, sync.Map{},
 	}
-
+	go k.fetchInfoFromAPIServer()
+	return k
 }
 
 func makeNodeAffinity(key, value string) *apiv1.NodeAffinity {
@@ -131,6 +145,56 @@ func prepareTolerations() []apiv1.Toleration {
 		}
 	}
 	return tolerations
+}
+
+// This func is to fetch the info from api server and put the info into local cache
+// Users will not directly the apiserver
+func (kcm *K8sClientManager) fetchInfoFromAPIServer() {
+	seen := make(map[int64]context.CancelFunc)
+	ctx := context.Background()
+	for {
+		select {
+		case collectionID := <-kcm.purgingCollections:
+			if cancelFunc, ok := seen[collectionID]; ok {
+				cancelFunc()
+			} else {
+				log.Warnf("Could not find the cancel fun for collection %d", collectionID)
+			}
+		case collectionID := <-kcm.launchingCollections:
+			if _, ok := seen[collectionID]; ok {
+				continue
+			}
+			ctx, cancel := context.WithCancel(ctx)
+			go func(collectionID int64, ctx context.Context) {
+				defer func() {
+					delete(seen, collectionID)
+					kcm.localCache.Delete(collectionID)
+					log.Infof("Closed the goroutine for the collection %d", collectionID)
+				}()
+				log.Infof("Start the goroutine for fetch the info for collection %d", collectionID)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+						time.Sleep(3 * time.Second)
+						url, err := kcm.getIngressUrl(collectionID)
+						// we don't do any decision making here. Simply pass the error back to the caller
+						pods := kcm.getPodsByCollection(collectionID, "")
+						item := &collectionLocalCache{
+							url:          url,
+							pods:         pods,
+							ingressError: err,
+						}
+
+						log.Debugf("collection %d ingress info %v", collectionID, item)
+						kcm.localCache.Store(collectionID, item)
+					}
+				}
+			}(collectionID, ctx)
+			seen[collectionID] = cancel
+		}
+	}
 }
 
 func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
@@ -285,6 +349,7 @@ func (kcm *K8sClientManager) CreateService(serviceName string, engine appsv1.Dep
 
 func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	engineID int, containerConfig *config.ExecutorContainer) error {
+	kcm.launchingCollections <- collectionID
 	engineName := makeEngineName(projectID, collectionID, planID, engineID)
 	labels := makeEngineLabel(projectID, collectionID, planID, engineName)
 	affinity := prepareAffinity(collectionID)
@@ -306,7 +371,9 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	return nil
 }
 
-func (kcm *K8sClientManager) GetIngressUrl(collectionID int64) (string, error) {
+// This should func should be only called by the local cache goroutine
+// GetIngressUrl(with capital) will fetch the info from local cache and should be used by other callers
+func (kcm *K8sClientManager) getIngressUrl(collectionID int64) (string, error) {
 	igName := makeIngressClass(collectionID)
 	serviceClient, err := kcm.client.CoreV1().Services(kcm.Namespace).
 		Get(igName, metav1.GetOptions{})
@@ -331,6 +398,16 @@ func (kcm *K8sClientManager) GetIngressUrl(collectionID int64) (string, error) {
 	return fmt.Sprintf("%s:%d", ip_addr, exposedPort), nil
 }
 
+func (kcm *K8sClientManager) GetIngressUrl(collectionID int64) (string, error) {
+	v, ok := kcm.localCache.Load(collectionID)
+	if ok {
+		collectionLocal := v.(*collectionLocalCache)
+		return collectionLocal.url, collectionLocal.ingressError
+	}
+	log.Debugf("Fail to fetch from local cache for collection %d", collectionID)
+	return kcm.getIngressUrl(collectionID)
+}
+
 func (kcm *K8sClientManager) GetPods(labelSelector, fieldSelector string) ([]apiv1.Pod, error) {
 	podsClient, err := kcm.client.CoreV1().Pods(kcm.Namespace).
 		List(metav1.ListOptions{
@@ -343,13 +420,33 @@ func (kcm *K8sClientManager) GetPods(labelSelector, fieldSelector string) ([]api
 	return podsClient.Items, nil
 }
 
-func (kcm *K8sClientManager) GetPodsByCollection(collectionID int64, fieldSelector string) []apiv1.Pod {
+func (kcm *K8sClientManager) getPodsByCollection(collectionID int64, fieldSelector string) []apiv1.Pod {
 	labelSelector := fmt.Sprintf("collection=%d", collectionID)
 	pods, err := kcm.GetPods(labelSelector, fieldSelector)
 	if err != nil {
 		log.Warn(err)
 	}
 	return pods
+}
+
+func (kcm *K8sClientManager) getPodsByCollectionWithCache(collectionID int64, phase apiv1.PodPhase) []apiv1.Pod {
+	v, ok := kcm.localCache.Load(collectionID)
+	if ok {
+		log.Debugf("Getting pods from local cache for %d", collectionID)
+		collectionLocal := v.(*collectionLocalCache)
+		if phase == "" {
+			return collectionLocal.pods
+		}
+		pods := []apiv1.Pod{}
+		for _, p := range collectionLocal.pods {
+			if p.Status.Phase == phase {
+				pods = append(pods, p)
+			}
+		}
+		return pods
+	}
+	fieldSelector := fmt.Sprintf("status.phase=%s", string(phase))
+	return kcm.getPodsByCollection(collectionID, fieldSelector)
 }
 
 func (kcm *K8sClientManager) FetchEngineUrlsByPlan(collectionID, planID int64, opts *smodel.EngineOwnerRef) ([]string, error) {
@@ -370,7 +467,7 @@ func (kcm *K8sClientManager) CollectionStatus(projectID, collectionID int64, eps
 	planStatuses := make(map[int64]*smodel.PlanStatus)
 	var engineReachable bool
 	cs := &smodel.CollectionStatus{}
-	pods := kcm.GetPodsByCollection(collectionID, "")
+	pods := kcm.getPodsByCollectionWithCache(collectionID, "")
 	ingressControllerDeployed := false
 	for _, ep := range eps {
 		ps := &smodel.PlanStatus{
@@ -400,8 +497,7 @@ func (kcm *K8sClientManager) CollectionStatus(projectID, collectionID int64, eps
 		}
 	}
 	// if it's unrechable, we can assume it's not in progress as well
-	fieldSelector := fmt.Sprintf("status.phase=Running")
-	ingressPods := kcm.GetPodsByCollection(collectionID, fieldSelector)
+	ingressPods := kcm.getPodsByCollectionWithCache(collectionID, apiv1.PodRunning)
 	ingressControllerDeployed = len(ingressPods) >= 1
 	if !ingressControllerDeployed || !enginesReady {
 		for _, ps := range planStatuses {
@@ -538,6 +634,7 @@ func (kcm *K8sClientManager) deleteDeployment(collectionID int64) error {
 }
 
 func (kcm *K8sClientManager) PurgeCollection(collectionID int64) error {
+	kcm.purgingCollections <- collectionID
 	err := kcm.deleteDeployment(collectionID)
 	if err != nil {
 		return err
