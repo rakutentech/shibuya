@@ -245,7 +245,7 @@ func (ctr *Controller) fetchEngineMetrics() {
 		if err != nil {
 			continue
 		}
-		for collectionID, _ := range deployedCollections {
+		for collectionID := range deployedCollections {
 			c, err := model.GetCollection(collectionID)
 			if err != nil {
 				continue
