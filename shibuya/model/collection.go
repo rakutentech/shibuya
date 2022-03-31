@@ -538,13 +538,13 @@ func (c *Collection) MarkUsageFinished(context string, vu int64) error {
 
 	// in case there is failure in the previous update, we could have multiple entries with null endtime
 	// pick the latest one
-	q, err := db.Prepare("update collection_launch_history2 set end_time=NOW(), vu=? where collection_id=? and end_time is null and context=? order by started_time desc limit 1")
+	q, err := db.Prepare("update collection_launch_history2 set end_time=?, vu=? where collection_id=? and end_time is null and context=? order by started_time desc limit 1")
 	if err != nil {
 		return err
 	}
 	defer q.Close()
 
-	_, err = q.Exec(vu, c.ID, context)
+	_, err = q.Exec(time.Now().Format(MySQLFormat), vu, c.ID, context)
 	if err != nil {
 		return err
 	}
