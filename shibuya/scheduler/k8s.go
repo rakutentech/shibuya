@@ -629,7 +629,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 								},
 							},
 							Env: []apiv1.EnvVar{
-								apiv1.EnvVar{
+								{
 									Name: "POD_NAME",
 									ValueFrom: &apiv1.EnvVarSource{
 										FieldRef: &apiv1.ObjectFieldSelector{
@@ -637,7 +637,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 										},
 									},
 								},
-								apiv1.EnvVar{
+								{
 									Name: "POD_NAMESPACE",
 									ValueFrom: &apiv1.EnvVarSource{
 										FieldRef: &apiv1.ObjectFieldSelector{
@@ -689,7 +689,7 @@ func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceNam
 	ingressRule := extbeta1.IngressRule{}
 	ingressRule.HTTP = &extbeta1.HTTPIngressRuleValue{
 		Paths: []extbeta1.HTTPIngressPath{
-			extbeta1.HTTPIngressPath{
+			{
 				Path: fmt.Sprintf("/%s", serviceName),
 				Backend: extbeta1.IngressBackend{
 					ServiceName: serviceName,

@@ -95,10 +95,10 @@ func (cr *CloudRun) makeService(projectID, collectionID, planID int64, engineID 
 				},
 				Spec: &run.RevisionSpec{
 					Containers: []*run.Container{
-						&run.Container{
+						{
 							Image: ec.Image,
 							Ports: []*run.ContainerPort{
-								&run.ContainerPort{
+								{
 									ContainerPort: 8080,
 								},
 							},
@@ -156,7 +156,7 @@ func (cr *CloudRun) sendCreateServiceReq(projectID, collectionID, planID int64, 
 	// https://cloud.google.com/run/docs/reference/rest/v1/projects.locations.services/setIamPolicy
 	policy := &run.Policy{
 		Bindings: []*run.Binding{
-			&run.Binding{
+			{
 				Members: []string{"allUsers"},
 				Role:    "roles/run.invoker",
 			},
