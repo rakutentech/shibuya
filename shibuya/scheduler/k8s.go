@@ -18,7 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	extbeta1 "k8s.io/api/extensions/v1beta1"
+	v1networking "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -275,7 +275,7 @@ func (kcm *K8sClientManager) generateEngineDeployment(engineName string, labels 
 
 func (kcm *K8sClientManager) deploy(deployment *appsv1.Deployment) error {
 	deploymentsClient := kcm.client.AppsV1().Deployments(kcm.Namespace)
-	_, err := deploymentsClient.Create(deployment)
+	_, err := deploymentsClient.Create(context.TODO(), deployment, metav1.CreateOptions{})
 	if errors.IsAlreadyExists(err) {
 		// do nothing if already exists
 		return nil
@@ -313,7 +313,7 @@ func (kcm *K8sClientManager) expose(name string, deployment *appsv1.Deployment) 
 			service.Spec.Type = apiv1.ServiceTypeLoadBalancer
 		}
 	}
-	_, err := kcm.client.CoreV1().Services(kcm.Namespace).Create(service)
+	_, err := kcm.client.CoreV1().Services(kcm.Namespace).Create(context.TODO(), service, metav1.CreateOptions{})
 	if errors.IsAlreadyExists(err) {
 		return nil
 	} else if err != nil {
@@ -324,7 +324,7 @@ func (kcm *K8sClientManager) expose(name string, deployment *appsv1.Deployment) 
 
 func (kcm *K8sClientManager) getRandomHostIP() (string, error) {
 	podList, err := kcm.client.CoreV1().Pods(kcm.Namespace).
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			Limit: 1,
 		})
 	if err != nil {
@@ -376,7 +376,7 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 func (kcm *K8sClientManager) getIngressUrl(collectionID int64) (string, error) {
 	igName := makeIngressClass(collectionID)
 	serviceClient, err := kcm.client.CoreV1().Services(kcm.Namespace).
-		Get(igName, metav1.GetOptions{})
+		Get(context.TODO(), igName, metav1.GetOptions{})
 	if err != nil {
 		return "", makeSchedulerIngressError(err)
 	}
@@ -398,6 +398,7 @@ func (kcm *K8sClientManager) getIngressUrl(collectionID int64) (string, error) {
 	return fmt.Sprintf("%s:%d", ip_addr, exposedPort), nil
 }
 
+// what happens when we do a release?
 func (kcm *K8sClientManager) GetIngressUrl(collectionID int64) (string, error) {
 	v, ok := kcm.localCache.Load(collectionID)
 	if ok {
@@ -410,7 +411,7 @@ func (kcm *K8sClientManager) GetIngressUrl(collectionID int64) (string, error) {
 
 func (kcm *K8sClientManager) GetPods(labelSelector, fieldSelector string) ([]apiv1.Pod, error) {
 	podsClient, err := kcm.client.CoreV1().Pods(kcm.Namespace).
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			LabelSelector: labelSelector,
 			FieldSelector: fieldSelector,
 		})
@@ -555,7 +556,7 @@ func (kcm *K8sClientManager) FetchLogFromPod(pod apiv1.Pod) (string, error) {
 		Param("container", logOptions.Container).
 		Param("previous", strconv.FormatBool(logOptions.Previous)).
 		Param("timestamps", strconv.FormatBool(logOptions.Timestamps))
-	readCloser, err := req.Stream()
+	readCloser, err := req.Stream(context.TODO())
 	if err != nil {
 		return "", err
 	}
@@ -581,7 +582,7 @@ func (kcm *K8sClientManager) DownloadPodLog(collectionID, planID int64) (string,
 func (kcm *K8sClientManager) PodReadyCount(collectionID int64) int {
 	label := makeCollectionLabel(collectionID)
 	podsClient, err := kcm.client.CoreV1().Pods(kcm.Namespace).
-		List(metav1.ListOptions{
+		List(context.TODO(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s", label),
 		})
 	if err != nil {
@@ -621,7 +622,7 @@ func (kcm *K8sClientManager) deleteService(collectionID int64) error {
 
 func (kcm *K8sClientManager) deleteDeployment(collectionID int64) error {
 	deploymentsClient := kcm.client.AppsV1().Deployments(kcm.Namespace)
-	err := deploymentsClient.DeleteCollection(&metav1.DeleteOptions{
+	err := deploymentsClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{
 		GracePeriodSeconds: new(int64),
 	}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("collection=%d", collectionID),
@@ -783,24 +784,30 @@ func (kcm *K8sClientManager) ExposeCollection(projectID, collectionID int64) err
 }
 
 func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceName string, collectionID, projectID int64) error {
-	ingressRule := extbeta1.IngressRule{}
-	ingressRule.HTTP = &extbeta1.HTTPIngressRuleValue{
-		Paths: []extbeta1.HTTPIngressPath{
+	ingressRule := v1networking.IngressRule{}
+	pathType := v1networking.PathType("Exact")
+	ingressRule.HTTP = &v1networking.HTTPIngressRuleValue{
+		Paths: []v1networking.HTTPIngressPath{
 			{
-				Path: fmt.Sprintf("/%s", serviceName),
-				Backend: extbeta1.IngressBackend{
-					ServiceName: serviceName,
-					ServicePort: intstr.FromInt(80),
+				Path:     fmt.Sprintf("/%s/(.*)", serviceName),
+				PathType: &pathType,
+				Backend: v1networking.IngressBackend{
+					Service: &v1networking.IngressServiceBackend{
+						Name: serviceName,
+						Port: v1networking.ServiceBackendPort{
+							Number: 80,
+						},
+					},
 				},
 			},
 		},
 	}
-	ingress := extbeta1.Ingress{
+	ingress := v1networking.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ingressName,
 			Annotations: map[string]string{
 				"kubernetes.io/ingress.class":                    ingressClass,
-				"nginx.ingress.kubernetes.io/rewrite-target":     "/",
+				"nginx.ingress.kubernetes.io/rewrite-target":     "/$1",
 				"nginx.ingress.kubernetes.io/ssl-redirect":       "false",
 				"nginx.ingress.kubernetes.io/proxy-body-size":    "100m",
 				"nginx.ingress.kubernetes.io/proxy-send-timeout": "600",
@@ -808,11 +815,11 @@ func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceNam
 			},
 			Labels: makeIngressLabel(collectionID, projectID),
 		},
-		Spec: extbeta1.IngressSpec{
-			Rules: []extbeta1.IngressRule{ingressRule},
+		Spec: v1networking.IngressSpec{
+			Rules: []v1networking.IngressRule{ingressRule},
 		},
 	}
-	_, err := kcm.client.ExtensionsV1beta1().Ingresses(kcm.Namespace).Create(&ingress)
+	_, err := kcm.client.NetworkingV1().Ingresses(kcm.Namespace).Create(context.TODO(), &ingress, metav1.CreateOptions{})
 	if err != nil {
 		log.Error(err)
 	}
@@ -821,7 +828,7 @@ func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceNam
 
 func (kcm *K8sClientManager) deleteIngressRules(collectionID int64) error {
 	deletePolicy := metav1.DeletePropagationForeground
-	return kcm.client.ExtensionsV1beta1().Ingresses(kcm.Namespace).DeleteCollection(&metav1.DeleteOptions{
+	return kcm.client.NetworkingV1().Ingresses(kcm.Namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{
 		PropagationPolicy: &deletePolicy,
 	}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("collection=%d", collectionID),
@@ -847,7 +854,7 @@ func (kcm *K8sClientManager) CreateRoleBinding() error {
 			Name:     "shibuya-ingress-role",
 		},
 	}
-	_, err := kcm.client.RbacV1().RoleBindings(namespace).Create(nginxRoleBinding)
+	_, err := kcm.client.RbacV1().RoleBindings(namespace).Create(context.TODO(), nginxRoleBinding, metav1.CreateOptions{})
 	if errors.IsAlreadyExists(err) {
 		return nil
 	}
@@ -865,7 +872,7 @@ func (kcm *K8sClientManager) GetNodesByCollection(collectionID string) ([]apiv1.
 }
 
 func (kcm *K8sClientManager) getNodes(opts metav1.ListOptions) ([]apiv1.Node, error) {
-	nodeList, err := kcm.client.CoreV1().Nodes().List(opts)
+	nodeList, err := kcm.client.CoreV1().Nodes().List(context.TODO(), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -911,7 +918,7 @@ func (kcm *K8sClientManager) GetDeployedCollections() (map[int64]time.Time, erro
 }
 
 func (kcm *K8sClientManager) GetPodsMetrics(collectionID, planID int64) (map[string]apiv1.ResourceList, error) {
-	metricsList, err := kcm.metricClient.MetricsV1beta1().PodMetricses(kcm.Namespace).List(metav1.ListOptions{
+	metricsList, err := kcm.metricClient.MetricsV1beta1().PodMetricses(kcm.Namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("collection=%d,plan=%d", collectionID, planID),
 	})
 	if err != nil {
@@ -956,7 +963,7 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(collectionID int64) (*sm
 
 func (kcm *K8sClientManager) ResetIngress(projectID, collectionID int64) error {
 	igName := makeIngressClass(collectionID)
-	if err := kcm.client.CoreV1().Services(kcm.Namespace).Delete(igName, &metav1.DeleteOptions{}); err != nil {
+	if err := kcm.client.CoreV1().Services(kcm.Namespace).Delete(context.TODO(), igName, metav1.DeleteOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -966,7 +973,7 @@ func (kcm *K8sClientManager) ResetIngress(projectID, collectionID int64) error {
 			// we should only recreate the svc when the previous svc was deleted otherwise the newly created svc
 			// could be deleted again.
 			time.Sleep(3 * time.Second)
-			if _, err := kcm.client.CoreV1().Services(kcm.Namespace).Get(igName, metav1.GetOptions{}); err != nil {
+			if _, err := kcm.client.CoreV1().Services(kcm.Namespace).Get(context.TODO(), igName, metav1.GetOptions{}); err != nil {
 				deployment := kcm.generateControllerDeployment(igName, collectionID, projectID)
 				kcm.expose(igName, &deployment)
 				return

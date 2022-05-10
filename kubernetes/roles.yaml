@@ -41,6 +41,13 @@ rules:
   verbs:
   - "*"
 - apiGroups:
+  - "networking.k8s.io"
+  resources:
+  - ingresses
+  - ingressclasses
+  verbs:
+  - "*"
+- apiGroups:
   - "extensions"
   resources:
   - ingresses/status
