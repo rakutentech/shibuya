@@ -754,7 +754,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 }
 
 func (kcm *K8sClientManager) ApplyIngressPrerequisite() {
-	mandatory := fmt.Sprintf("/ingress/mandatory.yaml")
+	mandatory := fmt.Sprintf("/ingress/mandatory-1.yaml")
 	namespace := kcm.Namespace
 	cmd := exec.Command("kubectl", "-n", namespace, "apply", "-f", mandatory)
 	o, err := cmd.Output()
