@@ -14,7 +14,7 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: shibuya-ingress-role
@@ -37,7 +37,7 @@ rules:
       # Here: "<ingress-controller-leader>-<nginx>"
       # This has to be adapted if you change either parameter
       # when launching the nginx-ingress-controller.
-      - "ingress-controller-leader-nginx"
+      - "ingress-controller-leader"
     verbs:
       - update
   - apiGroups:
@@ -87,3 +87,12 @@ rules:
       - podsecuritypolicies
     verbs:
       - use
+  - apiGroups:
+      - "networking.k8s.io"
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+
