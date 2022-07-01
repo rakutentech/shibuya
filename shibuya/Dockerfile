@@ -24,6 +24,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifi
 
 RUN mkdir /auth
 ADD ./shibuya-gcp.json /auth/shibuya-gcp.json
+
 ENV GOOGLE_APPLICATION_CREDENTIALS /auth/shibuya-gcp.json
 
 ARG env=local
@@ -37,5 +38,5 @@ ENV https_proxy ${proxy}
 COPY config/kube_configs /root/.kube
 COPY config.json /config.json
 COPY ./ui/ /
-COPY ./controller/mandatory.yaml /ingress/mandatory.yaml
+COPY ./controller/mandatory-1.yaml /ingress/mandatory-1.yaml
 CMD ["shibuya"]

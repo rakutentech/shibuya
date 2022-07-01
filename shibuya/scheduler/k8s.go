@@ -53,7 +53,7 @@ func NewK8sClientManager(cfg *config.ClusterConfig) *K8sClientManager {
 	launchingCollections := make(chan int64)
 	purgingCollections := make(chan int64)
 	k := &K8sClientManager{
-		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount", launchingCollections, purgingCollections, sync.Map{},
+		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount-1", launchingCollections, purgingCollections, sync.Map{},
 	}
 	go k.fetchInfoFromAPIServer()
 	return k
@@ -839,7 +839,7 @@ func (kcm *K8sClientManager) CreateRoleBinding() error {
 	namespace := kcm.Namespace
 	nginxRoleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "shibuya-ingress-role-binding",
+			Name: "shibuya-ingress-role-binding-1",
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -851,7 +851,7 @@ func (kcm *K8sClientManager) CreateRoleBinding() error {
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "Role",
-			Name:     "shibuya-ingress-role",
+			Name:     "shibuya-ingress-role-1",
 		},
 	}
 	_, err := kcm.client.RbacV1().RoleBindings(namespace).Create(context.TODO(), nginxRoleBinding, metav1.CreateOptions{})
