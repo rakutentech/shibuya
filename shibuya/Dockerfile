@@ -1,4 +1,4 @@
-FROM gcr.io/shibuya-214807/golang:1.13.6-stretch AS builder
+FROM gcr.io/shibuya-214807/golang:1.17-stretch AS builder
 
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl \
     && chmod +x ./kubectl \
