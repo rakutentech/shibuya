@@ -108,7 +108,7 @@ type IngressConfig struct {
 }
 
 var defaultIngressConfig = IngressConfig{
-	Image:    "quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.20.0",
+	Image:    "k8s.gcr.io/ingress-nginx/controller:v1.2.1",
 	Replicas: 1,
 	CPU:      "2",
 	Mem:      "1Gi",

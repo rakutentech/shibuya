@@ -3,6 +3,7 @@ shibuya/db/all.sql
 shibuya/config/gcp
 docs/book
 shibuya/shibuya-gcp.json
+shibuya/build
 shibuya/config.json
 .DS_Store
 debug.yaml
