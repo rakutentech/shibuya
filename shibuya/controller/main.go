@@ -211,6 +211,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	// So we do not wait for the deployment to be finished.
 	go func() {
 		var wg sync.WaitGroup
+		now_ := time.Now()
 		for _, e := range eps {
 			wg.Add(1)
 			go func(ep *model.ExecutionPlan) {
@@ -222,6 +223,9 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 			}(e)
 		}
 		wg.Wait()
+		duration := time.Now().Sub(now_)
+		log.Infof("All engines deployment are finished for collection %d, total duration: %.2f seconds",
+			collection.ID, duration.Seconds())
 	}()
 	return nil
 }
