@@ -207,18 +207,22 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 		return err
 	}
 	// we will assume collection deployment will always be successful
-	var wg sync.WaitGroup
-	for _, e := range eps {
-		wg.Add(1)
-		go func(ep *model.ExecutionPlan) {
-			defer wg.Done()
-			pc := NewPlanController(ep, collection, c.Scheduler)
-			utils.Retry(func() error {
-				return pc.deploy()
-			}, nil)
-		}(e)
-	}
-	wg.Wait()
+	// For some large deployments, it might take more than 1 min to finish, which could result 504 at gateway side
+	// So we do not wait for the deployment to be finished.
+	go func() {
+		var wg sync.WaitGroup
+		for _, e := range eps {
+			wg.Add(1)
+			go func(ep *model.ExecutionPlan) {
+				defer wg.Done()
+				pc := NewPlanController(ep, collection, c.Scheduler)
+				utils.Retry(func() error {
+					return pc.deploy()
+				}, nil)
+			}(e)
+		}
+		wg.Wait()
+	}()
 	return nil
 }
 
