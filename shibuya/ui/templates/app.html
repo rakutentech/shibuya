@@ -227,22 +227,51 @@
                             <p class="mt-3">If resetting could not help, please purge and launch again.</p>
                         </div>
                         <p class="mt-2">Engines will be deleted after ${engine_remaining_time} mins.</p>
-                        <table class="table table-sm table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Engine Name</th>
-                                    <th>Status</th>
-                                    <th>Created Time(GMT)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="e in engines_detail.engines">
-                                    <td>${e.name}</td>
-                                    <td>${e.status}</td>
-                                    <td>${e.created_time}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Ingress Rules</h5>
+                                <p class="mt-2">Total number of ingress rules: ${engines_detail.ingresses.length}. Required number of ingress rules: ${total_engines}.</p>
+                                <table class="table table-sm table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Ingress Name</th>
+                                            <th>Created time(GMT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="ig in engines_detail.ingresses">
+                                            <td>${ig.name}</td>
+                                            <td>${ig.created_time}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card mt-2">
+                            <div class="card-body">
+                                <h5 class="card-title">Engines</h5>
+                                <p class="mt-2">
+                                    Total number of engines: ${engines_detail.engines.length}. Required number of engines: executor engines(${total_engines}) + controller engines(${engines_detail.controller_replicas}).
+
+                                </p>
+                                <table class="table table-sm table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Engine Name</th>
+                                            <th>Status</th>
+                                            <th>Created Time(GMT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="e in engines_detail.engines">
+                                            <td>${e.name}</td>
+                                            <td>${e.status}</td>
+                                            <td>${e.created_time}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </modal>
             </div>
