@@ -942,6 +942,17 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(collectionID int64) (*sm
 	if len(pods) == 0 {
 		return nil, &NoResourcesFoundErr{Err: err, Message: "Cannot find the engines"}
 	}
+	ingresses, err := kcm.client.NetworkingV1().Ingresses(kcm.Namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return nil, err
+	}
+	ingressStatuses := []*smodel.Ingress{}
+	for _, ig := range ingresses.Items {
+		ingressStatuses = append(ingressStatuses,
+			&smodel.Ingress{Name: ig.Name, CreatedTime: ig.ObjectMeta.CreationTimestamp.Time})
+	}
 	collectionDetails := new(smodel.CollectionDetails)
 	ingressUrl, err := kcm.GetIngressUrl(collectionID)
 	if err != nil {
@@ -958,6 +969,8 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(collectionID int64) (*sm
 		engines = append(engines, es)
 	}
 	collectionDetails.Engines = engines
+	collectionDetails.IngressRules = ingressStatuses
+	collectionDetails.ControllerReplicas = config.SC.IngressConfig.Replicas
 	return collectionDetails, nil
 }
 

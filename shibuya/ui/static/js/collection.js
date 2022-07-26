@@ -128,6 +128,13 @@ var Collection = Vue.component("collection", {
                 return Math.ceil(engine_life_span - running_time);
             }
             return engine_life_span;
+        },
+        total_engines: function () {
+            var total = 0;
+            _.each(this.collection_status.status, function (plan) {
+                total += plan.engines;
+            })
+            return total
         }
     },
     created: function () {
