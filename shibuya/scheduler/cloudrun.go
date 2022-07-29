@@ -186,6 +186,10 @@ func (cr *CloudRun) DeployEngine(projectID, collectionID, planID int64, engineID
 	return nil
 }
 
+func (cr *CloudRun) DeployPlan(projectID, collectionID, planID int64, replicas int, containerConfig *config.ExecutorContainer) error {
+	return nil
+}
+
 func (cr *CloudRun) deleteService(serviceID string) error {
 	name := fmt.Sprintf("%s/services/%s", cr.nsProjectID, serviceID)
 	if _, err := cr.rs.Namespaces.Services.Delete(name).Do(); err != nil {

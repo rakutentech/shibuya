@@ -211,6 +211,67 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 	return []apiv1.HostAlias{}
 }
 
+func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas int, labels map[string]string, containerConfig *config.ExecutorContainer,
+	affinity *apiv1.Affinity, tolerations []apiv1.Toleration) appsv1.Deployment {
+	t := true
+	deployment := appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:                       planName,
+			DeletionGracePeriodSeconds: new(int64),
+			Labels:                     labels,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: int32Ptr(int32(replicas)),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: apiv1.PodSpec{
+					Affinity:                     affinity,
+					Tolerations:                  tolerations,
+					ServiceAccountName:           kcm.serviceAccount,
+					AutomountServiceAccountToken: &t,
+					ImagePullSecrets: []apiv1.LocalObjectReference{
+						{
+							Name: kcm.ImagePullSecret,
+						},
+					},
+					TerminationGracePeriodSeconds: new(int64),
+					HostAliases:                   kcm.makeHostAliases(),
+					Containers: []apiv1.Container{
+						{
+							Name:            planName,
+							Image:           containerConfig.Image,
+							ImagePullPolicy: kcm.ImagePullPolicy,
+							Resources: apiv1.ResourceRequirements{
+								Limits: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(containerConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(containerConfig.Mem),
+								},
+								Requests: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(containerConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(containerConfig.Mem),
+								},
+							},
+							Ports: []apiv1.ContainerPort{
+								{
+									Name:          "http",
+									Protocol:      apiv1.ProtocolTCP,
+									ContainerPort: 8080,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return deployment
+}
+
 func (kcm *K8sClientManager) generateEngineDeployment(engineName string, labels map[string]string,
 	containerConfig *config.ExecutorContainer, affinity *apiv1.Affinity,
 	tolerations []apiv1.Toleration) appsv1.Deployment {
@@ -368,6 +429,19 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 		return err
 	}
 	log.Printf("Finish creating one engine for %s", engineName)
+	return nil
+}
+
+func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, enginesNo int, containerconfig *config.ExecutorContainer) error {
+	kcm.launchingCollections <- collectionID
+	planName := makePlanName(projectID, collectionID, planID)
+	labels := makePlanLabel(projectID, collectionID, planID)
+	affinity := prepareAffinity(collectionID)
+	tolerations := prepareTolerations()
+	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations)
+	if err := kcm.deploy(&planConfig); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -654,7 +728,6 @@ func (kcm *K8sClientManager) PurgeCollection(collectionID int64) error {
 func int32Ptr(i int32) *int32 { return &i }
 
 func (kcm *K8sClientManager) generateControllerDeployment(igName string, collectionID, projectID int64) appsv1.Deployment {
-	publishService := fmt.Sprintf("--publish-service=$(POD_NAMESPACE)/%s", igName)
 	affinity := prepareAffinity(collectionID)
 	tolerations := prepareTolerations()
 	t := true
@@ -685,7 +758,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 					AutomountServiceAccountToken:  &t,
 					Containers: []apiv1.Container{
 						{
-							Name:  "nginx-ingress-controller",
+							Name:  "shibuya-ingress-controller",
 							Image: config.SC.IngressConfig.Image,
 							Resources: apiv1.ResourceRequirements{
 								// Limits are whatever Kubernetes sets as the max value
@@ -697,14 +770,6 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 									apiv1.ResourceCPU:    resource.MustParse(config.SC.IngressConfig.CPU),
 									apiv1.ResourceMemory: resource.MustParse(config.SC.IngressConfig.Mem),
 								},
-							},
-							Args: []string{
-								"/nginx-ingress-controller",
-								fmt.Sprintf("--ingress-class=%s", igName),
-								"--configmap=$(POD_NAMESPACE)/nginx-configuration",
-								publishService,
-								"--annotations-prefix=nginx.ingress.kubernetes.io",
-								fmt.Sprintf("--watch-namespace=%s", kcm.Namespace),
 							},
 							SecurityContext: &apiv1.SecurityContext{
 								Capabilities: &apiv1.Capabilities{
@@ -719,7 +784,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 							Ports: []apiv1.ContainerPort{
 								{
 									Name:          "http",
-									ContainerPort: 80,
+									ContainerPort: 8080,
 								},
 								{
 									Name:          "https",
@@ -727,6 +792,10 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 								},
 							},
 							Env: []apiv1.EnvVar{
+								{
+									Name:  "collection_id",
+									Value: fmt.Sprint(collectionID),
+								},
 								{
 									Name: "POD_NAME",
 									ValueFrom: &apiv1.EnvVarSource{
