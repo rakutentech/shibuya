@@ -4,7 +4,7 @@ WORKDIR /go/src/shibuya-ingress-controller
 
 ENV GO111MODULE on
 ADD go.mod .
-#ADD go.sum .
+ADD go.sum .
 RUN go mod download
 
 COPY . /go/src/shibuya-ingress-controller
