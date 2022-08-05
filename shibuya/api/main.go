@@ -644,6 +644,11 @@ func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	if err := s.ctr.DeployCollection(collection); err != nil {
+		var dbe *model.DBError
+		if errors.As(err, &dbe) {
+			s.handleErrors(w, makeInvalidRequestError(err.Error()))
+			return
+		}
 		s.handleErrors(w, makeInternalServerError(err.Error()))
 		return
 	}

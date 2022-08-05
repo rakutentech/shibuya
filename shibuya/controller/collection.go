@@ -49,7 +49,12 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error 
 		for _, ep := range eps {
 			vu += ep.Engines * ep.Concurrency
 		}
-		collection.MarkUsageFinished(config.SC.Context, int64(vu))
+		launchID, err := collection.GetLaunchID()
+		if err != nil {
+			return err
+		}
+		collection.MarkUsageFinished(config.SC.Context, launchID, int64(vu))
+		collection.CleanLaunch()
 	}
 	return err
 }

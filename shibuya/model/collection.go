@@ -442,9 +442,60 @@ func (c *Collection) StartRun() (int64, error) {
 	return id, err
 }
 
+func (c *Collection) StartLaunch() (int64, error) {
+	db := config.SC.DBC
+	q, err := db.Prepare("insert into collection_launch (collection_id) values(?)")
+	if err != nil {
+		return int64(0), err
+	}
+	defer q.Close()
+	r, err := q.Exec(c.ID)
+	if err != nil {
+		return int64(0), &DBError{Err: err, Message: "You cannot start another launch. Please purge the current workloads."}
+	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return int64(0), err
+	}
+	return id, err
+}
+
+func (c *Collection) GetLaunchID() (int64, error) {
+	db := config.SC.DBC
+	q, err := db.Prepare("select id from collection_launch where collection_id=?")
+	if err != nil {
+		return int64(0), err
+	}
+	defer q.Close()
+	rs, err := q.Query(c.ID)
+	if err != nil {
+		return int64(0), nil
+	}
+	for rs.Next() {
+		var launchID int64
+		rs.Scan(&launchID)
+		return launchID, err
+	}
+	return int64(0), nil
+}
+
 func (c *Collection) StopRun() error {
 	db := config.SC.DBC
 	q, err := db.Prepare("delete from collection_run where collection_id=?")
+	if err != nil {
+		return err
+	}
+	defer q.Close()
+	_, err = q.Exec(c.ID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Collection) CleanLaunch() error {
+	db := config.SC.DBC
+	q, err := db.Prepare("delete from collection_launch where collection_id=?")
 	if err != nil {
 		return err
 	}
@@ -518,33 +569,33 @@ func (c *Collection) HasRunningPlan() (bool, error) {
 	return false, nil
 }
 
-func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machinesCount, vu int64) error {
+func (c *Collection) NewLaunchEntry(owner, context string, launchID, enginesCount, machinesCount, vu int64) error {
 	DBC := config.SC.DBC
-	q, err := DBC.Prepare("insert collection_launch_history2 set collection_id=?,context=?,engines_count=?,nodes_count=?,vu=?,owner=?")
+	q, err := DBC.Prepare("insert collection_launch_history2 set collection_id=?,context=?,engines_count=?,nodes_count=?,vu=?,owner=?,launch_id=?")
 	if err != nil {
 		return err
 	}
 	defer q.Close()
 
-	_, err = q.Exec(c.ID, context, enginesCount, machinesCount, vu, owner)
+	_, err = q.Exec(c.ID, context, enginesCount, machinesCount, vu, owner, launchID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *Collection) MarkUsageFinished(context string, vu int64) error {
+func (c *Collection) MarkUsageFinished(context string, launchID, vu int64) error {
 	db := config.SC.DBC
 
 	// in case there is failure in the previous update, we could have multiple entries with null endtime
 	// pick the latest one
-	q, err := db.Prepare("update collection_launch_history2 set end_time=?, vu=? where collection_id=? and end_time is null and context=? order by started_time desc limit 1")
+	q, err := db.Prepare("update collection_launch_history2 set end_time=?, vu=? where launch_id=?")
 	if err != nil {
 		return err
 	}
 	defer q.Close()
 
-	_, err = q.Exec(time.Now().Format(MySQLFormat), vu, c.ID, context)
+	_, err = q.Exec(time.Now().Format(MySQLFormat), vu, launchID)
 	if err != nil {
 		return err
 	}
