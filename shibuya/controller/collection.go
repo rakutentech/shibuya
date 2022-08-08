@@ -42,17 +42,13 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error 
 	if err != nil {
 		return err
 	}
-	launchID, _ := collection.GetLaunchID()
-	// Since collection can be purged multiple times, we need to ensure that the billing is correct.
-	if launchID != 0 {
-		vu := 0
-		for _, ep := range eps {
-			vu += ep.Engines * ep.Concurrency
-		}
-		err = collection.MarkUsageFinished(config.SC.Context, launchID, int64(vu))
-		if err != nil {
-			return err
-		}
+	vu := 0
+	for _, ep := range eps {
+		vu += ep.Engines * ep.Concurrency
+	}
+	err = collection.MarkUsageFinished(config.SC.Context, int64(vu))
+	if err != nil {
+		return err
 	}
 	return c.Scheduler.PurgeCollection(collection.ID)
 }

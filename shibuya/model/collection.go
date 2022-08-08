@@ -443,43 +443,6 @@ func (c *Collection) StartRun() (int64, error) {
 	return id, err
 }
 
-func (c *Collection) StartLaunch() (int64, error) {
-	db := config.SC.DBC
-	q, err := db.Prepare("insert into collection_launch (collection_id) values(?)")
-	if err != nil {
-		return int64(0), err
-	}
-	defer q.Close()
-	r, err := q.Exec(c.ID)
-	if err != nil {
-		return int64(0), &DBError{Err: err, Message: "You cannot start another launch. Please purge the current workloads."}
-	}
-	id, err := r.LastInsertId()
-	if err != nil {
-		return int64(0), err
-	}
-	return id, err
-}
-
-func (c *Collection) GetLaunchID() (int64, error) {
-	db := config.SC.DBC
-	q, err := db.Prepare("select id from collection_launch where collection_id=?")
-	if err != nil {
-		return int64(0), err
-	}
-	defer q.Close()
-	rs, err := q.Query(c.ID)
-	if err != nil {
-		return int64(0), nil
-	}
-	for rs.Next() {
-		var launchID int64
-		rs.Scan(&launchID)
-		return launchID, err
-	}
-	return int64(0), nil
-}
-
 func (c *Collection) StopRun() error {
 	db := config.SC.DBC
 	q, err := db.Prepare("delete from collection_run where collection_id=?")
@@ -556,22 +519,37 @@ func (c *Collection) HasRunningPlan() (bool, error) {
 	return false, nil
 }
 
-func (c *Collection) NewLaunchEntry(owner, context string, launchID, enginesCount, machinesCount, vu int64) error {
-	DBC := config.SC.DBC
-	q, err := DBC.Prepare("insert collection_launch_history2 set collection_id=?,context=?,engines_count=?,nodes_count=?,vu=?,owner=?,launch_id=?")
+func (c *Collection) NewLaunchEntry(owner, cxt string, enginesCount, machinesCount, vu int64) error {
+	db := config.SC.DBC
+	ct := context.TODO()
+	tx, err := db.BeginTx(ct, nil)
 	if err != nil {
 		return err
 	}
-	defer q.Close()
-
-	_, err = q.Exec(c.ID, context, enginesCount, machinesCount, vu, owner, launchID)
+	defer tx.Rollback()
+	r, err := tx.Exec("insert into collection_launch (collection_id) values(?)", c.ID)
+	if err != nil {
+		if driverErr, ok := err.(*mysql.MySQLError); ok {
+			if driverErr.Number == 1062 {
+				return &DBError{Err: err, Message: "There is a launch in progress. Please either wait or purge."}
+			}
+			return err
+		}
+		return err
+	}
+	launchID, err := r.LastInsertId()
 	if err != nil {
 		return err
 	}
-	return nil
+	_, err = tx.Exec("insert collection_launch_history2 set collection_id=?,context=?,engines_count=?,nodes_count=?,vu=?,owner=?,launch_id=?",
+		c.ID, cxt, enginesCount, machinesCount, vu, owner, launchID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func (c *Collection) MarkUsageFinished(cxt string, launchID, vu int64) error {
+func (c *Collection) MarkUsageFinished(cxt string, vu int64) error {
 	db := config.SC.DBC
 	ct := context.TODO()
 
@@ -581,6 +559,10 @@ func (c *Collection) MarkUsageFinished(cxt string, launchID, vu int64) error {
 	}
 	defer tx.Rollback()
 
+	var launchID int64
+	if err = tx.QueryRow("select launch_id from collection_launch where collection_id = ?", c.ID).Scan(&launchID); err != nil {
+		return err
+	}
 	_, err = tx.Exec("update collection_launch_history2 set end_time=?, vu=? where launch_id=?",
 		time.Now().Format(MySQLFormat), vu, launchID)
 	if err != nil {
