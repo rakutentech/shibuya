@@ -37,26 +37,24 @@ func prepareCollection(collection *model.Collection) []*controllerModel.EngineDa
 func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error {
 	// This is a force remove so we ignore the errors happened at test termination
 	c.TermCollection(collection, true)
-	err := c.Scheduler.PurgeCollection(collection.ID)
-	if err == nil {
-		eps, err := collection.GetExecutionPlans()
 
-		// if we cannot get the eps, we ignore as we don't want billing to have impact on UX.
-		if err != nil {
-			return nil
-		}
+	eps, err := collection.GetExecutionPlans()
+	if err != nil {
+		return err
+	}
+	launchID, _ := collection.GetLaunchID()
+	// Since collection can be purged multiple times, we need to ensure that the billing is correct.
+	if launchID != 0 {
 		vu := 0
 		for _, ep := range eps {
 			vu += ep.Engines * ep.Concurrency
 		}
-		launchID, err := collection.GetLaunchID()
+		err = collection.MarkUsageFinished(config.SC.Context, launchID, int64(vu))
 		if err != nil {
 			return err
 		}
-		collection.MarkUsageFinished(config.SC.Context, launchID, int64(vu))
-		collection.CleanLaunch()
 	}
-	return err
+	return c.Scheduler.PurgeCollection(collection.ID)
 }
 
 func (c *Controller) TriggerCollection(collection *model.Collection) error {

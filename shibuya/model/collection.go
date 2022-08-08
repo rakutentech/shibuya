@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -493,20 +494,6 @@ func (c *Collection) StopRun() error {
 	return nil
 }
 
-func (c *Collection) CleanLaunch() error {
-	db := config.SC.DBC
-	q, err := db.Prepare("delete from collection_launch where collection_id=?")
-	if err != nil {
-		return err
-	}
-	defer q.Close()
-	_, err = q.Exec(c.ID)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (c *Collection) GetCurrentRun() (int64, error) {
 	db := config.SC.DBC
 	q, err := db.Prepare("select id from collection_run where collection_id=?")
@@ -584,20 +571,24 @@ func (c *Collection) NewLaunchEntry(owner, context string, launchID, enginesCoun
 	return nil
 }
 
-func (c *Collection) MarkUsageFinished(context string, launchID, vu int64) error {
+func (c *Collection) MarkUsageFinished(cxt string, launchID, vu int64) error {
 	db := config.SC.DBC
+	ct := context.TODO()
 
-	// in case there is failure in the previous update, we could have multiple entries with null endtime
-	// pick the latest one
-	q, err := db.Prepare("update collection_launch_history2 set end_time=?, vu=? where launch_id=?")
+	tx, err := db.BeginTx(ct, nil)
 	if err != nil {
 		return err
 	}
-	defer q.Close()
+	defer tx.Rollback()
 
-	_, err = q.Exec(time.Now().Format(MySQLFormat), vu, launchID)
+	_, err = tx.Exec("update collection_launch_history2 set end_time=?, vu=? where launch_id=?",
+		time.Now().Format(MySQLFormat), vu, launchID)
 	if err != nil {
 		return err
 	}
-	return nil
+	_, err = tx.Exec("delete from collection_launch where collection_id=?", c.ID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
