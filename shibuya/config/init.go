@@ -97,7 +97,6 @@ type ObjectStorage struct {
 type LogFormat struct {
 	Json     bool   `json:"json"`
 	JsonPath string `json:"path"`
-	LogLevel string `json:"log_level"`
 }
 
 type IngressConfig struct {
@@ -175,11 +174,6 @@ func setupLogging() {
 	log.SetReportCaller(true)
 	if SC.LogFormat.Json {
 		applyJsonLogging()
-	}
-	switch SC.LogFormat.LogLevel {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-		log.Infof("Setting debug level to %s", "debug")
 	}
 }
 
