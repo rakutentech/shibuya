@@ -34,10 +34,7 @@ func prepareCollection(collection *model.Collection) []*controllerModel.EngineDa
 	return engineDataConfigs
 }
 
-func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error {
-	// This is a force remove so we ignore the errors happened at test termination
-	c.TermCollection(collection, true)
-
+func (c *Controller) calculateUsage(collection *model.Collection) error {
 	eps, err := collection.GetExecutionPlans()
 	if err != nil {
 		return err
@@ -46,11 +43,23 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error 
 	for _, ep := range eps {
 		vu += ep.Engines * ep.Concurrency
 	}
-	err = collection.MarkUsageFinished(config.SC.Context, int64(vu))
-	if err != nil {
+	return collection.MarkUsageFinished(config.SC.Context, int64(vu))
+}
+
+func (c *Controller) TermAndPurgeCollection(collection *model.Collection) (err error) {
+	// This is a force remove so we ignore the errors happened at test termination
+	defer func() {
+		// This is a bit tricky. We only set the error to the outer scope to not nil when e is not nil
+		// Otherwise the nil will override the err value in the main func.
+		if e := c.calculateUsage(collection); e != nil {
+			err = e
+		}
+	}()
+	c.TermCollection(collection, true)
+	if err = c.Scheduler.PurgeCollection(collection.ID); err != nil {
 		return err
 	}
-	return c.Scheduler.PurgeCollection(collection.ID)
+	return err
 }
 
 func (c *Controller) TriggerCollection(collection *model.Collection) error {
@@ -145,14 +154,4 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 	collection.StopRun()
 	collection.RunFinish(currRunID)
 	return e
-}
-
-func (c *Controller) TermAndPurgeCollectionAsync(collection *model.Collection) {
-	// This method is supposed to be only used by API side because for large collections, k8s api might take long time to respond
-	go func() {
-		err := c.TermAndPurgeCollection(collection)
-		if err != nil {
-			log.Print(err)
-		}
-	}()
 }

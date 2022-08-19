@@ -560,8 +560,13 @@ func (c *Collection) MarkUsageFinished(cxt string, vu int64) error {
 	defer tx.Rollback()
 
 	var launchID int64
-	if err = tx.QueryRow("select launch_id from collection_launch where collection_id = ?", c.ID).Scan(&launchID); err != nil {
-		return err
+	if err = tx.QueryRow("select id from collection_launch where collection_id = ?", c.ID).Scan(&launchID); err != nil {
+		// other concurrent operation might purge the collection and clean the row
+		// so just need to finish the transaction here.
+		if err != sql.ErrNoRows {
+			return err
+		}
+		return nil
 	}
 	_, err = tx.Exec("update collection_launch_history2 set end_time=?, vu=? where launch_id=?",
 		time.Now().Format(MySQLFormat), vu, launchID)
