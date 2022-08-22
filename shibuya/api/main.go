@@ -616,7 +616,7 @@ func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *ht
 		s.handleErrors(w, err)
 		return
 	}
-	collectionDetails, err := s.ctr.Scheduler.GetCollectionEnginesDetail(collection.ID)
+	collectionDetails, err := s.ctr.Scheduler.GetCollectionEnginesDetail(collection.ProjectID, collection.ID)
 	if err != nil {
 		s.handleErrors(w, err)
 		return

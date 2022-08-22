@@ -54,6 +54,9 @@ func NewController() *Controller {
 	go c.fetchEngineMetrics()
 	go c.cleanLocalStore()
 	go c.autoPurgeDeployments()
+
+	// no gc for now. TODO!!
+	go c.autoPurgeProjectIngressController()
 	return c
 }
 
@@ -201,7 +204,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount, int64(vu))
 
 	err = utils.Retry(func() error {
-		return c.Scheduler.ExposeCollection(collection.ProjectID, collection.ID)
+		return c.Scheduler.ExposeProject(collection.ProjectID)
 	}, nil)
 	if err != nil {
 		return err
