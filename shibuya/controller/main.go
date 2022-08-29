@@ -198,8 +198,9 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	if project, err := model.GetProject(collection.ProjectID); err == nil {
 		owner = project.Owner
 	}
-	collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount, int64(vu))
-
+	if err := collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount, int64(vu)); err != nil {
+		return err
+	}
 	err = utils.Retry(func() error {
 		return c.Scheduler.ExposeCollection(collection.ProjectID, collection.ID)
 	}, nil)

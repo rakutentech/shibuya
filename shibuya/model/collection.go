@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -518,35 +519,63 @@ func (c *Collection) HasRunningPlan() (bool, error) {
 	return false, nil
 }
 
-func (c *Collection) NewLaunchEntry(owner, context string, enginesCount, machinesCount, vu int64) error {
-	DBC := config.SC.DBC
-	q, err := DBC.Prepare("insert collection_launch_history2 set collection_id=?,context=?,engines_count=?,nodes_count=?,vu=?,owner=?")
+func (c *Collection) NewLaunchEntry(owner, cxt string, enginesCount, machinesCount, vu int64) error {
+	db := config.SC.DBC
+	ct := context.TODO()
+	tx, err := db.BeginTx(ct, nil)
 	if err != nil {
 		return err
 	}
-	defer q.Close()
-
-	_, err = q.Exec(c.ID, context, enginesCount, machinesCount, vu, owner)
+	defer tx.Rollback()
+	r, err := tx.Exec("insert into collection_launch (collection_id) values(?)", c.ID)
+	if err != nil {
+		if driverErr, ok := err.(*mysql.MySQLError); ok {
+			if driverErr.Number == 1062 {
+				return &DBError{Err: err, Message: "There is a launch in progress. Please either wait or purge."}
+			}
+			return err
+		}
+		return err
+	}
+	launchID, err := r.LastInsertId()
 	if err != nil {
 		return err
 	}
-	return nil
+	_, err = tx.Exec("insert collection_launch_history2 set collection_id=?,context=?,engines_count=?,nodes_count=?,vu=?,owner=?,launch_id=?",
+		c.ID, cxt, enginesCount, machinesCount, vu, owner, launchID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func (c *Collection) MarkUsageFinished(context string, vu int64) error {
+func (c *Collection) MarkUsageFinished(cxt string, vu int64) error {
 	db := config.SC.DBC
+	ct := context.TODO()
 
-	// in case there is failure in the previous update, we could have multiple entries with null endtime
-	// pick the latest one
-	q, err := db.Prepare("update collection_launch_history2 set end_time=?, vu=? where collection_id=? and end_time is null and context=? order by started_time desc limit 1")
+	tx, err := db.BeginTx(ct, nil)
 	if err != nil {
 		return err
 	}
-	defer q.Close()
+	defer tx.Rollback()
 
-	_, err = q.Exec(time.Now().Format(MySQLFormat), vu, c.ID, context)
+	var launchID int64
+	if err = tx.QueryRow("select id from collection_launch where collection_id = ?", c.ID).Scan(&launchID); err != nil {
+		// other concurrent operation might purge the collection and clean the row
+		// so just need to finish the transaction here.
+		if err != sql.ErrNoRows {
+			return err
+		}
+		return nil
+	}
+	_, err = tx.Exec("update collection_launch_history2 set end_time=?, vu=? where launch_id=?",
+		time.Now().Format(MySQLFormat), vu, launchID)
 	if err != nil {
 		return err
 	}
-	return nil
+	_, err = tx.Exec("delete from collection_launch where collection_id=?", c.ID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }

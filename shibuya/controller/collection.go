@@ -34,22 +34,30 @@ func prepareCollection(collection *model.Collection) []*controllerModel.EngineDa
 	return engineDataConfigs
 }
 
-func (c *Controller) TermAndPurgeCollection(collection *model.Collection) error {
-	// This is a force remove so we ignore the errors happened at test termination
-	c.TermCollection(collection, true)
-	err := c.Scheduler.PurgeCollection(collection.ID)
-	if err == nil {
-		eps, err := collection.GetExecutionPlans()
+func (c *Controller) calculateUsage(collection *model.Collection) error {
+	eps, err := collection.GetExecutionPlans()
+	if err != nil {
+		return err
+	}
+	vu := 0
+	for _, ep := range eps {
+		vu += ep.Engines * ep.Concurrency
+	}
+	return collection.MarkUsageFinished(config.SC.Context, int64(vu))
+}
 
-		// if we cannot get the eps, we ignore as we don't want billing to have impact on UX.
-		if err != nil {
-			return nil
+func (c *Controller) TermAndPurgeCollection(collection *model.Collection) (err error) {
+	// This is a force remove so we ignore the errors happened at test termination
+	defer func() {
+		// This is a bit tricky. We only set the error to the outer scope to not nil when e is not nil
+		// Otherwise the nil will override the err value in the main func.
+		if e := c.calculateUsage(collection); e != nil {
+			err = e
 		}
-		vu := 0
-		for _, ep := range eps {
-			vu += ep.Engines * ep.Concurrency
-		}
-		collection.MarkUsageFinished(config.SC.Context, int64(vu))
+	}()
+	c.TermCollection(collection, true)
+	if err = c.Scheduler.PurgeCollection(collection.ID); err != nil {
+		return err
 	}
 	return err
 }
@@ -146,14 +154,4 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 	collection.StopRun()
 	collection.RunFinish(currRunID)
 	return e
-}
-
-func (c *Controller) TermAndPurgeCollectionAsync(collection *model.Collection) {
-	// This method is supposed to be only used by API side because for large collections, k8s api might take long time to respond
-	go func() {
-		err := c.TermAndPurgeCollection(collection)
-		if err != nil {
-			log.Print(err)
-		}
-	}()
 }
