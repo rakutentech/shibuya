@@ -359,10 +359,6 @@ func (cr *CloudRun) GetCollectionEnginesDetail(projectID, collectionID int64) (*
 	return nil, nil
 }
 
-func (cr *CloudRun) ResetIngress(projectID, collectionID int64) error {
-	return nil
-}
-
 func (cr *CloudRun) ExposeProject(projectID int64) error {
 	return nil
 }

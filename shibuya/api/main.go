@@ -624,19 +624,6 @@ func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *ht
 	s.jsonise(w, http.StatusOK, collectionDetails)
 }
 
-func (s *ShibuyaAPI) collectionIngressUrlHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
-	if err != nil {
-		s.handleErrors(w, err)
-		return
-	}
-	err = s.ctr.Scheduler.ResetIngress(collection.ProjectID, collection.ID)
-	if err != nil {
-		s.handleErrors(w, err)
-		return
-	}
-}
-
 func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	collection, err := getCollection(params.ByName("collection_id"))
 	if err != nil {
@@ -837,7 +824,6 @@ func (s *ShibuyaAPI) InitRoutes() Routes {
 		&Route{"upload_collection_files", "PUT", "/api/collections/:collection_id/files", s.collectionFilesUploadHandler},
 		&Route{"delete_collection_files", "DELETE", "/api/collections/:collection_id/files", s.collectionFilesDeleteHandler},
 		&Route{"get_collection_engines_detail", "GET", "/api/collections/:collection_id/engines_detail", s.collectionEnginesDetailHandler},
-		&Route{"reset_collection_ingress", "PUT", "/api/collections/:collection_id/engines/ingress", s.collectionIngressUrlHandler},
 		&Route{"deploy", "POST", "/api/collections/:collection_id/deploy", s.collectionDeploymentHandler},
 		&Route{"trigger", "POST", "/api/collections/:collection_id/trigger", s.collectionTriggerHandler},
 		&Route{"stop", "POST", "/api/collections/:collection_id/stop", s.collectionTermHandler},

@@ -921,29 +921,6 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID 
 	return collectionDetails, nil
 }
 
-func (kcm *K8sClientManager) ResetIngress(projectID, collectionID int64) error {
-	igName := makeIngressClass(collectionID)
-	if err := kcm.client.CoreV1().Services(kcm.Namespace).Delete(context.TODO(), igName, metav1.DeleteOptions{}); err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-	}
-	go func() {
-		for {
-			// we should only recreate the svc when the previous svc was deleted otherwise the newly created svc
-			// could be deleted again.
-			time.Sleep(3 * time.Second)
-			if _, err := kcm.client.CoreV1().Services(kcm.Namespace).Get(context.TODO(), igName, metav1.GetOptions{}); err != nil {
-				deployment := kcm.generateControllerDeployment(igName, projectID)
-				kcm.expose(igName, &deployment)
-				return
-			}
-			continue
-		}
-	}()
-	return nil
-}
-
 func getEngineNumber(podName string) string {
 	return strings.Split(podName, "-")[4]
 }

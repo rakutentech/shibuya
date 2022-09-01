@@ -22,7 +22,6 @@ type EngineScheduler interface {
 	PodReadyCount(collectionID int64) int
 	DownloadPodLog(collectionID, planID int64) (string, error)
 	GetCollectionEnginesDetail(projectID, collectionID int64) (*smodel.CollectionDetails, error)
-	ResetIngress(projectID, collectionID int64) error
 	GetDeployedServices() (map[int64]time.Time, error)
 	ExposeProject(projectID int64) error
 	PurgeProjectIngress(projectID int64) error
