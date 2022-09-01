@@ -54,8 +54,6 @@ func NewController() *Controller {
 	go c.fetchEngineMetrics()
 	go c.cleanLocalStore()
 	go c.autoPurgeDeployments()
-
-	// no gc for now. TODO!!
 	go c.autoPurgeProjectIngressController()
 	return c
 }
