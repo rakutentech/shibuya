@@ -507,6 +507,9 @@ func hasInvalidDiff(curr, updated []*model.ExecutionPlan) (bool, string) {
 		if currPlan.Engines != item.Engines {
 			return true, "You cannot change engine numbers while have engineds deployed"
 		}
+		if currPlan.Concurrency != item.Concurrency {
+			return true, "You cannot change concurrency while having engines deployed"
+		}
 	}
 	return false, ""
 }
