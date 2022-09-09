@@ -502,10 +502,10 @@ func hasInvalidDiff(curr, updated []*model.ExecutionPlan) (bool, string) {
 	for _, item := range updated {
 		currPlan, ok := currCache[item.PlanID]
 		if !ok {
-			return true, "You cannot add a new plan while have engines deployed"
+			return true, "You cannot add a new plan while having engines deployed"
 		}
 		if currPlan.Engines != item.Engines {
-			return true, "You cannot change engine numbers while have engineds deployed"
+			return true, "You cannot change engine numbers while having engines deployed"
 		}
 		if currPlan.Concurrency != item.Concurrency {
 			return true, "You cannot change concurrency while having engines deployed"
