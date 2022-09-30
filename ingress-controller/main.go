@@ -23,8 +23,7 @@ type ShibuyaIngressController struct {
 	client          *kubernetes.Clientset
 	engineInventory sync.Map
 	namespace       string
-	collectionID    string
-	planIDs         []string
+	projectID       string
 }
 
 var httpClient = &http.Client{}
@@ -45,21 +44,23 @@ func (sic *ShibuyaIngressController) makePath(projectID, collectionID, planID st
 	return fmt.Sprintf("service-%s-%s-%s-%d", projectID, collectionID, planID, engineID)
 }
 
-func (sic *ShibuyaIngressController) makeInventoryFromPlan(planID string, pods []apiv1.Pod) {
+func (sic *ShibuyaIngressController) makeInventoryFromPods(pods []apiv1.Pod) {
 	for i, p := range pods {
 		podIP := p.Status.PodIP
 		container := p.Spec.Containers[0]
 		port := container.Ports[0].ContainerPort
 		addr := fmt.Sprintf("%s:%d", podIP, port)
 		projectID := p.Labels["project"]
-		path := sic.makePath(projectID, sic.collectionID, planID, i)
+		collectionID := p.Labels["collection"]
+		planID := p.Labels["plan"]
+		path := sic.makePath(projectID, collectionID, planID, i)
 		log.Println(fmt.Sprintf("%s:%s", path, addr))
 		sic.engineInventory.Store(path, addr)
 	}
 }
 
 func (sic *ShibuyaIngressController) makeInventory() {
-	labelSelector := fmt.Sprintf("collection=%s", sic.collectionID)
+	labelSelector := fmt.Sprintf("project=%s", sic.projectID)
 	for {
 		time.Sleep(3 * time.Second)
 
@@ -76,30 +77,30 @@ func (sic *ShibuyaIngressController) makeInventory() {
 			p2 := resp.Items[j]
 			return p1.Name > p2.Name
 		})
-		enginesByPlan := make(map[string][]apiv1.Pod)
-		allEnginesReady := true
+		enginesByCollection := make(map[string][]apiv1.Pod)
+
+		// TODO !! how do we deal with engines ready issue?
 		for _, p := range resp.Items {
-			if p.Status.Phase != apiv1.PodRunning {
-				allEnginesReady = false
-				break
-			}
 			labels := p.Labels
-			planID := labels["plan"]
 			if labels["kind"] != "executor" {
 				continue
 			}
-			engines, ok := enginesByPlan[planID]
+			collectionID := labels["collection"]
+			engines, ok := enginesByCollection[collectionID]
 			if !ok {
 				engines = []apiv1.Pod{}
 			}
 			engines = append(engines, p)
-			enginesByPlan[planID] = engines
+			enginesByCollection[collectionID] = engines
 		}
-		log.Println("All engines are ready, going to make the endpoints")
-		if allEnginesReady {
-			for planID, pods := range enginesByPlan {
-				sic.makeInventoryFromPlan(planID, pods)
+	collectionLoop:
+		for _, pods := range enginesByCollection {
+			for _, p := range pods {
+				if p.Status.Phase != apiv1.PodRunning {
+					continue collectionLoop
+				}
 			}
+			sic.makeInventoryFromPods(pods)
 		}
 	}
 }
@@ -148,23 +149,22 @@ func (sic *ShibuyaIngressController) ServeHTTP(w http.ResponseWriter, req *http.
 	io.Copy(w, resp.Body)
 }
 
-func initFromEnv() (namespace, collectionID string, planIDs []string) {
+func initFromEnv() (namespace, projectID string) {
 	namespace = os.Getenv("POD_NAMESPACE")
-	collectionID = os.Getenv("collection_id")
-	planIDs = strings.Split(os.Getenv("plan_ids"), ",")
+	projectID = os.Getenv("project_id")
 	return
 }
 
 func main() {
 	listenAddr := ":8080"
-	namespace, collectionID, planIDs := initFromEnv()
+	namespace, projectID := initFromEnv()
 	log.Println(fmt.Sprintf("Engine namespace %s", namespace))
-	log.Println(fmt.Sprintf("Collection ID: %s", collectionID))
+	log.Println(fmt.Sprintf("Project ID: %s", projectID))
 	client, err := makeK8sClient()
 	if err != nil {
 		log.Fatal(err)
 	}
-	sic := &ShibuyaIngressController{client: client, namespace: namespace, collectionID: collectionID, planIDs: planIDs}
+	sic := &ShibuyaIngressController{client: client, namespace: namespace, projectID: projectID}
 	go sic.makeInventory()
 	if err := http.ListenAndServe(listenAddr, sic); err != nil {
 		log.Fatal(err)
