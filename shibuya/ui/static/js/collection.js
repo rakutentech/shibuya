@@ -324,20 +324,6 @@ var Collection = Vue.component("collection", {
                 }
             );
         },
-        resetIngress: function (e) {
-            e.preventDefault();
-            var url = "collections/" + this.collection.id + "/engines/ingress";
-            this.$http.put(url).then(
-                function (resp) {
-                    alert("Resetting ingress in progress, please wait and check again...Going to close the dialog after 3 seconds.");
-                    var self = this;
-                    setTimeout(function () { self.showing_engines_detail = false; }, 3000);
-                },
-                function (resp) {
-
-                }
-            );
-        },
         viewPlanLog: function (e, plan_id) {
             e.preventDefault();
             var url = "collections/" + this.collection.id + "/logs/" + plan_id;

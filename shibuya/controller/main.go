@@ -54,6 +54,7 @@ func NewController() *Controller {
 	go c.fetchEngineMetrics()
 	go c.cleanLocalStore()
 	go c.autoPurgeDeployments()
+	go c.autoPurgeProjectIngressController()
 	return c
 }
 
@@ -202,7 +203,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 		return err
 	}
 	err = utils.Retry(func() error {
-		return c.Scheduler.ExposeCollection(collection.ProjectID, collection.ID)
+		return c.Scheduler.ExposeProject(collection.ProjectID)
 	}, nil)
 	if err != nil {
 		return err
