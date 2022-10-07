@@ -322,11 +322,6 @@ func (cr *CloudRun) FetchEngineUrlsByPlan(collectionID, planID int64, opts *smod
 	return m, nil
 }
 
-func (cr *CloudRun) ExposeCollection(projectID, collectionID int64) error {
-	// For cloud run, ingress controller is not needed
-	return nil
-}
-
 func (cr *CloudRun) GetDeployedCollections() (map[int64]time.Time, error) {
 	deployCollections := make(map[int64]time.Time)
 	resp, err := cr.rs.Namespaces.Services.List(cr.nsProjectID).Do()
@@ -364,12 +359,24 @@ func (cr *CloudRun) PodReadyCount(collectionID int64) int {
 	return len(items)
 }
 
-func (cr *CloudRun) GetCollectionEnginesDetail(collectionID int64) (*smodel.CollectionDetails, error) {
+func (cr *CloudRun) GetCollectionEnginesDetail(projectID, collectionID int64) (*smodel.CollectionDetails, error) {
 	return nil, nil
 }
 
-func (cr *CloudRun) ResetIngress(projectID, collectionID int64) error {
+func (cr *CloudRun) ExposeProject(projectID int64) error {
 	return nil
+}
+
+func (cr *CloudRun) PurgeProjectIngress(projectID int64) error {
+	return nil
+}
+
+func (cr *CloudRun) GetDeployedServices() (map[int64]time.Time, error) {
+	return nil, nil
+}
+
+func (cr *CloudRun) GetEnginesByProject(projectID int64) ([]apiv1.Pod, error) {
+	return nil, nil
 }
 
 func (cr *CloudRun) DownloadPodLog(collectionID, planID int64) (string, error) {

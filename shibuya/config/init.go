@@ -97,7 +97,6 @@ type ObjectStorage struct {
 type LogFormat struct {
 	Json     bool   `json:"json"`
 	JsonPath string `json:"path"`
-	LogLevel string `json:"log_level"`
 }
 
 type IngressConfig struct {
@@ -105,6 +104,10 @@ type IngressConfig struct {
 	Replicas int32  `json:"replicas"`
 	CPU      string `json:"cpu"`
 	Mem      string `json:"mem"`
+
+	//Ingress controllers should be kept longer than then engines
+	Lifespan   string `json:"lifespan"`
+	GCInterval string `json:"gc_period"`
 }
 
 var defaultIngressConfig = IngressConfig{
@@ -176,11 +179,6 @@ func setupLogging() {
 	if SC.LogFormat.Json {
 		applyJsonLogging()
 	}
-	switch SC.LogFormat.LogLevel {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-		log.Infof("Setting debug level to %s", "debug")
-	}
 }
 
 func loadConfig() *ShibuyaConfig {
@@ -215,6 +213,12 @@ func loadConfig() *ShibuyaConfig {
 		if sc.ExecutorConfig.MaxEnginesInCollection == 0 {
 			sc.ExecutorConfig.MaxEnginesInCollection = 500
 		}
+	}
+	if sc.IngressConfig.Lifespan == "" {
+		sc.IngressConfig.Lifespan = "30m"
+	}
+	if sc.IngressConfig.GCInterval == "" {
+		sc.IngressConfig.GCInterval = "30s"
 	}
 	return sc
 }

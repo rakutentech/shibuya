@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
@@ -30,18 +30,9 @@ import (
 
 type K8sClientManager struct {
 	*config.ExecutorConfig
-	client               *kubernetes.Clientset
-	metricClient         *metricsc.Clientset
-	serviceAccount       string
-	launchingCollections chan int64
-	purgingCollections   chan int64
-	localCache           sync.Map
-}
-
-type collectionLocalCache struct {
-	url          string
-	ingressError error
-	pods         []apiv1.Pod
+	client         *kubernetes.Clientset
+	metricClient   *metricsc.Clientset
+	serviceAccount string
 }
 
 func NewK8sClientManager(cfg *config.ClusterConfig) *K8sClientManager {
@@ -50,13 +41,10 @@ func NewK8sClientManager(cfg *config.ClusterConfig) *K8sClientManager {
 		log.Warning(err)
 	}
 	metricsc, err := config.GetMetricsClient()
-	launchingCollections := make(chan int64)
-	purgingCollections := make(chan int64)
-	k := &K8sClientManager{
-		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount-1", launchingCollections, purgingCollections, sync.Map{},
+	return &K8sClientManager{
+		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount-1",
 	}
-	go k.fetchInfoFromAPIServer()
-	return k
+
 }
 
 func makeNodeAffinity(key, value string) *apiv1.NodeAffinity {
@@ -145,56 +133,6 @@ func prepareTolerations() []apiv1.Toleration {
 		}
 	}
 	return tolerations
-}
-
-// This func is to fetch the info from api server and put the info into local cache
-// Users will not directly the apiserver
-func (kcm *K8sClientManager) fetchInfoFromAPIServer() {
-	seen := make(map[int64]context.CancelFunc)
-	ctx := context.Background()
-	for {
-		select {
-		case collectionID := <-kcm.purgingCollections:
-			if cancelFunc, ok := seen[collectionID]; ok {
-				cancelFunc()
-			} else {
-				log.Warnf("Could not find the cancel fun for collection %d", collectionID)
-			}
-		case collectionID := <-kcm.launchingCollections:
-			if _, ok := seen[collectionID]; ok {
-				continue
-			}
-			ctx, cancel := context.WithCancel(ctx)
-			go func(collectionID int64, ctx context.Context) {
-				defer func() {
-					delete(seen, collectionID)
-					kcm.localCache.Delete(collectionID)
-					log.Infof("Closed the goroutine for the collection %d", collectionID)
-				}()
-				log.Infof("Start the goroutine for fetch the info for collection %d", collectionID)
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					default:
-						time.Sleep(3 * time.Second)
-						url, err := kcm.getIngressUrl(collectionID)
-						// we don't do any decision making here. Simply pass the error back to the caller
-						pods := kcm.getPodsByCollection(collectionID, "")
-						item := &collectionLocalCache{
-							url:          url,
-							pods:         pods,
-							ingressError: err,
-						}
-
-						log.Debugf("collection %d ingress info %v", collectionID, item)
-						kcm.localCache.Store(collectionID, item)
-					}
-				}
-			}(collectionID, ctx)
-			seen[collectionID] = cancel
-		}
-	}
 }
 
 func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
@@ -410,7 +348,6 @@ func (kcm *K8sClientManager) CreateService(serviceName string, engine appsv1.Dep
 
 func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	engineID int, containerConfig *config.ExecutorContainer) error {
-	kcm.launchingCollections <- collectionID
 	engineName := makeEngineName(projectID, collectionID, planID, engineID)
 	labels := makeEngineLabel(projectID, collectionID, planID, engineName)
 	affinity := prepareAffinity(collectionID)
@@ -423,7 +360,7 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	if err := kcm.CreateService(engineSvcName, engineConfig); err != nil {
 		return err
 	}
-	ingressClass := makeIngressClass(collectionID)
+	ingressClass := makeIngressClass(projectID)
 	ingressName := makeIngressName(projectID, collectionID, planID, engineID)
 	if err := kcm.CreateIngress(ingressClass, ingressName, engineSvcName, collectionID, projectID); err != nil {
 		return err
@@ -433,7 +370,6 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 }
 
 func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, enginesNo int, containerconfig *config.ExecutorContainer) error {
-	kcm.launchingCollections <- collectionID
 	planName := makePlanName(projectID, collectionID, planID)
 	labels := makePlanLabel(projectID, collectionID, planID)
 	affinity := prepareAffinity(collectionID)
@@ -445,10 +381,8 @@ func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, e
 	return nil
 }
 
-// This should func should be only called by the local cache goroutine
-// GetIngressUrl(with capital) will fetch the info from local cache and should be used by other callers
-func (kcm *K8sClientManager) getIngressUrl(collectionID int64) (string, error) {
-	igName := makeIngressClass(collectionID)
+func (kcm *K8sClientManager) GetIngressUrl(projectID int64) (string, error) {
+	igName := makeIngressClass(projectID)
 	serviceClient, err := kcm.client.CoreV1().Services(kcm.Namespace).
 		Get(context.TODO(), igName, metav1.GetOptions{})
 	if err != nil {
@@ -472,17 +406,6 @@ func (kcm *K8sClientManager) getIngressUrl(collectionID int64) (string, error) {
 	return fmt.Sprintf("%s:%d", ip_addr, exposedPort), nil
 }
 
-// what happens when we do a release?
-func (kcm *K8sClientManager) GetIngressUrl(collectionID int64) (string, error) {
-	v, ok := kcm.localCache.Load(collectionID)
-	if ok {
-		collectionLocal := v.(*collectionLocalCache)
-		return collectionLocal.url, collectionLocal.ingressError
-	}
-	log.Debugf("Fail to fetch from local cache for collection %d", collectionID)
-	return kcm.getIngressUrl(collectionID)
-}
-
 func (kcm *K8sClientManager) GetPods(labelSelector, fieldSelector string) ([]apiv1.Pod, error) {
 	podsClient, err := kcm.client.CoreV1().Pods(kcm.Namespace).
 		List(context.TODO(), metav1.ListOptions{
@@ -495,7 +418,7 @@ func (kcm *K8sClientManager) GetPods(labelSelector, fieldSelector string) ([]api
 	return podsClient.Items, nil
 }
 
-func (kcm *K8sClientManager) getPodsByCollection(collectionID int64, fieldSelector string) []apiv1.Pod {
+func (kcm *K8sClientManager) GetPodsByCollection(collectionID int64, fieldSelector string) []apiv1.Pod {
 	labelSelector := fmt.Sprintf("collection=%d", collectionID)
 	pods, err := kcm.GetPods(labelSelector, fieldSelector)
 	if err != nil {
@@ -504,28 +427,22 @@ func (kcm *K8sClientManager) getPodsByCollection(collectionID int64, fieldSelect
 	return pods
 }
 
-func (kcm *K8sClientManager) getPodsByCollectionWithCache(collectionID int64, phase apiv1.PodPhase) []apiv1.Pod {
-	v, ok := kcm.localCache.Load(collectionID)
-	if ok {
-		log.Debugf("Getting pods from local cache for %d", collectionID)
-		collectionLocal := v.(*collectionLocalCache)
-		if phase == "" {
-			return collectionLocal.pods
-		}
-		pods := []apiv1.Pod{}
-		for _, p := range collectionLocal.pods {
-			if p.Status.Phase == phase {
-				pods = append(pods, p)
-			}
-		}
-		return pods
+func (kcm *K8sClientManager) GetEnginesByProject(projectID int64) ([]apiv1.Pod, error) {
+	labelSelector := fmt.Sprintf("project=%d, kind=executor", projectID)
+	pods, err := kcm.GetPods(labelSelector, "")
+	if err != nil {
+		return nil, err
 	}
-	fieldSelector := fmt.Sprintf("status.phase=%s", string(phase))
-	return kcm.getPodsByCollection(collectionID, fieldSelector)
+	sort.Slice(pods, func(i, j int) bool {
+		p1 := pods[i]
+		p2 := pods[j]
+		return p1.CreationTimestamp.Time.After(p2.CreationTimestamp.Time)
+	})
+	return pods, nil
 }
 
 func (kcm *K8sClientManager) FetchEngineUrlsByPlan(collectionID, planID int64, opts *smodel.EngineOwnerRef) ([]string, error) {
-	collectionUrl, err := kcm.GetIngressUrl(collectionID)
+	collectionUrl, err := kcm.GetIngressUrl(opts.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +459,7 @@ func (kcm *K8sClientManager) CollectionStatus(projectID, collectionID int64, eps
 	planStatuses := make(map[int64]*smodel.PlanStatus)
 	var engineReachable bool
 	cs := &smodel.CollectionStatus{}
-	pods := kcm.getPodsByCollectionWithCache(collectionID, "")
+	pods := kcm.GetPodsByCollection(collectionID, "")
 	ingressControllerDeployed := false
 	for _, ep := range eps {
 		ps := &smodel.PlanStatus{
@@ -572,7 +489,8 @@ func (kcm *K8sClientManager) CollectionStatus(projectID, collectionID int64, eps
 		}
 	}
 	// if it's unrechable, we can assume it's not in progress as well
-	ingressPods := kcm.getPodsByCollectionWithCache(collectionID, apiv1.PodRunning)
+	fieldSelector := fmt.Sprintf("status.phase=Running")
+	ingressPods := kcm.GetPodsByCollection(collectionID, fieldSelector)
 	ingressControllerDeployed = len(ingressPods) >= 1
 	if !ingressControllerDeployed || !enginesReady {
 		for _, ps := range planStatuses {
@@ -709,7 +627,6 @@ func (kcm *K8sClientManager) deleteDeployment(collectionID int64) error {
 }
 
 func (kcm *K8sClientManager) PurgeCollection(collectionID int64) error {
-	kcm.purgingCollections <- collectionID
 	err := kcm.deleteDeployment(collectionID)
 	if err != nil {
 		return err
@@ -725,13 +642,24 @@ func (kcm *K8sClientManager) PurgeCollection(collectionID int64) error {
 	return nil
 }
 
+func (kcm *K8sClientManager) PurgeProjectIngress(projectID int64) error {
+	igName := makeIngressClass(projectID)
+	deleteOpts := metav1.DeleteOptions{}
+	if err := kcm.client.AppsV1().Deployments(kcm.Namespace).Delete(context.TODO(), igName, deleteOpts); err != nil {
+		return err
+	}
+	if err := kcm.client.CoreV1().Services(kcm.Namespace).Delete(context.TODO(), igName, deleteOpts); err != nil {
+		return err
+	}
+	return nil
+}
+
 func int32Ptr(i int32) *int32 { return &i }
 
-func (kcm *K8sClientManager) generateControllerDeployment(igName string, collectionID, projectID int64) appsv1.Deployment {
-	affinity := prepareAffinity(collectionID)
+func (kcm *K8sClientManager) generateControllerDeployment(igName string, projectID int64) appsv1.Deployment {
 	tolerations := prepareTolerations()
 	t := true
-	labels := makeIngressLabel(collectionID, projectID)
+	labels := makeIngressControllerLabel(projectID)
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   igName,
@@ -751,7 +679,6 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 					},
 				},
 				Spec: apiv1.PodSpec{
-					Affinity:                      affinity,
 					Tolerations:                   tolerations,
 					ServiceAccountName:            kcm.serviceAccount,
 					TerminationGracePeriodSeconds: new(int64),
@@ -792,10 +719,6 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, collect
 								},
 							},
 							Env: []apiv1.EnvVar{
-								{
-									Name:  "collection_id",
-									Value: fmt.Sprint(collectionID),
-								},
 								{
 									Name: "POD_NAME",
 									ValueFrom: &apiv1.EnvVarSource{
@@ -839,10 +762,12 @@ func (kcm *K8sClientManager) ApplyIngressPrerequisite() {
 	log.Printf("Prerequisites are applied to the cluster")
 }
 
-func (kcm *K8sClientManager) ExposeCollection(projectID, collectionID int64) error {
+func (kcm *K8sClientManager) ExposeProject(projectID int64) error {
 	kcm.ApplyIngressPrerequisite()
-	igName := makeIngressClass(collectionID)
-	deployment := kcm.generateControllerDeployment(igName, collectionID, projectID)
+	igName := makeIngressClass(projectID)
+	deployment := kcm.generateControllerDeployment(igName, projectID)
+	// there could be duplicated controller deployment from multiple collections
+	// This method has already taken it into considertion.
 	if err := kcm.deploy(&deployment); err != nil {
 		return err
 	}
@@ -882,7 +807,7 @@ func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceNam
 				"nginx.ingress.kubernetes.io/proxy-send-timeout": "600",
 				"nginx.ingress.kubernetes.io/proxy-read-timeout": "600",
 			},
-			Labels: makeIngressLabel(collectionID, projectID),
+			Labels: makeIngressLabel(projectID, collectionID),
 		},
 		Spec: v1networking.IngressSpec{
 			Rules: []v1networking.IngressRule{ingressRule},
@@ -986,6 +911,23 @@ func (kcm *K8sClientManager) GetDeployedCollections() (map[int64]time.Time, erro
 	return deployedCollections, nil
 }
 
+func (kcm *K8sClientManager) GetDeployedServices() (map[int64]time.Time, error) {
+	labelSelector := fmt.Sprintf("kind=ingress-controller")
+	services, err := kcm.client.CoreV1().Services(kcm.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		return nil, err
+	}
+	deployedServices := make(map[int64]time.Time)
+	for _, svc := range services.Items {
+		projectID, err := strconv.ParseInt(svc.Labels["project"], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		deployedServices[projectID] = svc.CreationTimestamp.Time
+	}
+	return deployedServices, nil
+}
+
 func (kcm *K8sClientManager) GetPodsMetrics(collectionID, planID int64) (map[string]apiv1.ResourceList, error) {
 	metricsList, err := kcm.metricClient.MetricsV1beta1().PodMetricses(kcm.Namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("collection=%d,plan=%d", collectionID, planID),
@@ -1002,7 +944,7 @@ func (kcm *K8sClientManager) GetPodsMetrics(collectionID, planID int64) (map[str
 	return result, nil
 }
 
-func (kcm *K8sClientManager) GetCollectionEnginesDetail(collectionID int64) (*smodel.CollectionDetails, error) {
+func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID int64) (*smodel.CollectionDetails, error) {
 	labelSelector := fmt.Sprintf("collection=%d", collectionID)
 	pods, err := kcm.GetPods(labelSelector, "")
 	if err != nil {
@@ -1023,7 +965,7 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(collectionID int64) (*sm
 			&smodel.Ingress{Name: ig.Name, CreatedTime: ig.ObjectMeta.CreationTimestamp.Time})
 	}
 	collectionDetails := new(smodel.CollectionDetails)
-	ingressUrl, err := kcm.GetIngressUrl(collectionID)
+	ingressUrl, err := kcm.GetIngressUrl(projectID)
 	if err != nil {
 		collectionDetails.IngressIP = err.Error()
 	} else {
@@ -1041,29 +983,6 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(collectionID int64) (*sm
 	collectionDetails.IngressRules = ingressStatuses
 	collectionDetails.ControllerReplicas = config.SC.IngressConfig.Replicas
 	return collectionDetails, nil
-}
-
-func (kcm *K8sClientManager) ResetIngress(projectID, collectionID int64) error {
-	igName := makeIngressClass(collectionID)
-	if err := kcm.client.CoreV1().Services(kcm.Namespace).Delete(context.TODO(), igName, metav1.DeleteOptions{}); err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-	}
-	go func() {
-		for {
-			// we should only recreate the svc when the previous svc was deleted otherwise the newly created svc
-			// could be deleted again.
-			time.Sleep(3 * time.Second)
-			if _, err := kcm.client.CoreV1().Services(kcm.Namespace).Get(context.TODO(), igName, metav1.GetOptions{}); err != nil {
-				deployment := kcm.generateControllerDeployment(igName, collectionID, projectID)
-				kcm.expose(igName, &deployment)
-				return
-			}
-			continue
-		}
-	}()
-	return nil
 }
 
 func getEngineNumber(podName string) string {

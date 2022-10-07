@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -122,6 +123,7 @@ func (c *Controller) autoPurgeDeployments() {
 				log.Error(err)
 				continue
 			}
+
 			lr, err := collection.GetLastRun()
 			if err != nil {
 				log.Error(err)
@@ -142,6 +144,93 @@ func (c *Controller) autoPurgeDeployments() {
 			}
 		}
 		time.Sleep(60 * time.Second)
+	}
+}
+
+// We'll keep the IP for defined period of time since the project was last time used.
+// Last time used is defined as:
+// 1. If none of the collections has a run, it will be the last launch time of the engines of a collection
+// 2. If any of the collection has a run, it will be the end time of that run
+func (c *Controller) autoPurgeProjectIngressController() {
+	projectLastUsedTime := make(map[int64]time.Time)
+	ingressLifespan, err := time.ParseDuration(config.SC.IngressConfig.Lifespan)
+	if err != nil {
+		log.Fatal(err)
+	}
+	gcInterval, err := time.ParseDuration(config.SC.IngressConfig.GCInterval)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(fmt.Sprintf("Project ingress lifespan is %v. And the GC Interval is %v", ingressLifespan, gcInterval))
+	for {
+		deployedServices, err := c.Scheduler.GetDeployedServices()
+		if err != nil {
+			continue
+		}
+	svcLoop:
+		for projectID := range deployedServices {
+			// Because of this if, the GC could not know any operation happening in the span.
+			// When the time is up and there is no engines deployment, the ingress ip will be deleted right away.
+			// if time.Since(createdTime) < ingressLifespan {
+			// 	continue
+			// }
+			pods, err := c.Scheduler.GetEnginesByProject(projectID)
+			if err != nil {
+				continue
+			}
+			t, err := time.Parse("2006-01-03", "2000-01-01")
+			if err != nil {
+				log.Fatal(err)
+			}
+			latestRun := &model.RunHistory{EndTime: t}
+			for _, p := range pods {
+				collectionID, err := strconv.ParseInt(p.Labels["collection"], 10, 64)
+				if err != nil {
+					log.Error(err)
+					continue svcLoop
+				}
+				collection, err := model.GetCollection(collectionID)
+				if err != nil {
+					continue svcLoop
+				}
+				lr, err := collection.GetLastRun()
+				if err != nil {
+					continue svcLoop
+				}
+				if lr != nil {
+					// We need to track the ongoing run because if run stops before the loop and engines are purged,
+					// the lastUsedTime will be the engine launch time.
+					if lr.EndTime.IsZero() {
+						lr.EndTime = time.Now()
+					}
+					if lr.EndTime.After(latestRun.EndTime) {
+						latestRun = lr
+					}
+				}
+			}
+			plu := projectLastUsedTime[projectID]
+			if len(pods) > 0 {
+				// the pods are ordered by created time in asc order. So the first pod in the list
+				// is the most reccently being created
+				podLastCreatedTime := pods[0].CreationTimestamp.Time
+				if podLastCreatedTime.After(plu) {
+					plu = podLastCreatedTime
+				}
+			}
+			// we also need this line because if there is no engines deployed, we could not find the latest run
+			if latestRun.EndTime.After(plu) {
+				plu = latestRun.EndTime
+			}
+			projectLastUsedTime[projectID] = plu
+			if time.Since(plu) > ingressLifespan {
+				log.Println(fmt.Sprintf("Going to delete ingress for project %d. Last used time was %v", projectID, plu))
+				c.Scheduler.PurgeProjectIngress(projectID)
+			}
+		}
+		// The interval should not be very long. For example, a collection has been launched for 30 minutes,
+		// If there is a run being executed for a minute, there is a chance the GC misses that run and the project
+		// ip will be deleted.
+		time.Sleep(gcInterval)
 	}
 }
 

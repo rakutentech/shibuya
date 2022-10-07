@@ -502,10 +502,13 @@ func hasInvalidDiff(curr, updated []*model.ExecutionPlan) (bool, string) {
 	for _, item := range updated {
 		currPlan, ok := currCache[item.PlanID]
 		if !ok {
-			return true, "You cannot add a new plan while have engines deployed"
+			return true, "You cannot add a new plan while having engines deployed"
 		}
 		if currPlan.Engines != item.Engines {
-			return true, "You cannot change engine numbers while have engineds deployed"
+			return true, "You cannot change engine numbers while having engines deployed"
+		}
+		if currPlan.Concurrency != item.Concurrency {
+			return true, "You cannot change concurrency while having engines deployed"
 		}
 	}
 	return false, ""
@@ -616,25 +619,12 @@ func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *ht
 		s.handleErrors(w, err)
 		return
 	}
-	collectionDetails, err := s.ctr.Scheduler.GetCollectionEnginesDetail(collection.ID)
+	collectionDetails, err := s.ctr.Scheduler.GetCollectionEnginesDetail(collection.ProjectID, collection.ID)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
 	}
 	s.jsonise(w, http.StatusOK, collectionDetails)
-}
-
-func (s *ShibuyaAPI) collectionIngressUrlHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
-	if err != nil {
-		s.handleErrors(w, err)
-		return
-	}
-	err = s.ctr.Scheduler.ResetIngress(collection.ProjectID, collection.ID)
-	if err != nil {
-		s.handleErrors(w, err)
-		return
-	}
 }
 
 func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -644,6 +634,11 @@ func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	if err := s.ctr.DeployCollection(collection); err != nil {
+		var dbe *model.DBError
+		if errors.As(err, &dbe) {
+			s.handleErrors(w, makeInvalidRequestError(err.Error()))
+			return
+		}
 		s.handleErrors(w, makeInternalServerError(err.Error()))
 		return
 	}
@@ -692,7 +687,10 @@ func (s *ShibuyaAPI) collectionPurgeHandler(w http.ResponseWriter, r *http.Reque
 		s.handleErrors(w, err)
 		return
 	}
-	s.ctr.TermAndPurgeCollectionAsync(collection)
+	if err = s.ctr.TermAndPurgeCollection(collection); err != nil {
+		s.handleErrors(w, err)
+		return
+	}
 }
 
 func (s *ShibuyaAPI) collectionNodesGetHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
@@ -837,7 +835,6 @@ func (s *ShibuyaAPI) InitRoutes() Routes {
 		&Route{"upload_collection_files", "PUT", "/api/collections/:collection_id/files", s.collectionFilesUploadHandler},
 		&Route{"delete_collection_files", "DELETE", "/api/collections/:collection_id/files", s.collectionFilesDeleteHandler},
 		&Route{"get_collection_engines_detail", "GET", "/api/collections/:collection_id/engines_detail", s.collectionEnginesDetailHandler},
-		&Route{"reset_collection_ingress", "PUT", "/api/collections/:collection_id/engines/ingress", s.collectionIngressUrlHandler},
 		&Route{"deploy", "POST", "/api/collections/:collection_id/deploy", s.collectionDeploymentHandler},
 		&Route{"trigger", "POST", "/api/collections/:collection_id/trigger", s.collectionTriggerHandler},
 		&Route{"stop", "POST", "/api/collections/:collection_id/stop", s.collectionTermHandler},
