@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -64,45 +63,18 @@ func (sic *ShibuyaIngressController) makeInventory() {
 	for {
 		time.Sleep(3 * time.Second)
 
-		resp, err := sic.client.CoreV1().Pods(sic.namespace).List(context.TODO(), metav1.ListOptions{
+		resp, err := sic.client.CoreV1().Endpoints(sic.namespace).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: labelSelector,
 		})
 		if err != nil {
 			continue
 		}
-		// we need to ensure the engines order is deterministic
-		// Because we use engine id to find the pod ip.
-		sort.Slice(resp.Items, func(i, j int) bool {
-			p1 := resp.Items[i]
-			p2 := resp.Items[j]
-			return p1.Name > p2.Name
-		})
-		enginesByCollection := make(map[string][]apiv1.Pod)
+		for _, planEndpoints := range resp.Items {
+			// need to sort the endpoints and update the inventory
+			for _, pe := range planEndpoints.Subsets {
 
-		// TODO !! how do we deal with engines ready issue?
-		for _, p := range resp.Items {
-			labels := p.Labels
-			if labels["kind"] != "executor" {
-				continue
 			}
-			collectionID := labels["collection"]
-			engines, ok := enginesByCollection[collectionID]
-			if !ok {
-				engines = []apiv1.Pod{}
-			}
-			engines = append(engines, p)
-			enginesByCollection[collectionID] = engines
 		}
-	collectionLoop:
-		for _, pods := range enginesByCollection {
-			for _, p := range pods {
-				if p.Status.Phase != apiv1.PodRunning {
-					continue collectionLoop
-				}
-			}
-			sic.makeInventoryFromPods(pods)
-		}
-	}
 }
 
 func (sic *ShibuyaIngressController) findPodIPFromInventory(url string) (string, error) {
