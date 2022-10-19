@@ -264,6 +264,9 @@ func (kcm *K8sClientManager) getRandomHostIP() (string, error) {
 	podList, err := kcm.client.CoreV1().Pods(kcm.Namespace).
 		List(context.TODO(), metav1.ListOptions{
 			Limit: 1,
+			// we need to add the selector here because pod's hostIP could be empty if it's in pending state
+			// So we want to only find the pod that is running so it would have hostIP.
+			FieldSelector: fmt.Sprintf("status.phase=Running"),
 		})
 	if err != nil {
 		log.Error(err)
