@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -43,26 +43,10 @@ func (sic *ShibuyaIngressController) makePath(projectID, collectionID, planID st
 	return fmt.Sprintf("service-%s-%s-%s-%d", projectID, collectionID, planID, engineID)
 }
 
-func (sic *ShibuyaIngressController) makeInventoryFromPods(pods []apiv1.Pod) {
-	for i, p := range pods {
-		podIP := p.Status.PodIP
-		container := p.Spec.Containers[0]
-		port := container.Ports[0].ContainerPort
-		addr := fmt.Sprintf("%s:%d", podIP, port)
-		projectID := p.Labels["project"]
-		collectionID := p.Labels["collection"]
-		planID := p.Labels["plan"]
-		path := sic.makePath(projectID, collectionID, planID, i)
-		log.Println(fmt.Sprintf("%s:%s", path, addr))
-		sic.engineInventory.Store(path, addr)
-	}
-}
-
 func (sic *ShibuyaIngressController) makeInventory() {
 	labelSelector := fmt.Sprintf("project=%s", sic.projectID)
 	for {
 		time.Sleep(3 * time.Second)
-
 		resp, err := sic.client.CoreV1().Endpoints(sic.namespace).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: labelSelector,
 		})
@@ -71,10 +55,42 @@ func (sic *ShibuyaIngressController) makeInventory() {
 		}
 		for _, planEndpoints := range resp.Items {
 			// need to sort the endpoints and update the inventory
-			for _, pe := range planEndpoints.Subsets {
-
+			projectID := planEndpoints.Labels["project"]
+			collectionID := planEndpoints.Labels["collection"]
+			planID := planEndpoints.Labels["plan"]
+			kind := planEndpoints.Labels["kind"]
+			if kind != "executor" {
+				continue
+			}
+			subsets := planEndpoints.Subsets
+			if len(subsets) == 0 {
+				continue
+			}
+			engineEndpoints := subsets[0].Addresses
+			ports := subsets[0].Ports
+			if len(ports) == 0 {
+				//TODO is this an error? Shall we handle it?
+				continue
+			}
+			port := ports[0].Port
+			addresses := []string{}
+			for _, e := range engineEndpoints {
+				addresses = append(addresses, fmt.Sprintf("%s:%d", e.IP, port))
+			}
+			// Every engine is the same. but we need to ensure the engine url always matches to the same engine
+			sort.Slice(addresses, func(i, j int) bool {
+				return addresses[i] < addresses[j]
+			})
+			for i, addr := range addresses {
+				path := sic.makePath(projectID, collectionID, planID, i)
+				sic.engineInventory.Store(path, addr)
 			}
 		}
+		sic.engineInventory.Range(func(k, v interface{}) bool {
+			fmt.Println(k, v)
+			return true
+		})
+	}
 }
 
 func (sic *ShibuyaIngressController) findPodIPFromInventory(url string) (string, error) {
