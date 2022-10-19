@@ -369,6 +369,28 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	return nil
 }
 
+func (kcm *K8sClientManager) makePlanService(name string, label map[string]string) *apiv1.Service {
+	service := &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Annotations: map[string]string{
+				"networking.istio.io/exportTo": ".",
+			},
+			Labels: label,
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: label,
+			Ports: []apiv1.ServicePort{
+				{
+					Port:       80,
+					TargetPort: intstr.FromInt(8080),
+				},
+			},
+		},
+	}
+	return service
+}
+
 func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, enginesNo int, containerconfig *config.ExecutorContainer) error {
 	planName := makePlanName(projectID, collectionID, planID)
 	labels := makePlanLabel(projectID, collectionID, planID)
@@ -376,6 +398,11 @@ func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, e
 	tolerations := prepareTolerations()
 	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations)
 	if err := kcm.deploy(&planConfig); err != nil {
+		return err
+	}
+	service := kcm.makePlanService(planName, labels)
+	if _, err := kcm.client.CoreV1().Services(kcm.Namespace).Create(context.TODO(), service, metav1.CreateOptions{}); err != nil {
+		log.Println(err)
 		return err
 	}
 	return nil
@@ -734,6 +761,10 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 											FieldPath: "metadata.namespace",
 										},
 									},
+								},
+								{
+									Name:  "project_id",
+									Value: fmt.Sprintf("%d", projectID),
 								},
 							},
 						},
