@@ -1,4 +1,4 @@
-all: | cluster permissions db prometheus grafana shibuya jmeter local_storage
+all: | cluster permissions db prometheus grafana shibuya jmeter local_storage ingress-controller
 
 shibuya-controller-ns = shibuya-executors
 shibuya-executor-ns = shibuya-executors
@@ -77,3 +77,10 @@ local_storage:
 	docker build -t shibuya:storage local_storage
 	kind load docker-image shibuya:storage --name shibuya
 	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/storage.yaml --force
+
+.PHONY: ingress-controller
+ingress-controller:
+	# if you need to debug the controller, please use the makefile in the ingress controller folder
+	# And update the image in the config.json
+	docker build -t shibuya:ingress-controller -f ingress-controller/Dockerfile ingress-controller
+	kind load docker-image shibuya:ingress-controller --name shibuya
