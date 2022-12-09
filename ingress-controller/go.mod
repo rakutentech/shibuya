@@ -3,6 +3,7 @@ module ingress-controller
 go 1.17
 
 require (
+	go.uber.org/automaxprocs v1.5.1
 	k8s.io/apimachinery v0.19.16
 	k8s.io/client-go v0.19.16
 )
