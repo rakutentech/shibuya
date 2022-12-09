@@ -89,10 +89,6 @@ func (sic *ShibuyaIngressController) makeInventory() {
 				sic.engineInventory.Store(path, addr)
 			}
 		}
-		sic.engineInventory.Range(func(k, v interface{}) bool {
-			fmt.Println(k, v)
-			return true
-		})
 	}
 }
 
