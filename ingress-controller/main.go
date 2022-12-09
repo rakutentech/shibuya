@@ -53,6 +53,9 @@ func (sic *ShibuyaIngressController) makeInventory() {
 		if err != nil {
 			continue
 		}
+
+		// can we have the race condition that the inventory we make could make the shibuya controller mistakenly thinks the engines are ready?
+		// controller is already checking whether all the engines within one collection are in running state
 		for _, planEndpoints := range resp.Items {
 			// need to sort the endpoints and update the inventory
 			projectID := planEndpoints.Labels["project"]
