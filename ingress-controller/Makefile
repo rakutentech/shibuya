@@ -1,5 +1,6 @@
 build:
-	go build -o ingress-controller
+	mkdir -p bin
+	go build -o bin/ingress-controller
 
 docker:
 	docker build -t ${IMG} .
