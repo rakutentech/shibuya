@@ -1,4 +1,4 @@
-FROM gcr.io/shibuya-214807/grafana/grafana:5.3.2
+FROM grafana/grafana:9.3.2
 ENV GF_SECURITY_ADMIN_USER=shibuya
 ENV GF_SECURITY_ADMIN_PASSWORD=shibuya
 ENV GF_AUTH_ANONYMOUS_ENABLED=true
