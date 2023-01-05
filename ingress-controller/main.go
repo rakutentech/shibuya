@@ -34,7 +34,25 @@ type EnginePoint struct {
 	path         string
 }
 
-var httpClient = &http.Client{}
+var tr = &http.Transport{
+	// Currently we have 4 engines per host. Each engine will require at least 2 connections.
+	// 1 for metric subscription and 1 for trigger/healthcheck requests.
+	// So minimum per host is 8. Currently, the capacity should be big enough
+	// because it's designed with 10 engines per host and 10 conns per engine.
+	MaxIdleConnsPerHost: 100,
+
+	// Usually one collection will not run longer than 1 hour. If it's longer than 1 Hour,
+	// We should do some GC to prevent too many connections accumulated.
+	IdleConnTimeout: 1 * time.Hour,
+
+	// We wait max 5 minutes for engines to respond. A complex plan might take some time to start.
+	// But it should no longer than 5 minutes.
+	ResponseHeaderTimeout: 5 * time.Minute,
+}
+
+var httpClient = &http.Client{
+	Transport: tr,
+}
 
 func makeK8sClient() (*kubernetes.Clientset, error) {
 	config, err := rest.InClusterConfig()
