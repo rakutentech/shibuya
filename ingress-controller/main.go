@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	log "github.com/sirupsen/logrus"
+
 	_ "go.uber.org/automaxprocs"
 )
 
@@ -25,6 +26,12 @@ type ShibuyaIngressController struct {
 	engineInventory sync.Map
 	namespace       string
 	projectID       string
+}
+
+type EnginePoint struct {
+	collectionID string
+	addr         string
+	path         string
 }
 
 var httpClient = &http.Client{}
@@ -45,6 +52,39 @@ func (sic *ShibuyaIngressController) makePath(projectID, collectionID, planID st
 	return fmt.Sprintf("service-%s-%s-%s-%d", projectID, collectionID, planID, engineID)
 }
 
+func (sic *ShibuyaIngressController) findCollectionIDFromPath(path string) string {
+	items := strings.Split(path, "-")
+	return items[2]
+}
+
+func (sic *ShibuyaIngressController) getPlanEnginesCount(projectID, collectionID, planID string) (int, error) {
+	planName := fmt.Sprintf("engine-%s-%s-%s", projectID, collectionID, planID)
+	resp, err := sic.client.AppsV1().Deployments(sic.namespace).Get(context.TODO(), planName, metav1.GetOptions{})
+	if err != nil {
+		return 0, err
+	}
+	return int(*resp.Spec.Replicas), nil
+}
+
+func (sic *ShibuyaIngressController) updateInventory(inventoryByCollection map[string][]EnginePoint) {
+	log.Debugf("Going to update inventory with following states %v", inventoryByCollection)
+	for _, enginePoints := range inventoryByCollection {
+		for _, ee := range enginePoints {
+			sic.engineInventory.Store(ee.path, ee.addr)
+			log.Info(fmt.Sprintf("Added engine %s with addr %s into inventory", ee.path, ee.addr))
+		}
+	}
+	sic.engineInventory.Range(func(path, addr interface{}) bool {
+		p := path.(string)
+		collectionID := sic.findCollectionIDFromPath(p)
+		if _, ok := inventoryByCollection[collectionID]; !ok {
+			log.Debugf("Going to clean the inventory for engine with path %s", path)
+			sic.engineInventory.Delete(path)
+		}
+		return true
+	})
+}
+
 func (sic *ShibuyaIngressController) makeInventory() {
 	labelSelector := fmt.Sprintf("project=%s", sic.projectID)
 	for {
@@ -55,23 +95,48 @@ func (sic *ShibuyaIngressController) makeInventory() {
 		if err != nil {
 			continue
 		}
-
 		// can we have the race condition that the inventory we make could make the shibuya controller mistakenly thinks the engines are ready?
 		// controller is already checking whether all the engines within one collection are in running state
+		// How can ensure the atomicity?
+		inventoryByCollection := make(map[string][]EnginePoint)
+		skipedCollections := make(map[string]struct{})
 		for _, planEndpoints := range resp.Items {
 			// need to sort the endpoints and update the inventory
-			projectID := planEndpoints.Labels["project"]
 			collectionID := planEndpoints.Labels["collection"]
+
+			// If any of the plans inside the collection is not ready, we skip the further check
+			if _, ok := skipedCollections[collectionID]; ok {
+				log.Debugf("Collection %s is not ready, skip.", collectionID)
+				continue
+			}
+			projectID := planEndpoints.Labels["project"]
 			planID := planEndpoints.Labels["plan"]
 			kind := planEndpoints.Labels["kind"]
+
 			if kind != "executor" {
 				continue
 			}
+			collectionReady := true
 			subsets := planEndpoints.Subsets
 			if len(subsets) == 0 {
-				continue
+				collectionReady = false
 			}
 			engineEndpoints := subsets[0].Addresses
+			planEngineCount, err := sic.getPlanEnginesCount(projectID, collectionID, planID)
+			if err != nil {
+				log.Debugf("Getting count error %v", err)
+				collectionReady = false
+			}
+			// If the engpoints are less than the pod count, it means the pods are not ready yet, we should skip
+			log.Debugf("Engine endpoints count %d", len(engineEndpoints))
+			log.Debugf("Number of engines in the plan %d", planEngineCount)
+			if len(engineEndpoints) < planEngineCount {
+				collectionReady = false
+			}
+			if !collectionReady {
+				skipedCollections[collectionID] = struct{}{}
+				continue
+			}
 			ports := subsets[0].Ports
 			if len(ports) == 0 {
 				//TODO is this an error? Shall we handle it?
@@ -88,9 +153,13 @@ func (sic *ShibuyaIngressController) makeInventory() {
 			})
 			for i, addr := range addresses {
 				path := sic.makePath(projectID, collectionID, planID, i)
-				sic.engineInventory.Store(path, addr)
+				inventoryByCollection[collectionID] = append(inventoryByCollection[collectionID], EnginePoint{
+					path: path,
+					addr: addr,
+				})
 			}
 		}
+		sic.updateInventory(inventoryByCollection)
 	}
 }
 
@@ -116,24 +185,25 @@ func (sic *ShibuyaIngressController) ServeHTTP(w http.ResponseWriter, req *http.
 	}
 	action := items[2]
 	engineUrl := fmt.Sprintf("http://%s/%s", podIP, action)
-	log.Println(engineUrl)
 	req.URL, err = url.Parse(engineUrl)
 	if err != nil {
-		log.Println(err)
+		log.Debug(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	t := req.RequestURI
 	req.RequestURI = ""
 	//client := &http.Client{}
+
+	// TODO: need to polish the http client here
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Println(err)
+		log.Debug(err)
 		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
 	defer resp.Body.Close()
-	log.Println(resp.StatusCode, "-l", t)
+	log.Debug(resp.StatusCode, "-l", t)
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
@@ -147,8 +217,9 @@ func initFromEnv() (namespace, projectID string) {
 func main() {
 	listenAddr := ":8080"
 	namespace, projectID := initFromEnv()
-	log.Println(fmt.Sprintf("Engine namespace %s", namespace))
-	log.Println(fmt.Sprintf("Project ID: %s", projectID))
+	log.SetLevel(log.DebugLevel)
+	log.Info(fmt.Sprintf("Engine namespace %s", namespace))
+	log.Info(fmt.Sprintf("Project ID: %s", projectID))
 	client, err := makeK8sClient()
 	if err != nil {
 		log.Fatal(err)
