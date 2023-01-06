@@ -19,7 +19,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	v1networking "k8s.io/api/networking/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -681,25 +680,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 	return deployment
 }
 
-func (kcm *K8sClientManager) ApplyIngressPrerequisite() {
-	mandatory := fmt.Sprintf("/ingress/mandatory-1.yaml")
-	namespace := kcm.Namespace
-	cmd := exec.Command("kubectl", "-n", namespace, "apply", "-f", mandatory)
-	o, err := cmd.Output()
-	if err != nil {
-		log.Printf("Cannot apply mandatory.yaml")
-		log.Error(err)
-	}
-	log.Print(string(o))
-	err = kcm.CreateRoleBinding()
-	if err != nil {
-		log.Error(err)
-	}
-	log.Printf("Prerequisites are applied to the cluster")
-}
-
 func (kcm *K8sClientManager) ExposeProject(projectID int64) error {
-	kcm.ApplyIngressPrerequisite()
 	igName := makeIngressClass(projectID)
 	deployment := kcm.generateControllerDeployment(igName, projectID)
 	// there could be duplicated controller deployment from multiple collections
@@ -763,35 +744,6 @@ func (kcm *K8sClientManager) deleteIngressRules(collectionID int64) error {
 	}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("collection=%d", collectionID),
 	})
-}
-
-func (kcm *K8sClientManager) CreateRoleBinding() error {
-	namespace := kcm.Namespace
-	nginxRoleBinding := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "shibuya-ingress-role-binding-1",
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      kcm.serviceAccount,
-				Namespace: namespace,
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     "shibuya-ingress-role-1",
-		},
-	}
-	_, err := kcm.client.RbacV1().RoleBindings(namespace).Create(context.TODO(), nginxRoleBinding, metav1.CreateOptions{})
-	if errors.IsAlreadyExists(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (kcm *K8sClientManager) GetNodesByCollection(collectionID string) ([]apiv1.Node, error) {
