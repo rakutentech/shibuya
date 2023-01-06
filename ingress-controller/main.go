@@ -226,16 +226,22 @@ func (sic *ShibuyaIngressController) ServeHTTP(w http.ResponseWriter, req *http.
 	io.Copy(w, resp.Body)
 }
 
-func initFromEnv() (namespace, projectID string) {
+func initFromEnv() (namespace, projectID, logLevel string) {
 	namespace = os.Getenv("POD_NAMESPACE")
 	projectID = os.Getenv("project_id")
+	logLevel = os.Getenv("log_level")
 	return
 }
 
 func main() {
 	listenAddr := ":8080"
-	namespace, projectID := initFromEnv()
-	log.SetLevel(log.DebugLevel)
+	namespace, projectID, logLevel := initFromEnv()
+	switch logLevel {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
 	log.Info(fmt.Sprintf("Engine namespace %s", namespace))
 	log.Info(fmt.Sprintf("Project ID: %s", projectID))
 	client, err := makeK8sClient()
