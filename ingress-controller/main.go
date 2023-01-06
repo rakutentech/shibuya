@@ -89,15 +89,15 @@ func (sic *ShibuyaIngressController) updateInventory(inventoryByCollection map[s
 	for _, enginePoints := range inventoryByCollection {
 		for _, ee := range enginePoints {
 			sic.engineInventory.Store(ee.path, ee.addr)
-			log.Info(fmt.Sprintf("Added engine %s with addr %s into inventory", ee.path, ee.addr))
+			log.Infof("Added engine %s with addr %s into inventory", ee.path, ee.addr)
 		}
 	}
 	sic.engineInventory.Range(func(path, addr interface{}) bool {
 		p := path.(string)
 		collectionID := sic.findCollectionIDFromPath(p)
 		if _, ok := inventoryByCollection[collectionID]; !ok {
-			log.Debugf("Going to clean the inventory for engine with path %s", path)
 			sic.engineInventory.Delete(path)
+			log.Infof("Cleaned the inventory for engine with path %s", path)
 		}
 		return true
 	})
@@ -189,6 +189,10 @@ func (sic *ShibuyaIngressController) findPodIPFromInventory(url string) (string,
 	return item.(string), nil
 }
 
+func makeAccessLogEntry(statusCode int, path string) string {
+	return fmt.Sprintf("%d, %s", statusCode, path)
+}
+
 func (sic *ShibuyaIngressController) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	items := strings.Split(req.RequestURI, "/")
 	if len(items) < 3 {
@@ -211,9 +215,6 @@ func (sic *ShibuyaIngressController) ServeHTTP(w http.ResponseWriter, req *http.
 	}
 	t := req.RequestURI
 	req.RequestURI = ""
-	//client := &http.Client{}
-
-	// TODO: need to polish the http client here
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Debug(err)
@@ -221,7 +222,7 @@ func (sic *ShibuyaIngressController) ServeHTTP(w http.ResponseWriter, req *http.
 		return
 	}
 	defer resp.Body.Close()
-	log.Debug(resp.StatusCode, "-l", t)
+	log.Debug(makeAccessLogEntry(resp.StatusCode, t))
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
@@ -242,8 +243,8 @@ func main() {
 	default:
 		log.SetLevel(log.InfoLevel)
 	}
-	log.Info(fmt.Sprintf("Engine namespace %s", namespace))
-	log.Info(fmt.Sprintf("Project ID: %s", projectID))
+	log.Infof("Engine namespace %s", namespace)
+	log.Infof("Project ID: %s", projectID)
 	client, err := makeK8sClient()
 	if err != nil {
 		log.Fatal(err)
