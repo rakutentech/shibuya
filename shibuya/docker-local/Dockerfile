@@ -27,5 +27,4 @@ ENV https_proxy ${proxy}
 COPY config/kube_configs /root/.kube
 COPY config.json /config.json
 COPY ./ui/ /
-COPY ./controller/mandatory-1.yaml /ingress/mandatory-1.yaml
 CMD ["shibuya"]
