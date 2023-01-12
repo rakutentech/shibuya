@@ -111,6 +111,7 @@ func (sic *ShibuyaIngressController) makeInventory() {
 			LabelSelector: labelSelector,
 		})
 		if err != nil {
+			log.Error(err)
 			continue
 		}
 		// can we have the race condition that the inventory we make could make the shibuya controller mistakenly thinks the engines are ready?
