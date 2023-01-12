@@ -28,7 +28,7 @@ type ShibuyaIngressController struct {
 	projectID       string
 }
 
-type EnginePoint struct {
+type EngineEndPoint struct {
 	collectionID string
 	addr         string
 	path         string
@@ -84,10 +84,10 @@ func (sic *ShibuyaIngressController) getPlanEnginesCount(projectID, collectionID
 	return int(*resp.Spec.Replicas), nil
 }
 
-func (sic *ShibuyaIngressController) updateInventory(inventoryByCollection map[string][]EnginePoint) {
+func (sic *ShibuyaIngressController) updateInventory(inventoryByCollection map[string][]EngineEndPoint) {
 	log.Debugf("Going to update inventory with following states %v", inventoryByCollection)
-	for _, enginePoints := range inventoryByCollection {
-		for _, ee := range enginePoints {
+	for _, ep := range inventoryByCollection {
+		for _, ee := range ep {
 			sic.engineInventory.Store(ee.path, ee.addr)
 			log.Infof("Added engine %s with addr %s into inventory", ee.path, ee.addr)
 		}
@@ -116,7 +116,7 @@ func (sic *ShibuyaIngressController) makeInventory() {
 		// can we have the race condition that the inventory we make could make the shibuya controller mistakenly thinks the engines are ready?
 		// controller is already checking whether all the engines within one collection are in running state
 		// How can ensure the atomicity?
-		inventoryByCollection := make(map[string][]EnginePoint)
+		inventoryByCollection := make(map[string][]EngineEndPoint)
 		skipedCollections := make(map[string]struct{})
 		for _, planEndpoints := range resp.Items {
 			// need to sort the endpoints and update the inventory
@@ -171,7 +171,7 @@ func (sic *ShibuyaIngressController) makeInventory() {
 			})
 			for i, addr := range addresses {
 				path := sic.makePath(projectID, collectionID, planID, i)
-				inventoryByCollection[collectionID] = append(inventoryByCollection[collectionID], EnginePoint{
+				inventoryByCollection[collectionID] = append(inventoryByCollection[collectionID], EngineEndPoint{
 					path: path,
 					addr: addr,
 				})
