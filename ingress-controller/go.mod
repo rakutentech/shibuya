@@ -3,6 +3,7 @@ module ingress-controller
 go 1.17
 
 require (
+	github.com/sirupsen/logrus v1.9.0
 	go.uber.org/automaxprocs v1.5.1
 	k8s.io/apimachinery v0.19.16
 	k8s.io/client-go v0.19.16
@@ -18,7 +19,6 @@ require (
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6 // indirect
