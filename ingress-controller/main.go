@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -66,10 +65,6 @@ func makeK8sClient() (*kubernetes.Clientset, error) {
 	return client, err
 }
 
-func (sic *ShibuyaIngressController) makePath(projectID, collectionID, planID string, engineID int) string {
-	return fmt.Sprintf("service-%s-%s-%s-%d", projectID, collectionID, planID, engineID)
-}
-
 func (sic *ShibuyaIngressController) findCollectionIDFromPath(path string) string {
 	items := strings.Split(path, "-")
 	return items[2]
@@ -77,7 +72,7 @@ func (sic *ShibuyaIngressController) findCollectionIDFromPath(path string) strin
 
 func (sic *ShibuyaIngressController) getPlanEnginesCount(projectID, collectionID, planID string) (int, error) {
 	planName := fmt.Sprintf("engine-%s-%s-%s", projectID, collectionID, planID)
-	resp, err := sic.client.AppsV1().Deployments(sic.namespace).Get(context.TODO(), planName, metav1.GetOptions{})
+	resp, err := sic.client.AppsV1().StatefulSets(sic.namespace).Get(context.TODO(), planName, metav1.GetOptions{})
 	if err != nil {
 		return 0, err
 	}
@@ -162,19 +157,11 @@ func (sic *ShibuyaIngressController) makeInventory() {
 				continue
 			}
 			port := ports[0].Port
-			addresses := []string{}
 			for _, e := range engineEndpoints {
-				addresses = append(addresses, fmt.Sprintf("%s:%d", e.IP, port))
-			}
-			// Every engine is the same. but we need to ensure the engine url always matches to the same engine
-			sort.Slice(addresses, func(i, j int) bool {
-				return addresses[i] < addresses[j]
-			})
-			for i, addr := range addresses {
-				path := sic.makePath(projectID, collectionID, planID, i)
+				podName := e.TargetRef.Name
 				inventoryByCollection[collectionID] = append(inventoryByCollection[collectionID], EngineEndPoint{
-					path: path,
-					addr: addr,
+					path: podName,
+					addr: fmt.Sprintf("%s:%d", e.IP, port),
 				})
 			}
 		}

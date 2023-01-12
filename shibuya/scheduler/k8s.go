@@ -150,15 +150,15 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 }
 
 func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas int, labels map[string]string, containerConfig *config.ExecutorContainer,
-	affinity *apiv1.Affinity, tolerations []apiv1.Toleration) appsv1.Deployment {
+	affinity *apiv1.Affinity, tolerations []apiv1.Toleration) appsv1.StatefulSet {
 	t := true
-	deployment := appsv1.Deployment{
+	deployment := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:                       planName,
 			DeletionGracePeriodSeconds: new(int64),
 			Labels:                     labels,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Replicas: int32Ptr(int32(replicas)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
@@ -353,10 +353,10 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	affinity := prepareAffinity(collectionID)
 	tolerations := prepareTolerations()
 	engineConfig := kcm.generateEngineDeployment(engineName, labels, containerConfig, affinity, tolerations)
-	if err := kcm.deploy(&engineConfig); err != nil {
+	if err := kcm.deploy(&engineConfig); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
-	engineSvcName := makeServiceName(projectID, collectionID, planID, engineID)
+	engineSvcName := makeEngineName(projectID, collectionID, planID, engineID)
 	if err := kcm.CreateService(engineSvcName, engineConfig); err != nil {
 		return err
 	}
@@ -379,7 +379,9 @@ func (kcm *K8sClientManager) makePlanService(name string, label map[string]strin
 			Labels: label,
 		},
 		Spec: apiv1.ServiceSpec{
-			Selector: label,
+			Type:      apiv1.ServiceTypeClusterIP,
+			ClusterIP: "None",
+			Selector:  label,
 			Ports: []apiv1.ServicePort{
 				{
 					Port:       80,
@@ -397,7 +399,7 @@ func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, e
 	affinity := prepareAffinity(collectionID)
 	tolerations := prepareTolerations()
 	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations)
-	if err := kcm.deploy(&planConfig); err != nil {
+	if _, err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).Create(context.TODO(), &planConfig, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 	service := kcm.makePlanService(planName, labels)
@@ -475,7 +477,7 @@ func (kcm *K8sClientManager) FetchEngineUrlsByPlan(collectionID, planID int64, o
 	}
 	urls := []string{}
 	for i := 0; i < opts.EnginesCount; i++ {
-		engineSvcName := makeServiceName(opts.ProjectID, collectionID, planID, i)
+		engineSvcName := makeEngineName(opts.ProjectID, collectionID, planID, i)
 		u := fmt.Sprintf("%s/%s", collectionUrl, engineSvcName)
 		urls = append(urls, u)
 	}
@@ -640,14 +642,19 @@ func (kcm *K8sClientManager) deleteService(collectionID int64) error {
 }
 
 func (kcm *K8sClientManager) deleteDeployment(collectionID int64) error {
+	ls := fmt.Sprintf("collection=%d", collectionID)
 	deploymentsClient := kcm.client.AppsV1().Deployments(kcm.Namespace)
 	err := deploymentsClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{
 		GracePeriodSeconds: new(int64),
 	}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("collection=%d", collectionID),
+		LabelSelector: ls,
 	})
 	if err != nil {
 		log.Error(err)
+		return err
+	}
+	if err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).DeleteCollection(context.TODO(),
+		metav1.DeleteOptions{GracePeriodSeconds: new(int64)}, metav1.ListOptions{LabelSelector: ls}); err != nil {
 		return err
 	}
 	return nil

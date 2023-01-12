@@ -17,10 +17,6 @@ func makePlanName(projectID, collectionID, planID int64) string {
 	return fmt.Sprintf("engine-%d-%d-%d", projectID, collectionID, planID)
 }
 
-func makeServiceName(projectID, collectionID, planID int64, engineID int) string {
-	return makeName("service", projectID, collectionID, planID, engineID)
-}
-
 func makeIngressName(projectID, collectionID, planID int64, engineID int) string {
 	return makeName("ingress", projectID, collectionID, planID, engineID)
 }

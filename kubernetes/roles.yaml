@@ -21,6 +21,7 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - deployments
+  - statefulsets
   - serviceaccounts
   - roles
   - rolebindings
