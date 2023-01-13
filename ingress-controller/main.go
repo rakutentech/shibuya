@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -132,20 +133,22 @@ func (sic *ShibuyaIngressController) makeInventory() {
 			}
 			collectionReady := true
 			subsets := planEndpoints.Subsets
+			var engineEndpoints []apiv1.EndpointAddress
 			if len(subsets) == 0 {
 				collectionReady = false
-			}
-			engineEndpoints := subsets[0].Addresses
-			planEngineCount, err := sic.getPlanEnginesCount(projectID, collectionID, planID)
-			if err != nil {
-				log.Debugf("Getting count error %v", err)
-				collectionReady = false
-			}
-			// If the engpoints are less than the pod count, it means the pods are not ready yet, we should skip
-			log.Debugf("Engine endpoints count %d", len(engineEndpoints))
-			log.Debugf("Number of engines in the plan %d", planEngineCount)
-			if len(engineEndpoints) < planEngineCount {
-				collectionReady = false
+			} else { // only some engines could be in ready state. We need to check whether they are fully ready
+				engineEndpoints = subsets[0].Addresses
+				planEngineCount, err := sic.getPlanEnginesCount(projectID, collectionID, planID)
+				if err != nil {
+					log.Debugf("Getting count error %v", err)
+					collectionReady = false
+				}
+				// If the engpoints are less than the pod count, it means the pods are not ready yet, we should skip
+				log.Debugf("Engine endpoints count %d", len(engineEndpoints))
+				log.Debugf("Number of engines in the plan %d", planEngineCount)
+				if len(engineEndpoints) < planEngineCount {
+					collectionReady = false
+				}
 			}
 			if !collectionReady {
 				skipedCollections[collectionID] = struct{}{}
