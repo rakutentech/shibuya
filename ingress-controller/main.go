@@ -218,31 +218,46 @@ func (sic *ShibuyaIngressController) ServeHTTP(w http.ResponseWriter, req *http.
 	io.Copy(w, resp.Body)
 }
 
-func initFromEnv() (namespace, projectID, logLevel string) {
-	namespace = os.Getenv("POD_NAMESPACE")
-	projectID = os.Getenv("project_id")
-	logLevel = os.Getenv("log_level")
-	return
+type controllerConfig struct {
+	namespace  string
+	projectID  string
+	logLevel   string
+	listenAddr string
+}
+
+func initFromEnv() controllerConfig {
+	namespace := os.Getenv("POD_NAMESPACE")
+	projectID := os.Getenv("project_id")
+	logLevel := os.Getenv("log_level")
+	listenAddr := os.Getenv("listen_addr")
+	return controllerConfig{
+		namespace:  namespace,
+		projectID:  projectID,
+		logLevel:   logLevel,
+		listenAddr: listenAddr,
+	}
 }
 
 func main() {
-	listenAddr := ":8080"
-	namespace, projectID, logLevel := initFromEnv()
-	switch logLevel {
+	cc := initFromEnv()
+	switch cc.logLevel {
 	case "debug":
 		log.SetLevel(log.DebugLevel)
 	default:
 		log.SetLevel(log.InfoLevel)
 	}
-	log.Infof("Engine namespace %s", namespace)
-	log.Infof("Project ID: %s", projectID)
+	log.Infof("Engine namespace %s", cc.namespace)
+	log.Infof("Project ID: %s", cc.projectID)
 	client, err := makeK8sClient()
 	if err != nil {
 		log.Fatal(err)
 	}
-	sic := &ShibuyaIngressController{client: client, namespace: namespace, projectID: projectID}
+	sic := &ShibuyaIngressController{client: client, namespace: cc.namespace, projectID: cc.projectID}
 	go sic.makeInventory()
-	if err := http.ListenAndServe(listenAddr, sic); err != nil {
+	if cc.listenAddr == "" {
+		cc.listenAddr = ":8080"
+	}
+	if err := http.ListenAndServe(cc.listenAddr, sic); err != nil {
 		log.Fatal(err)
 	}
 }
