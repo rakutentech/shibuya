@@ -1,6 +1,6 @@
 var ProjectAttrs = {
     data: function () {
-        return {
+        var attributes = {
             attrs: {
                 "name": {
                     label: "Project Name",
@@ -10,6 +10,12 @@ var ProjectAttrs = {
                 }
             }
         }
+        if (enable_sid) {
+            attributes["attrs"]["sid"] = {
+                label: "SID"
+            } 
+        }
+        return attributes;
     }
 }
 
