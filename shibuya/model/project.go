@@ -52,7 +52,7 @@ func GetProjectsByOwners(owners []string) ([]*Project, error) {
 		s := fmt.Sprintf("'%s'", o)
 		qs = append(qs, s)
 	}
-	query := fmt.Sprintf("select id, name, owner, created_time from project where owner in (%s)",
+	query := fmt.Sprintf("select id, name, owner, sid, created_time from project where owner in (%s)",
 		strings.Join(qs, ","))
 	q, err := db.Prepare(query)
 	if err != nil {
@@ -66,7 +66,7 @@ func GetProjectsByOwners(owners []string) ([]*Project, error) {
 	defer rows.Close()
 	for rows.Next() {
 		p := new(Project)
-		rows.Scan(&p.ID, &p.Name, &p.Owner, &p.CreatedTime)
+		rows.Scan(&p.ID, &p.Name, &p.Owner, &p.SID, &p.CreatedTime)
 		r = append(r, p)
 	}
 	err = rows.Err()
