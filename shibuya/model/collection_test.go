@@ -96,13 +96,11 @@ func TestStorePlans(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proxy := "http://proxy"
 	ep1 := &ExecutionPlan{
 		PlanID:      planID1,
 		Rampup:      1,
 		Concurrency: 1,
 		Duration:    1,
-		Proxy:       proxy,
 	}
 	ep2 := &ExecutionPlan{
 		PlanID:      planID2,
@@ -110,27 +108,28 @@ func TestStorePlans(t *testing.T) {
 		Concurrency: 1,
 		Duration:    2,
 	}
-	eps := []*ExecutionPlan{ep1, ep2}
-	err = c.Store(eps)
+	ec := &ExecutionCollection{}
+	ec.Tests = []*ExecutionPlan{ep1, ep2}
+	err = c.Store(ec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	eps, err = c.GetExecutionPlans()
+	eps, err := c.GetExecutionPlans()
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 2, len(eps))
 
 	ep1.Duration = 2
-	eps = []*ExecutionPlan{ep1, ep2}
-	err = c.Store(eps)
+	ec = &ExecutionCollection{}
+	ec.Tests = []*ExecutionPlan{ep1, ep2}
+	err = c.Store(ec)
 	eps, _ = c.GetExecutionPlans()
 	assert.Equal(t, 2, eps[0].Duration)
-	assert.Equal(t, proxy, eps[0].Proxy)
-	assert.Equal(t, "", eps[1].Proxy)
 
-	eps = []*ExecutionPlan{ep1}
-	err = c.Store(eps)
+	ec = &ExecutionCollection{}
+	ec.Tests = []*ExecutionPlan{ep1}
+	err = c.Store(ec)
 	assert.Equal(t, 1, len(eps))
 }
 
