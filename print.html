@@ -82,7 +82,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">Introduction</a></li><li class="chapter-item expanded "><a href="ops/ops_intro.html"><strong aria-hidden="true">1.</strong> How to run Shibuya</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ops/requirements.html"><strong aria-hidden="true">1.1.</strong> Basic Requirements</a></li><li class="chapter-item expanded "><a href="ops/config.html"><strong aria-hidden="true">1.2.</strong> Configuration explanation</a></li><li class="chapter-item expanded "><a href="ops/object_storage.html"><strong aria-hidden="true">1.3.</strong> Object Storage</a></li></ol></li><li class="chapter-item expanded "><a href="user/user_guide_intro.html"><strong aria-hidden="true">2.</strong> How to use Shibuya</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="user/concept.html"><strong aria-hidden="true">2.1.</strong> Basic Concepts</a></li></ol></li><li class="chapter-item expanded "><a href="dev/intro.html"><strong aria-hidden="true">3.</strong> Shibuya developers</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="introduction.html">Introduction</a></li><li class="chapter-item expanded "><a href="ops/ops_intro.html"><strong aria-hidden="true">1.</strong> How to run Shibuya</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="ops/requirements.html"><strong aria-hidden="true">1.1.</strong> Basic Requirements</a></li><li class="chapter-item expanded "><a href="ops/authentication.html"><strong aria-hidden="true">1.2.</strong> Authentication model and multi tenancy</a></li><li class="chapter-item expanded "><a href="ops/docker.html"><strong aria-hidden="true">1.3.</strong> Dockerfile</a></li><li class="chapter-item expanded "><a href="ops/config.html"><strong aria-hidden="true">1.4.</strong> Configuration explanation</a></li><li class="chapter-item expanded "><a href="ops/object_storage.html"><strong aria-hidden="true">1.5.</strong> Object Storage</a></li></ol></li><li class="chapter-item expanded "><a href="user/user_guide_intro.html"><strong aria-hidden="true">2.</strong> How to use Shibuya</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="user/concept.html"><strong aria-hidden="true">2.1.</strong> Basic Concepts</a></li><li class="chapter-item expanded "><a href="user/faq.html"><strong aria-hidden="true">2.2.</strong> FAQ</a></li></ol></li><li class="chapter-item expanded "><a href="dev/intro.html"><strong aria-hidden="true">3.</strong> Shibuya developers</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -167,7 +167,7 @@
 <h2 id="architecture-overview"><a class="header" href="#architecture-overview">Architecture Overview</a></h2>
 <p><img src="ops/../images/shibuya-architecture.png" alt="image" /></p>
 <h2 id="shibuya-controller"><a class="header" href="#shibuya-controller">Shibuya-controller</a></h2>
-<p>We don't limit how you deploy the shibuya controller. The process it self is listening on 8080 port. Each shibuya controller is configured by a configuration file called <code>config.json</code>. We will discuss in details in the next section. <a href="ops/./config.html">link</a></p>
+<p>We don't limit how you deploy the shibuya controller. The process it self is running inside a Docker container and is listening on 8080 port. In <a href="ops/./docker.html">this page</a>, we will explain how you can build your own shibuya controller. Moreover, Each shibuya controller is configured by a configuration file called <code>config.json</code>. The details can be read <a href="ops/./config.html">here</a>.</p>
 <h2 id="kubernetes"><a class="header" href="#kubernetes">Kubernetes</a></h2>
 <p>Current supported versions should work well with Shibuya.</p>
 <p>Please follow below steps to setup the k8s cluster:</p>
@@ -190,6 +190,32 @@ Currently we support two types of storage:</p>
 <p>All the schema files are stored under db folder. You just need to load the schemas into the database.</p>
 <h2 id="grafana"><a class="header" href="#grafana">Grafana</a></h2>
 <h2 id="prometheus"><a class="header" href="#prometheus">Prometheus</a></h2>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="authentication-model-and-multi-tenancy"><a class="header" href="#authentication-model-and-multi-tenancy">Authentication model and multi tenancy</a></h1>
+<h2 id="basic"><a class="header" href="#basic">Basic</a></h2>
+<p>Currently, Shibuya supports LDAP based authentication and no authentication. No authentication is mostly used by Shibuya developers. </p>
+<p>Please bear in mind, a more robust authentication is still WIP. It's not recommended to run Shibuya in a public network.</p>
+<p>If you choose to disable authentication, that also disables multi tenancy. All the resources will be belong to a hardcoded user name <code>shibuya</code>.</p>
+<h2 id="ldap-authentication"><a class="header" href="#ldap-authentication">LDAP authentication</a></h2>
+<p>When user logs in, all the credentials will be checked against a configured LDAP server. Once it's validated, the mailing list of this user will be stored and later used as ownership source. In other words, all the resources created by the user belong to the mailing lists users are in. </p>
+<p>All the LDAP related configurations will be explained at this <a href="ops/./config.html">chaper</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="dockerfile"><a class="header" href="#dockerfile">Dockerfile</a></h1>
+<p>Shibuya controller runs inside a Docker container. In order to sucessfully build a Docker image for your own controller, you will need these files:</p>
+<ol>
+<li>kubeconfig</li>
+<li>GCP config JSON (only if you are using GCP)</li>
+<li>Config file for shibuya controller itself.</li>
+</ol>
+<h2 id="kubeconfig-and-shibuya-controller-config"><a class="header" href="#kubeconfig-and-shibuya-controller-config">kubeconfig and shibuya controller config</a></h2>
+<pre><code>COPY config/kube_configs /root/.kube
+COPY config_${env}.json /config.json
+</code></pre>
+<p>For kubeconfig, as you can see in the Dockerfile , you only need to provide the kubeconfigs here: <code>shibuya/shibuya/config/kube_configs</code>.</p>
+<p>For the shibuya config file, you will need to put it here <code>shibuya/shibuya</code>, which is the building context of this Dockerfile. <code>${env}</code> here is the building argument. If your k8s cluster is <code>gcp_tokyo</code>, you can name your config file as <code>config_gcp_tokyo</code> and build the Docker image as follows:</p>
+<p><code>docker build -t ${image_name} --build-arg env=gcp_tokyo .</code></p>
+<h2 id="gcp-config"><a class="header" href="#gcp-config">GCP config</a></h2>
+<pre><code>ADD ./shibuya-gcp.json /auth/shibuya-gcp.json
+</code></pre>
+<p>You will need to add the gcp auth file to the build context, which you can learn here: <a href="https://cloud.google.com/docs/authentication/getting-started">https://cloud.google.com/docs/authentication/getting-started</a></p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration-explanation"><a class="header" href="#configuration-explanation">Configuration Explanation</a></h1>
 <p>Below is a sample configuration of Shibuya. We will explain them by sections.</p>
 <pre><code>{
@@ -252,7 +278,7 @@ Currently we support two types of storage:</p>
 <h2 id="auth-related"><a class="header" href="#auth-related">Auth related</a></h2>
 <p>All authentication related logic is configured by this block</p>
 <pre><code>    &quot;auth_config&quot;: {
-        &quot;admin_users&quot;: [], # admin 
+        &quot;admin_users&quot;: [], # admin mailing list. A admin will have a dedicated page to view all the running collections
         &quot;ldap_server&quot;: &quot;&quot;, 
         &quot;ldap_port&quot;: &quot;&quot;,
         &quot;system_user&quot;: &quot;&quot;, # ldap system user
@@ -279,7 +305,7 @@ Currently we support two types of storage:</p>
 <p>Shibuya supports two types of clusters:</p>
 <ol>
 <li>on demand, specifically, GKE in Google Cloud Platform. </li>
-<li>on-premise cluster, which you can direcly connect to.</li>
+<li>on-premise cluster.</li>
 </ol>
 <p>With on demand mode, Shibuya is able to automatically create nodes and clean resources after usage. In most cases, the GKE cluster used by Shibuya has 0 worker nodes(to save money). </p>
 <p>Shibuya controller can be run outside of a k8s cluster, which usually is the cluster where the generators are deployed. If this is the case, <code>in_cluster</code> should be set to <code>false</code>, <code>true</code> for otherwise.</p>
@@ -298,10 +324,83 @@ Currently we support two types of storage:</p>
         &quot;pull_policy&quot;: &quot;IfNotPresent&quot;
     }
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="object-storage-1"><a class="header" href="#object-storage-1">Object Storage</a></h1>
+<h2 id="metrics-dashboard"><a class="header" href="#metrics-dashboard">Metrics dashboard</a></h2>
+<p>Shibuya uses external Grafana dashboard to visualise the metrics. </p>
+<pre><code>    &quot;dashboard&quot;: {
+        &quot;url&quot;: &quot;http://localhost:3000&quot;, # root of the dashboard url
+        &quot;run_dashboard&quot;: &quot;/d/RXY8nM1mk2/shibuya&quot;, # link to the metrics of all the runs.
+        &quot;engine_dashboard&quot;: &quot;/d/9EH6xqTZz/shibuya-engine-health&quot; # link to the health of the engines.
+    }
+</code></pre>
+<h2 id="object-storage-1"><a class="header" href="#object-storage-1">Object storage</a></h2>
+<p>Shibuya uses object storage to store all the test plans. It supports two types storage:</p>
+<ol>
+<li>HTTP based storage service, like, Nexus. </li>
+<li>GCP bucket. </li>
+</ol>
+<pre><code>    &quot;object_storage&quot;: {
+        &quot;provider&quot;: &quot;local&quot;, # either gcp, local, or Nexus
+        &quot;url&quot;: &quot;http://storage:8080&quot;,
+        &quot;user&quot;: &quot;&quot;, # HTTP basic authentication user and password
+        &quot;password&quot;: &quot;&quot;
+    },
+</code></pre>
+<p>Please bear in mind, <code>local</code> should be only used by Shibuya developers. </p>
+<h2 id="logging-support"><a class="header" href="#logging-support">Logging support</a></h2>
+<pre><code>    &quot;log_format&quot;: {
+        &quot;json&quot;: false
+    }
+</code></pre>
+<p>If you require logs to be in JSON format, you can set <code>json: true</code>.</p>
+<h2 id="gcp"><a class="header" href="#gcp">GCP</a></h2>
+<p>TODO</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="object-storage-2"><a class="header" href="#object-storage-2">Object Storage</a></h1>
+<p>In Shibuya, we support two types of object storage:</p>
+<ol>
+<li>Nexus(REST based)</li>
+<li>GCP bucket</li>
+</ol>
+<h2 id="nexus"><a class="header" href="#nexus">Nexus</a></h2>
+<p>Nexus provides a REST API for resource CRUD. HTTP Basic authentication is used. If the storage solution you are using is following the same API spec, it will also work.
+Specifically:</p>
+<div class="table-wrapper"><table><thead><tr><th>HTTP method</th><th>Resource operation</th></tr></thead><tbody>
+<tr><td>GET</td><td>Get the resource</td></tr>
+<tr><td>PUT</td><td>Upload the resource</td></tr>
+<tr><td>DELETE</td><td>DELETE the resource</td></tr>
+</tbody></table>
+</div>
+<p>All these method require HTTP basic authentication.</p>
+<h2 id="gcp-1"><a class="header" href="#gcp-1">GCP</a></h2>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="how-to-use-shibuya"><a class="header" href="#how-to-use-shibuya">How to use Shibuya</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="basic-concepts"><a class="header" href="#basic-concepts">Basic Concepts</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="shibuya-developers"><a class="header" href="#shibuya-developers">Shibuya developers</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><div style="break-before: page; page-break-before: always;"></div><h1 id="shibuya-developers"><a class="header" href="#shibuya-developers">Shibuya developers</a></h1>
+<p>If we split the work of Shibuya into two big categories, these are the two:</p>
+<ol>
+<li>Frontend(UI). They are mainly based on Boostrap and Vue.js.</li>
+<li>Backend(API, controller, shibuya-agent). All of them are written in Go.</li>
+</ol>
+<h2 id="backend"><a class="header" href="#backend">Backend</a></h2>
+<h3 id="api"><a class="header" href="#api">API</a></h3>
+<p>Shibuya follows RESTful API standard. They can be found in <code>shibuya/api/main.go</code></p>
+<h3 id="controller"><a class="header" href="#controller">Controller</a></h3>
+<p>This is where the core Shibuya functionality is. Below is the core functionaties of the controller:</p>
+<ol>
+<li>Engines lifecycle management with the scheduler, Kubernetes is the only scheduler we are supporting. Lifecycle management includes launch/purge/healthcheck the engines.</li>
+<li>Trigger engines and stop the tests engines. This will essentially start and stop the tests.</li>
+<li>Stream the metrics generated by the engines, such as latency, thread number. and expose them as Prometheus metrics.</li>
+</ol>
+<p>Most of the above logic can be found in <code>shibuya/controller/engine.go</code></p>
+<p>Engine is an abstraction name of load generator. Shibuya is designed to supported multiple load generators since day 1. Currently, the only load generator we are supporting is Apache Jmeter.</p>
+<h3 id="metrics-streaming"><a class="header" href="#metrics-streaming">Metrics streaming</a></h3>
+<p>Controller reads all the metrics from engines in <a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events">Server Side Events</a>. The content of the events can be customised as you would need to write your own parser to parse the metrics and expose them via Prometheus. For example, you can check the current Jmeter logic at <code>shibuya/controller/jmeter.go</code></p>
+<p>Since the controller is reading the events from the engine, the server side implementation also needs to be taken care of. We will discuss this part in the shibuya-agent.</p>
+<h3 id="shibuya-agent"><a class="header" href="#shibuya-agent">shibuya-agent</a></h3>
+<p>shibuya-agent is a process running alongside with load generator in order to work with controller. The main responsibility of the agent is:</p>
+<ol>
+<li>Take the HTTP requests from controller. Such as start the test, stop the test, healthcheck requests, etc</li>
+<li>Forward the metrics generated by load generator back to the controller via SSE. The metrics have to be text based in order for streaming.</li>
+</ol>
+<p>For current Jmeter implementation, you can check here <code>shibuya/engines/jmeter/shibuya-agent.go</code></p>
 
                     </main>
 

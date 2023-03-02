@@ -81,7 +81,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../introduction.html">Introduction</a></li><li class="chapter-item expanded "><a href="../ops/ops_intro.html"><strong aria-hidden="true">1.</strong> How to run Shibuya</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../ops/requirements.html"><strong aria-hidden="true">1.1.</strong> Basic Requirements</a></li><li class="chapter-item expanded "><a href="../ops/config.html" class="active"><strong aria-hidden="true">1.2.</strong> Configuration explanation</a></li><li class="chapter-item expanded "><a href="../ops/object_storage.html"><strong aria-hidden="true">1.3.</strong> Object Storage</a></li></ol></li><li class="chapter-item expanded "><a href="../user/user_guide_intro.html"><strong aria-hidden="true">2.</strong> How to use Shibuya</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../user/concept.html"><strong aria-hidden="true">2.1.</strong> Basic Concepts</a></li></ol></li><li class="chapter-item expanded "><a href="../dev/intro.html"><strong aria-hidden="true">3.</strong> Shibuya developers</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="../introduction.html">Introduction</a></li><li class="chapter-item expanded "><a href="../ops/ops_intro.html"><strong aria-hidden="true">1.</strong> How to run Shibuya</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../ops/requirements.html"><strong aria-hidden="true">1.1.</strong> Basic Requirements</a></li><li class="chapter-item expanded "><a href="../ops/authentication.html"><strong aria-hidden="true">1.2.</strong> Authentication model and multi tenancy</a></li><li class="chapter-item expanded "><a href="../ops/docker.html"><strong aria-hidden="true">1.3.</strong> Dockerfile</a></li><li class="chapter-item expanded "><a href="../ops/config.html" class="active"><strong aria-hidden="true">1.4.</strong> Configuration explanation</a></li><li class="chapter-item expanded "><a href="../ops/object_storage.html"><strong aria-hidden="true">1.5.</strong> Object Storage</a></li></ol></li><li class="chapter-item expanded "><a href="../user/user_guide_intro.html"><strong aria-hidden="true">2.</strong> How to use Shibuya</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../user/concept.html"><strong aria-hidden="true">2.1.</strong> Basic Concepts</a></li><li class="chapter-item expanded "><a href="../user/faq.html"><strong aria-hidden="true">2.2.</strong> FAQ</a></li></ol></li><li class="chapter-item expanded "><a href="../dev/intro.html"><strong aria-hidden="true">3.</strong> Shibuya developers</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -204,7 +204,7 @@
 <h2 id="auth-related"><a class="header" href="#auth-related">Auth related</a></h2>
 <p>All authentication related logic is configured by this block</p>
 <pre><code>    &quot;auth_config&quot;: {
-        &quot;admin_users&quot;: [], # admin 
+        &quot;admin_users&quot;: [], # admin mailing list. A admin will have a dedicated page to view all the running collections
         &quot;ldap_server&quot;: &quot;&quot;, 
         &quot;ldap_port&quot;: &quot;&quot;,
         &quot;system_user&quot;: &quot;&quot;, # ldap system user
@@ -231,7 +231,7 @@
 <p>Shibuya supports two types of clusters:</p>
 <ol>
 <li>on demand, specifically, GKE in Google Cloud Platform. </li>
-<li>on-premise cluster, which you can direcly connect to.</li>
+<li>on-premise cluster.</li>
 </ol>
 <p>With on demand mode, Shibuya is able to automatically create nodes and clean resources after usage. In most cases, the GKE cluster used by Shibuya has 0 worker nodes(to save money). </p>
 <p>Shibuya controller can be run outside of a k8s cluster, which usually is the cluster where the generators are deployed. If this is the case, <code>in_cluster</code> should be set to <code>false</code>, <code>true</code> for otherwise.</p>
@@ -250,12 +250,42 @@
         &quot;pull_policy&quot;: &quot;IfNotPresent&quot;
     }
 </code></pre>
+<h2 id="metrics-dashboard"><a class="header" href="#metrics-dashboard">Metrics dashboard</a></h2>
+<p>Shibuya uses external Grafana dashboard to visualise the metrics. </p>
+<pre><code>    &quot;dashboard&quot;: {
+        &quot;url&quot;: &quot;http://localhost:3000&quot;, # root of the dashboard url
+        &quot;run_dashboard&quot;: &quot;/d/RXY8nM1mk2/shibuya&quot;, # link to the metrics of all the runs.
+        &quot;engine_dashboard&quot;: &quot;/d/9EH6xqTZz/shibuya-engine-health&quot; # link to the health of the engines.
+    }
+</code></pre>
+<h2 id="object-storage"><a class="header" href="#object-storage">Object storage</a></h2>
+<p>Shibuya uses object storage to store all the test plans. It supports two types storage:</p>
+<ol>
+<li>HTTP based storage service, like, Nexus. </li>
+<li>GCP bucket. </li>
+</ol>
+<pre><code>    &quot;object_storage&quot;: {
+        &quot;provider&quot;: &quot;local&quot;, # either gcp, local, or Nexus
+        &quot;url&quot;: &quot;http://storage:8080&quot;,
+        &quot;user&quot;: &quot;&quot;, # HTTP basic authentication user and password
+        &quot;password&quot;: &quot;&quot;
+    },
+</code></pre>
+<p>Please bear in mind, <code>local</code> should be only used by Shibuya developers. </p>
+<h2 id="logging-support"><a class="header" href="#logging-support">Logging support</a></h2>
+<pre><code>    &quot;log_format&quot;: {
+        &quot;json&quot;: false
+    }
+</code></pre>
+<p>If you require logs to be in JSON format, you can set <code>json: true</code>.</p>
+<h2 id="gcp"><a class="header" href="#gcp">GCP</a></h2>
+<p>TODO</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../ops/requirements.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../ops/docker.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
@@ -269,7 +299,7 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../ops/requirements.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../ops/docker.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
