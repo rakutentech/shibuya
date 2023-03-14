@@ -129,6 +129,7 @@ type ShibuyaConfig struct {
 	LogFormat        *LogFormat       `json:"log_format"`
 	BackgroundColour string           `json:"bg_color"`
 	IngressConfig    *IngressConfig   `json:"ingress"`
+	EnableSid        bool             `json:"enable_sid"`
 
 	// below are configs generated from above values
 	DevMode         bool

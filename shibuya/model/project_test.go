@@ -8,7 +8,7 @@ import (
 
 func TestCreateAndGetProject(t *testing.T) {
 	name := "testplan"
-	projectID, err := CreateProject(name, "tech-rwasp")
+	projectID, err := CreateProject(name, "tech-rwasp", "1111")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestCreateAndGetProject(t *testing.T) {
 
 func TestGetProjectCollections(t *testing.T) {
 	name := "testplan"
-	projectID, err := CreateProject(name, "tech-rwasp")
+	projectID, err := CreateProject(name, "tech-rwasp", "1111")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -163,7 +163,19 @@ func (s *ShibuyaAPI) projectCreateHandler(w http.ResponseWriter, r *http.Request
 		s.handleErrors(w, makeNoPermissionErr(fmt.Sprintf("You are not part of %s", owner)))
 		return
 	}
-	projectID, err := model.CreateProject(name, owner)
+	var sid string
+	if config.SC.EnableSid {
+		sid = r.Form.Get("sid")
+		if sid == "" {
+			s.handleErrors(w, makeInvalidRequestError("SID cannot be empty"))
+			return
+		}
+		if _, err := strconv.Atoi(sid); err != nil {
+			s.handleErrors(w, makeInvalidRequestError("SID is invalid"))
+			return
+		}
+	}
+	projectID, err := model.CreateProject(name, owner, sid)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
