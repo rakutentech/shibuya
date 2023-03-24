@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/sirupsen/logrus v1.9.0
 	go.uber.org/automaxprocs v1.5.1
+	k8s.io/api v0.19.16
 	k8s.io/apimachinery v0.19.16
 	k8s.io/client-go v0.19.16
 )
@@ -29,7 +30,6 @@ require (
 	google.golang.org/protobuf v1.24.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
-	k8s.io/api v0.19.16 // indirect
 	k8s.io/klog/v2 v2.2.0 // indirect
 	k8s.io/utils v0.0.0-20200729134348-d5654de09c73 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
