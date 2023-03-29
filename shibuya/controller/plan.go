@@ -29,19 +29,10 @@ func NewPlanController(ep *model.ExecutionPlan, collection *model.Collection, sc
 }
 
 func (pc *PlanController) deploy() error {
-	engines, err := generateEngines(pc.ep.Engines, pc.ep.PlanID, pc.collection.ID, pc.collection.ProjectID,
-		JmeterEngineType)
-	if err != nil {
+	engineConfig := findEngineConfig(JmeterEngineType)
+	if err := pc.scheduler.DeployPlan(pc.collection.ProjectID, pc.collection.ID, pc.ep.PlanID,
+		pc.ep.Engines, engineConfig); err != nil {
 		return err
-	}
-	// We don't need concurrent operation here because the bottleneck will be getting public ip
-	// not the deployment
-	for _, engine := range engines {
-		// need to move the jmeter image into earlier stage. k8s client should not care about the image
-		if err := engine.deploy(pc.scheduler); err != nil {
-			return err
-		}
-		//pc.cr.DeployEngine(pc.collection.ProjectID, pc.collection.ID, pc.ep.PlanID, eid)
 	}
 	return nil
 }

@@ -220,26 +220,6 @@
                     <div slot="body">
                         <p>Ingress IP: ${engines_detail.ingress_ip}</p>
                         <p class="mt-2">Engines will be deleted after ${engine_remaining_time} mins.</p>
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Ingress Rules</h5>
-                                <p class="mt-2">Total number of ingress rules: ${engines_detail.ingresses.length}. Required number of ingress rules: ${total_engines}.</p>
-                                <table class="table table-sm table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Ingress Name</th>
-                                            <th>Created time(GMT)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="ig in engines_detail.ingresses">
-                                            <td>${ig.name}</td>
-                                            <td>${ig.created_time}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
                         <div class="card mt-2">
                             <div class="card-body">
                                 <h5 class="card-title">Engines</h5>

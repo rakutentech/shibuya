@@ -40,14 +40,8 @@ type EngineStatus struct {
 	CreatedTime time.Time `json:"created_time"`
 }
 
-type Ingress struct {
-	Name        string    `json:"name"`
-	CreatedTime time.Time `json:"created_time"`
-}
-
 type CollectionDetails struct {
 	IngressIP          string          `json:"ingress_ip"`
-	IngressRules       []*Ingress      `json:"ingresses"`
 	Engines            []*EngineStatus `json:"engines"`
 	ControllerReplicas int32           `json:"controller_replicas"`
 }

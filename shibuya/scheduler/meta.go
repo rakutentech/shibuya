@@ -13,8 +13,8 @@ func makeEngineName(projectID, collectionID, planID int64, engineID int) string 
 	return makeName("engine", projectID, collectionID, planID, engineID)
 }
 
-func makeServiceName(projectID, collectionID, planID int64, engineID int) string {
-	return makeName("service", projectID, collectionID, planID, engineID)
+func makePlanName(projectID, collectionID, planID int64) string {
+	return fmt.Sprintf("engine-%d-%d-%d", projectID, collectionID, planID)
 }
 
 func makeIngressName(projectID, collectionID, planID int64, engineID int) string {
@@ -48,6 +48,13 @@ func makeIngressLabel(projectID, collectionID int64) map[string]string {
 func makeEngineLabel(projectID, collectionID, planID int64, engineName string) map[string]string {
 	base := makeBaseLabel(projectID, collectionID)
 	base["app"] = engineName
+	base["plan"] = strconv.FormatInt(planID, 10)
+	base["kind"] = "executor"
+	return base
+}
+
+func makePlanLabel(projectID, collectionID, planID int64) map[string]string {
+	base := makeBaseLabel(projectID, collectionID)
 	base["plan"] = strconv.FormatInt(planID, 10)
 	base["kind"] = "executor"
 	return base

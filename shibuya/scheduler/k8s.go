@@ -148,6 +148,67 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 	return []apiv1.HostAlias{}
 }
 
+func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas int, labels map[string]string, containerConfig *config.ExecutorContainer,
+	affinity *apiv1.Affinity, tolerations []apiv1.Toleration) appsv1.StatefulSet {
+	t := true
+	deployment := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:                       planName,
+			DeletionGracePeriodSeconds: new(int64),
+			Labels:                     labels,
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: int32Ptr(int32(replicas)),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: apiv1.PodSpec{
+					Affinity:                     affinity,
+					Tolerations:                  tolerations,
+					ServiceAccountName:           kcm.serviceAccount,
+					AutomountServiceAccountToken: &t,
+					ImagePullSecrets: []apiv1.LocalObjectReference{
+						{
+							Name: kcm.ImagePullSecret,
+						},
+					},
+					TerminationGracePeriodSeconds: new(int64),
+					HostAliases:                   kcm.makeHostAliases(),
+					Containers: []apiv1.Container{
+						{
+							Name:            planName,
+							Image:           containerConfig.Image,
+							ImagePullPolicy: kcm.ImagePullPolicy,
+							Resources: apiv1.ResourceRequirements{
+								Limits: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(containerConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(containerConfig.Mem),
+								},
+								Requests: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(containerConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(containerConfig.Mem),
+								},
+							},
+							Ports: []apiv1.ContainerPort{
+								{
+									Name:          "http",
+									Protocol:      apiv1.ProtocolTCP,
+									ContainerPort: 8080,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return deployment
+}
+
 func (kcm *K8sClientManager) generateEngineDeployment(engineName string, labels map[string]string,
 	containerConfig *config.ExecutorContainer, affinity *apiv1.Affinity,
 	tolerations []apiv1.Toleration) appsv1.Deployment {
@@ -294,10 +355,10 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	affinity := prepareAffinity(collectionID)
 	tolerations := prepareTolerations()
 	engineConfig := kcm.generateEngineDeployment(engineName, labels, containerConfig, affinity, tolerations)
-	if err := kcm.deploy(&engineConfig); err != nil {
+	if err := kcm.deploy(&engineConfig); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
-	engineSvcName := makeServiceName(projectID, collectionID, planID, engineID)
+	engineSvcName := makeEngineName(projectID, collectionID, planID, engineID)
 	if err := kcm.CreateService(engineSvcName, engineConfig); err != nil {
 		return err
 	}
@@ -307,6 +368,47 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 		return err
 	}
 	log.Printf("Finish creating one engine for %s", engineName)
+	return nil
+}
+
+func (kcm *K8sClientManager) makePlanService(name string, label map[string]string) *apiv1.Service {
+	service := &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Annotations: map[string]string{
+				"networking.istio.io/exportTo": ".",
+			},
+			Labels: label,
+		},
+		Spec: apiv1.ServiceSpec{
+			Type:      apiv1.ServiceTypeClusterIP,
+			ClusterIP: "None",
+			Selector:  label,
+			Ports: []apiv1.ServicePort{
+				{
+					Port:       80,
+					TargetPort: intstr.FromInt(8080),
+				},
+			},
+		},
+	}
+	return service
+}
+
+func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, enginesNo int, containerconfig *config.ExecutorContainer) error {
+	planName := makePlanName(projectID, collectionID, planID)
+	labels := makePlanLabel(projectID, collectionID, planID)
+	affinity := prepareAffinity(collectionID)
+	tolerations := prepareTolerations()
+	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations)
+	if _, err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).Create(context.TODO(), &planConfig, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+	service := kcm.makePlanService(planName, labels)
+	if _, err := kcm.client.CoreV1().Services(kcm.Namespace).Create(context.TODO(), service, metav1.CreateOptions{}); err != nil {
+		log.Println(err)
+		return err
+	}
 	return nil
 }
 
@@ -377,7 +479,7 @@ func (kcm *K8sClientManager) FetchEngineUrlsByPlan(collectionID, planID int64, o
 	}
 	urls := []string{}
 	for i := 0; i < opts.EnginesCount; i++ {
-		engineSvcName := makeServiceName(opts.ProjectID, collectionID, planID, i)
+		engineSvcName := makeEngineName(opts.ProjectID, collectionID, planID, i)
 		u := fmt.Sprintf("%s/%s", collectionUrl, engineSvcName)
 		urls = append(urls, u)
 	}
@@ -542,14 +644,19 @@ func (kcm *K8sClientManager) deleteService(collectionID int64) error {
 }
 
 func (kcm *K8sClientManager) deleteDeployment(collectionID int64) error {
+	ls := fmt.Sprintf("collection=%d", collectionID)
 	deploymentsClient := kcm.client.AppsV1().Deployments(kcm.Namespace)
 	err := deploymentsClient.DeleteCollection(context.TODO(), metav1.DeleteOptions{
 		GracePeriodSeconds: new(int64),
 	}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("collection=%d", collectionID),
+		LabelSelector: ls,
 	})
 	if err != nil {
 		log.Error(err)
+		return err
+	}
+	if err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).DeleteCollection(context.TODO(),
+		metav1.DeleteOptions{GracePeriodSeconds: new(int64)}, metav1.ListOptions{LabelSelector: ls}); err != nil {
 		return err
 	}
 	return nil
@@ -586,7 +693,6 @@ func (kcm *K8sClientManager) PurgeProjectIngress(projectID int64) error {
 func int32Ptr(i int32) *int32 { return &i }
 
 func (kcm *K8sClientManager) generateControllerDeployment(igName string, projectID int64) appsv1.Deployment {
-	publishService := fmt.Sprintf("--publish-service=$(POD_NAMESPACE)/%s", igName)
 	tolerations := prepareTolerations()
 	t := true
 	labels := makeIngressControllerLabel(projectID)
@@ -615,7 +721,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 					AutomountServiceAccountToken:  &t,
 					Containers: []apiv1.Container{
 						{
-							Name:  "nginx-ingress-controller",
+							Name:  "shibuya-ingress-controller",
 							Image: config.SC.IngressConfig.Image,
 							Resources: apiv1.ResourceRequirements{
 								// Limits are whatever Kubernetes sets as the max value
@@ -627,14 +733,6 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 									apiv1.ResourceCPU:    resource.MustParse(config.SC.IngressConfig.CPU),
 									apiv1.ResourceMemory: resource.MustParse(config.SC.IngressConfig.Mem),
 								},
-							},
-							Args: []string{
-								"/nginx-ingress-controller",
-								fmt.Sprintf("--ingress-class=%s", igName),
-								"--configmap=$(POD_NAMESPACE)/nginx-configuration",
-								publishService,
-								"--annotations-prefix=nginx.ingress.kubernetes.io",
-								fmt.Sprintf("--watch-namespace=%s", kcm.Namespace),
 							},
 							SecurityContext: &apiv1.SecurityContext{
 								Capabilities: &apiv1.Capabilities{
@@ -649,7 +747,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 							Ports: []apiv1.ContainerPort{
 								{
 									Name:          "http",
-									ContainerPort: 80,
+									ContainerPort: 8080,
 								},
 								{
 									Name:          "https",
@@ -672,6 +770,10 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 											FieldPath: "metadata.namespace",
 										},
 									},
+								},
+								{
+									Name:  "project_id",
+									Value: fmt.Sprintf("%d", projectID),
 								},
 							},
 						},
@@ -844,17 +946,6 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID 
 	if len(pods) == 0 {
 		return nil, &NoResourcesFoundErr{Err: err, Message: "Cannot find the engines"}
 	}
-	ingresses, err := kcm.client.NetworkingV1().Ingresses(kcm.Namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: labelSelector,
-	})
-	if err != nil {
-		return nil, err
-	}
-	ingressStatuses := []*smodel.Ingress{}
-	for _, ig := range ingresses.Items {
-		ingressStatuses = append(ingressStatuses,
-			&smodel.Ingress{Name: ig.Name, CreatedTime: ig.ObjectMeta.CreationTimestamp.Time})
-	}
 	collectionDetails := new(smodel.CollectionDetails)
 	ingressUrl, err := kcm.GetIngressUrl(projectID)
 	if err != nil {
@@ -871,7 +962,6 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID 
 		engines = append(engines, es)
 	}
 	collectionDetails.Engines = engines
-	collectionDetails.IngressRules = ingressStatuses
 	collectionDetails.ControllerReplicas = config.SC.IngressConfig.Replicas
 	return collectionDetails, nil
 }
