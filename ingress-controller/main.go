@@ -185,6 +185,10 @@ func makeAccessLogEntry(statusCode int, path string) string {
 	return fmt.Sprintf("%d, %s", statusCode, path)
 }
 
+// This func does two things:
+// 1. It rewrites ingress ip to engine ip.
+// 2. It rewrites path by removing engine id info.
+// Usage of this func is guided by code here: https://github.com/golang/go/blob/go1.20.2/src/net/http/httputil/reverseproxy.go#L42
 func (sic *ShibuyaIngressController) rewriteURL(r *httputil.ProxyRequest) {
 	// When we encoutered an error, the rewrite won't happen. Controller side should see 502
 	// Which is the expected behaviour from reverse proxy POV.
