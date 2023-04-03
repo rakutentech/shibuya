@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -184,38 +185,36 @@ func makeAccessLogEntry(statusCode int, path string) string {
 	return fmt.Sprintf("%d, %s", statusCode, path)
 }
 
-func (sic *ShibuyaIngressController) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	items := strings.Split(req.RequestURI, "/")
+func (sic *ShibuyaIngressController) rewriteURL(r *httputil.ProxyRequest) {
+	// When we encoutered an error, the rewrite won't happen. Controller side should see 502
+	// Which is the expected behaviour from reverse proxy POV.
+	in := r.In
+	items := strings.Split(in.RequestURI, "/")
 	if len(items) < 3 {
-		w.WriteHeader(http.StatusBadRequest)
+		log.Error(fmt.Errorf("Invalid request path %s", in.RequestURI))
 		return
 	}
+	log.Debugf("The path items are %v", items)
 	engine := items[1]
 	podIP, err := sic.findPodIPFromInventory(engine)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		log.Error(err)
 		return
 	}
-	action := items[2]
-	engineUrl := fmt.Sprintf("http://%s/%s", podIP, action)
-	req.URL, err = url.Parse(engineUrl)
+	target, err := url.Parse(fmt.Sprintf("http://%s", podIP))
 	if err != nil {
-		log.Debug(err)
-		w.WriteHeader(http.StatusBadRequest)
+		log.Error(err)
 		return
 	}
-	t := req.RequestURI
-	req.RequestURI = ""
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		log.Debug(err)
-		w.WriteHeader(http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-	log.Debug(makeAccessLogEntry(resp.StatusCode, t))
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	out := r.Out
+	r.SetURL(target)
+	// We need to rewrite the path from /engine-project-collection-plan-engineid/start to /start
+	// Otherwise it will be 404 at engine handler side
+	t := fmt.Sprintf("/%s", path.Join(items[2:]...))
+	orig := out.URL.Path
+	out.URL.Path = t
+	out.URL.RawPath = t
+	log.Debugf("rewriting original path %s to %s", orig, out.URL.Path)
 }
 
 type controllerConfig struct {
@@ -257,7 +256,11 @@ func main() {
 	if cc.listenAddr == "" {
 		cc.listenAddr = ":8080"
 	}
-	if err := http.ListenAndServe(cc.listenAddr, sic); err != nil {
+	rp := httputil.ReverseProxy{
+		Rewrite:   sic.rewriteURL,
+		Transport: tr,
+	}
+	if err := http.ListenAndServe(cc.listenAddr, &rp); err != nil {
 		log.Fatal(err)
 	}
 }
