@@ -1,4 +1,4 @@
-FROM gcr.io/shibuya-214807/golang:1.17-stretch AS builder
+FROM gcr.io/shibuya-214807/golang:1.20.2-buster AS builder
 
 WORKDIR /go/src/shibuya-ingress-controller
 
