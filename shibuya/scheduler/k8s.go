@@ -158,7 +158,8 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 			Labels:                     labels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: int32Ptr(int32(replicas)),
+			Replicas:            int32Ptr(int32(replicas)),
+			PodManagementPolicy: appsv1.ParallelPodManagement,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
