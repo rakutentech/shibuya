@@ -45,16 +45,6 @@ func NewController() *Controller {
 	c.schedulerKind = config.SC.ExecutorConfig.Cluster.Kind
 	c.Scheduler = scheduler.NewEngineScheduler(config.SC.ExecutorConfig.Cluster)
 
-	// First we do is to resume the running plans
-	// This method should not be moved as later goroutines rely on it.
-	c.resumeRunningPlans()
-	go c.streamToApi()
-	go c.readConnectedEngines()
-	go c.checkRunningThenTerminate()
-	go c.fetchEngineMetrics()
-	go c.cleanLocalStore()
-	go c.autoPurgeDeployments()
-	go c.autoPurgeProjectIngressController()
 	return c
 }
 
@@ -68,6 +58,16 @@ type ApiMetricStreamEvent struct {
 	CollectionID string `json:"collection_id"`
 	Raw          string `json:"metrics"`
 	PlanID       string `json:"plan_id"`
+}
+
+func (c *Controller) StarRunning() {
+	// First we do is to resume the running plans
+	// This method should not be moved as later goroutines rely on it.
+	c.resumeRunningPlans()
+	go c.streamToApi()
+	go c.readConnectedEngines()
+	go c.fetchEngineMetrics()
+	go c.cleanLocalStore()
 }
 
 func (c *Controller) streamToApi() {
