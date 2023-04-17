@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *Controller) checkRunningThenTerminate() {
+func (c *Controller) CheckRunningThenTerminate() {
 	jobs := make(chan *RunningPlan)
 	for w := 1; w <= 3; w++ {
 		go func(jobs <-chan *RunningPlan) {
@@ -107,7 +107,7 @@ func isCollectionStale(rh *model.RunHistory, launchTime time.Time) (bool, error)
 	return true, nil
 }
 
-func (c *Controller) autoPurgeDeployments() {
+func (c *Controller) AutoPurgeDeployments() {
 	for {
 		deployedCollections, err := c.Scheduler.GetDeployedCollections()
 		if err != nil {
@@ -151,7 +151,7 @@ func (c *Controller) autoPurgeDeployments() {
 // Last time used is defined as:
 // 1. If none of the collections has a run, it will be the last launch time of the engines of a collection
 // 2. If any of the collection has a run, it will be the end time of that run
-func (c *Controller) autoPurgeProjectIngressController() {
+func (c *Controller) AutoPurgeProjectIngressController() {
 	projectLastUsedTime := make(map[int64]time.Time)
 	ingressLifespan, err := time.ParseDuration(config.SC.IngressConfig.Lifespan)
 	if err != nil {
