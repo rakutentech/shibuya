@@ -78,14 +78,14 @@ func GetProjectsByOwners(owners []string) ([]*Project, error) {
 
 func GetProject(id int64) (*Project, error) {
 	db := config.SC.DBC
-	q, err := db.Prepare("select id, name, owner, created_time from project where id=?")
+	q, err := db.Prepare("select id, name, owner, sid, created_time from project where id=?")
 	if err != nil {
 		return nil, err
 	}
 	defer q.Close()
 
 	project := new(Project)
-	err = q.QueryRow(id).Scan(&project.ID, &project.Name, &project.Owner, &project.CreatedTime)
+	err = q.QueryRow(id).Scan(&project.ID, &project.Name, &project.Owner, &project.SID, &project.CreatedTime)
 	if err != nil {
 		return nil, &DBError{Err: err, Message: "project not found"}
 	}
