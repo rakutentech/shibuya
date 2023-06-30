@@ -6,14 +6,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guregu/null"
 	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 type Project struct {
-	ID          int64         `json:"id"`
-	Name        string        `json:"name"`
-	Owner       string        `json:"owner"`
-	SID         string        `json:"sid"`
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Owner string `json:"owner"`
+	//SID         string `json:"sid"`
+	SID         null.String   `json:"sid"`
 	CreatedTime time.Time     `json:"created_time"`
 	Collections []*Collection `json:"collections"`
 	Plans       []*Plan       `json:"plans"`
@@ -89,6 +91,7 @@ func GetProject(id int64) (*Project, error) {
 	if err != nil {
 		return nil, &DBError{Err: err, Message: "project not found"}
 	}
+	//project.SID = project.SSID.String
 	return project, nil
 }
 
