@@ -6,13 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guregu/null"
 	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 type Project struct {
-	ID          int64         `json:"id"`
-	Name        string        `json:"name"`
-	Owner       string        `json:"owner"`
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Owner       string `json:"owner"`
+	ssID        null.String
 	SID         string        `json:"sid"`
 	CreatedTime time.Time     `json:"created_time"`
 	Collections []*Collection `json:"collections"`
@@ -66,7 +68,8 @@ func GetProjectsByOwners(owners []string) ([]*Project, error) {
 	defer rows.Close()
 	for rows.Next() {
 		p := new(Project)
-		rows.Scan(&p.ID, &p.Name, &p.Owner, &p.SID, &p.CreatedTime)
+		rows.Scan(&p.ID, &p.Name, &p.Owner, &p.ssID, &p.CreatedTime)
+		p.SID = p.ssID.String
 		r = append(r, p)
 	}
 	err = rows.Err()
@@ -85,10 +88,12 @@ func GetProject(id int64) (*Project, error) {
 	defer q.Close()
 
 	project := new(Project)
-	err = q.QueryRow(id).Scan(&project.ID, &project.Name, &project.Owner, &project.SID, &project.CreatedTime)
+	err = q.QueryRow(id).Scan(&project.ID, &project.Name, &project.Owner, &project.ssID, &project.CreatedTime)
 	if err != nil {
 		return nil, &DBError{Err: err, Message: "project not found"}
 	}
+	// TODO remove SSID as it's only supposed to be a temp solution
+	project.SID = project.ssID.String
 	return project, nil
 }
 

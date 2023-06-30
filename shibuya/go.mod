@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.0
+	github.com/guregu/null v4.0.0+incompatible
 	github.com/hpcloud/tail v1.0.0
 	github.com/iandyh/eventsource v0.0.0-20180323060413-3ff7f3849c03
 	github.com/julienschmidt/httprouter v1.3.0
