@@ -1,0 +1,56 @@
+{
+    "bg_color": "#fff",
+    "project_home": "",
+    "upload_file_help": "",
+    "auth_config": {
+        "admin_users": [],
+        "ldap_server": "",
+        "ldap_port": "",
+        "system_user": "",
+        "system_password": "",
+        "base_dn": "",
+        "no_auth": true
+    },
+    "http_config": {
+        "proxy": ""
+    },
+    "db": {
+        "host": "db",
+        "user": "root",
+        "password": "root",
+        "database": "shibuya"
+    },
+    "executors": {
+        "cluster": {
+            "on_demand": false
+        },
+        "in_cluster": true,
+        "namespace": "shibuya-executors",
+        "jmeter": {
+            "image": "shibuya:jmeter",
+            "cpu": "0.1",
+            "mem": "512Mi"
+        },
+        "pull_secret": "",
+        "pull_policy": "IfNotPresent",
+        "max_engines_in_collection": 10
+    },
+    "ingress": {
+        "image": "shibuya:ingress-controller",
+        "cpu": "0.1"
+    },
+    "dashboard": {
+        "url": "http://localhost:3000",
+        "run_dashboard": "/d/RXY8nM1mk2/shibuya",
+        "engine_dashboard": "/d/9EH6xqTZz/shibuya-engine-health"
+    },
+    "object_storage": {
+        "provider": "local",
+        "url": "http://storage:8080",
+        "user": "",
+        "password": ""
+    },
+    "log_format": {
+        "json": false
+    }
+}
