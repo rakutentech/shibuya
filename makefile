@@ -85,3 +85,8 @@ ingress-controller:
 	# And update the image in the config.json
 	docker build -t shibuya:ingress-controller -f ingress-controller/Dockerfile ingress-controller
 	kind load docker-image shibuya:ingress-controller --name shibuya
+
+.PHONY: controller
+controller:
+	cp shibuya/config_tmpl.json shibuya/config.json
+	cd shibuya && sh build.sh controller
