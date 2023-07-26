@@ -90,3 +90,5 @@ ingress-controller:
 controller:
 	cp shibuya/config_tmpl.json shibuya/config.json
 	cd shibuya && sh build.sh controller
+	docker build -f shibuya/docker-local/Dockerfile --build-arg env=local --build-arg="binary_name=shibuya-controller" -t controller:local shibuya
+	kind load docker-image controller:local --name shibuya

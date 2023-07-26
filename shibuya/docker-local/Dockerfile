@@ -7,10 +7,12 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s
 # Use only binaries from above image for running the app
 FROM gcr.io/shibuya-214807/ubuntu:18.04
 
+
 COPY --from=builder /usr/local/bin/kubectl /usr/local/bin/kubectl
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-ADD ./build/shibuya /usr/local/bin/shibuya
+ARG binary_name=shibuya
+ADD ./build/${binary_name} /usr/local/bin/${binary_name}
 
 RUN mkdir /auth
 ADD ./shibuya-gcp.json /auth/shibuya-gcp.json
@@ -27,4 +29,5 @@ ENV https_proxy ${proxy}
 COPY config/kube_configs /root/.kube
 COPY config.json /config.json
 COPY ./ui/ /
-CMD ["shibuya"]
+ENV binary=${binary_name}
+CMD ${binary}
