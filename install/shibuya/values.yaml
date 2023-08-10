@@ -1,0 +1,62 @@
+namespace: shibuya-executors
+context: local
+
+controller:
+  image:
+    name: controller
+    tag: local
+
+apiserver:
+  image:
+    name: shibuya
+    tag: local
+
+runtime:
+  bg_color: "#fff"
+  project_home: ""
+  upload_file_help: ""
+  auth_config:
+    admin_users: []
+    ldap_server: ""
+    ldap_port: ""
+    system_user: ""
+    system_password: ""
+    base_dn: ""
+    no_auth: true
+    session_key: ""
+  http_config:
+    proxy: ""
+  db:
+    host: "db"
+    user: "root"
+    password: "root"
+    database: "shibuya"
+    keypairs: ""
+  executors:
+    cluster:
+      on_demand: false
+      project: ""
+      zone: ""
+      cluster_id: ""
+      gc_duration: ""
+      service_type: ""
+    in_cluster: true
+    namespace: "shibuya-executors"
+    jmeter:
+      image: shibuya:jmeter
+      cpu: 0.1
+      mem: 512Mi
+    pull_secret: ""
+    pull_policy: "IfNotPresent"
+  ingress:
+    image: "shibuya:ingress-controller"
+    cpu: 0.1
+  dashboard:
+    url: "http://localhost:3000"
+    run_dashboard: "/d/RXY8nM1mk2/shibuya"
+    engine_dashboard: "/d/9EH6xqTZz/shibuya-engine-health"
+  object_storage:
+    provider: local
+    url: "http://storage:8080"
+    user: ""
+    password: ""

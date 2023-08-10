@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: shibuya
+  name: shibuya
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shibuya
+  template:
+    metadata:
+      labels:
+        app: shibuya
+    spec:
+      serviceAccount: shibuya
+      containers:
+      - image: {{ .Values.apiserver.image.name }}:{{ .Values.apiserver.image.tag}}
+        name: shibuya
+        ports:
+          - containerPort: 8080
+        volumeMounts:
+        - name: shibuya-config
+          mountPath: /config.json
+          subPath: config.json
+      volumes:
+      - name: shibuya-config
+        configMap:
+          name: shibuya-config-{{ .Values.context }}

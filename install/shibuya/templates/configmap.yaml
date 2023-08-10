@@ -1,0 +1,63 @@
+apiVersion: v1
+data:
+  config.json: |
+    {
+        "bg_color": "#f5f5f5",
+        "project_home": "https://confluence.rakuten-it.com/confluence/display/SPRJ/Shibuya+Project+Home",
+        "upload_file_help": "https://confluence.rakuten-it.com/confluence/display/SPRJ/Uploading+your+files+to+Shibuya",
+        "enable_sid": true,
+        "auth_config": {
+            "admin_users": {{ .Values.runtime.auth_config.admin_users }},
+            "ldap_server": {{ .Values.runtime.auth_config.ldap_server | quote }},
+            "ldap_port": {{ .Values.runtime.auth_config.ldap_port | quote }},
+            "system_user": {{ .Values.runtime.auth_config.system_user | quote }},
+            "system_password": {{ .Values.runtime.auth_config.system_password | quote }},
+            "base_dn": {{ .Values.runtime.auth_config.base_dn | quote }},
+            "session_key": {{ .Values.runtime.auth_config.session_key | quote }},
+            "no_auth": {{ .Values.runtime.auth_config.no_auth }}
+        },
+        "http_config": {
+            "proxy": ""
+        },
+        "db": {
+            "host": {{ .Values.runtime.db.host | quote }},
+            "user": {{ .Values.runtime.db.user | quote }},
+            "password": {{ .Values.runtime.db.password | quote }},
+            "database": {{ .Values.runtime.db.database | quote }},
+            "keypairs": {{ .Values.runtime.db.keypairs | quote }}
+        },
+        "executors": {
+            "cluster": {
+                "on_demand": {{ .Values.runtime.executors.cluster.on_demand }}
+            },
+            "in_cluster": {{ .Values.runtime.executors.in_cluster }},
+            "namespace": {{ .Values.runtime.executors.namespace | quote }},
+            "jmeter": {
+                "image": {{ .Values.runtime.executors.jmeter.image | quote }},
+                "cpu": {{ .Values.runtime.executors.jmeter.cpu | quote }},
+                "mem": {{ .Values.runtime.executors.jmeter.mem | quote }}
+            },
+            "pull_secret": {{ .Values.runtime.executors.pull_secret | quote }},
+            "pull_policy": {{ .Values.runtime.executors.pull_policy | quote }}
+        },
+        "ingress": {
+            "image": {{ .Values.runtime.ingress.image | quote }},
+            "cpu": {{ .Values.runtime.ingress.cpu | quote }}
+        },
+        "dashboard": {
+            "url": {{ .Values.runtime.dashboard.url | quote }},
+            "run_dashboard": {{ .Values.runtime.dashboard.run_dashboard | quote }},
+            "engine_dashboard": {{ .Values.runtime.dashboard.engine_dashboard | quote }}
+        },
+        "object_storage": {
+            "provider": {{ .Values.runtime.object_storage.provider | quote }},
+            "url": {{ .Values.runtime.object_storage.url | quote }}
+        },
+        "log_format": {
+            "json": false
+        }
+    }
+kind: ConfigMap
+metadata:
+  name: shibuya-config-{{ .Values.context }}
+  namespace: {{ .Values.namespace }}

@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: shibuya-controller
+  name: shibuya-controller
+  namespace: shibuya-executors
+spec:
+  template:
+    metadata:
+      labels:
+        app: shibuya-controller
+    spec:
+      containers:
+      - image: {{ .Values.controller.image.name }}:{{ .Values.controller.image.tag}}
+        imagePullPolicy: IfNotPresent
+        name: shibuya-sc
+        volumeMounts:
+        - name: shibuya-config
+          mountPath: /config.json
+          subPath: config.json
+      dnsPolicy: ClusterFirst
+      restartPolicy: OnFailure
+      serviceAccount: shibuya
+      serviceAccountName: shibuya
+      volumes:
+      - name: shibuya-config
+        configMap:
+          name: shibuya-config-{{ .Values.context }}
