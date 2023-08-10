@@ -6,6 +6,7 @@ data:
         "project_home": "https://confluence.rakuten-it.com/confluence/display/SPRJ/Shibuya+Project+Home",
         "upload_file_help": "https://confluence.rakuten-it.com/confluence/display/SPRJ/Uploading+your+files+to+Shibuya",
         "enable_sid": true,
+        "distributed_mode": {{ .Values.runtime.distributed_mode }},
         "auth_config": {
             "admin_users": {{ .Values.runtime.auth_config.admin_users }},
             "ldap_server": {{ .Values.runtime.auth_config.ldap_server | quote }},

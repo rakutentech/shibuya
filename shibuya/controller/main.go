@@ -67,6 +67,18 @@ func (c *Controller) StartRunning() {
 	go c.readConnectedEngines()
 	go c.fetchEngineMetrics()
 	go c.cleanLocalStore()
+	if !config.SC.DistributedMode {
+		log.Info("Controller is running in non-distributed mode!")
+		go c.IsolateBackgroundTasks()
+	}
+}
+
+// In distributed mode, the func will be running as a standalone process
+// In non-distributed mode, the func will be run as a goroutine.
+func (c *Controller) IsolateBackgroundTasks() {
+	c.CheckRunningThenTerminate()
+	go c.AutoPurgeDeployments()
+	go c.AutoPurgeProjectIngressController()
 }
 
 func (c *Controller) streamToApi() {

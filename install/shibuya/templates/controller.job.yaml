@@ -1,3 +1,4 @@
+{{ if eq .Values.runtime.distributed_mode true }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -27,3 +28,4 @@ spec:
       - name: shibuya-config
         configMap:
           name: shibuya-config-{{ .Values.context }}
+{{ end }}
