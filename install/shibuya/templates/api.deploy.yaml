@@ -24,7 +24,19 @@ spec:
         - name: shibuya-config
           mountPath: /config.json
           subPath: config.json
+        {{ if eq .Values.runtime.executors.in_cluster false }}
+        - name: kubeconfig-volume
+          mountPath: /root/.kube/config
+          subPath: config
+        {{ end }}
       volumes:
       - name: shibuya-config
         configMap:
           name: shibuya-config-{{ .Values.context }}
+      {{ if eq .Values.runtime.executors.in_cluster false }}
+      - name: kubeconfig-volume
+        configMap:
+          defaultMode: 420
+          name: shibuya-token-{{ .Values.context }}
+      {{ end }}
+
