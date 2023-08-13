@@ -15,7 +15,8 @@ Collection is the unit where the actual tests are managed. Therefore, multiple t
 Pre-requisites:
 1. Kind (https://kind.sigs.k8s.io)
 2. kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl)
-3. Docker (https://docs.docker.com/install) *On OSX please increase your docker machine's spec or you may face performance issues*
+3. Helm (https://helm.sh/docs/intro/install/)
+4. Docker (https://docs.docker.com/install) *On OSX please increase your docker machine's spec or you may face performance issues*
 
 
 Run `make` to start local cluster
