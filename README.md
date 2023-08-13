@@ -31,6 +31,17 @@ Then you can go to http://localhost:8080 to check.
 
 note: Local Shibuya does not have authentication. So you need to put `shibuya` as the ownership of the project. This is the same if you turn off authentication in the config file.
 
+## Distributed mode(WIP)
+
+In order to improve the scalibility of Shibuya, we are going to split the single Shibuya process into three components:
+
+- apiserver
+- controller.
+- Engine metric streamer(Not existing yet)
+
+By default, at locall, it will be run as non-distributed mode. You can enable to by set the `runtime.distributed_mode` to `true`.
+
+
 ### Production setup
 
 Please read the makefile to understand what components are needed and how to set them up in detail.
