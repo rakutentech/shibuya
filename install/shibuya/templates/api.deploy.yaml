@@ -2,8 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: shibuya
-  name: shibuya
+    {{- range .Values.apiserver.labels }}
+    {{.key }}: {{.value }}
+    {{- end }}
 spec:
   replicas: 1
   selector:
@@ -12,12 +13,19 @@ spec:
   template:
     metadata:
       labels:
-        app: shibuya
+        {{- range .Values.apiserver.labels }}
+        {{.key }}: {{.value }}
+        {{- end }}
     spec:
       serviceAccount: shibuya
       containers:
       - image: {{ .Values.apiserver.image.name }}:{{ .Values.apiserver.image.tag}}
         name: shibuya
+        env:
+        {{- range .Values.apiserver.envvars }}
+        - name: {{ .key | quote }}
+          value: {{ .value | quote }}
+        {{- end }}
         ports:
           - containerPort: 8080
         volumeMounts:
