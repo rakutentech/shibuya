@@ -4,7 +4,7 @@ kind: Job
 metadata:
   labels:
     app: shibuya-controller
-  name: shibuya-controller
+  name: shibuya-controller-{{ .Values.context }}
   namespace: shibuya-executors
 spec:
   template:
@@ -16,6 +16,13 @@ spec:
       - image: {{ .Values.controller.image.name }}:{{ .Values.controller.image.tag}}
         imagePullPolicy: IfNotPresent
         name: shibuya-sc
+        resource:
+          requests:
+            cpu: {{ .Values.controller.resources.requests.cpu | quote }}
+            memory: {{ .Values.controller.resources.requests.memory | quote }}
+          limits:
+            cpu: {{ .Values.controller.resources.limits.cpu | quote }}
+            memory: {{ .Values.controller.resources.limits.memory | quote }}
         volumeMounts:
         - name: shibuya-config
           mountPath: /config.json
