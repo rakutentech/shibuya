@@ -17,6 +17,12 @@ spec:
         {{- range .Values.apiserver.labels }}
         {{.key }}: {{.value }}
         {{- end }}
+      {{- if .Values.apiserver.annotations }}
+      annotations:
+        {{- range .Values.apiserver.annotations }}
+        {{.key }}: {{.value }}
+        {{- end }}
+      {{- end }}
     spec:
       serviceAccount: shibuya
       containers:

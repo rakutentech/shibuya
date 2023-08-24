@@ -11,6 +11,12 @@ spec:
     metadata:
       labels:
         app: shibuya-controller
+      {{- if .Values.controller.annotations }}
+      annotations:
+        {{- range .Values.controller.annotations }}
+        {{.key }}: {{.value }}
+        {{- end }}
+      {{- end }}
     spec:
       containers:
       - image: {{ .Values.controller.image.name }}:{{ .Values.controller.image.tag}}
