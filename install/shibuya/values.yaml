@@ -5,6 +5,9 @@ controller:
   image:
     name: controller
     tag: local
+  labels:
+    - key: app
+      value: shibuya-controller
   annotations: []
   resources:
     requests:
@@ -24,7 +27,7 @@ apiserver:
       memory: 128Mi
   labels:
     - key: app
-      value: shibuya
+      value: shibuya-apiserver
   annotations: []
   envvars:
     - key: env
@@ -38,7 +41,7 @@ runtime:
   bg_color: "#fff"
   project_home: ""
   upload_file_help: ""
-  distributed_mode: false
+  distributed_mode: true
   auth_config:
     admin_users: []
     ldap_server: ""

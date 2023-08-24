@@ -10,7 +10,9 @@ spec:
   template:
     metadata:
       labels:
-        app: shibuya-controller
+        {{- range .Values.controller.labels }}
+        {{.key }}: {{.value }}
+        {{- end }}
       {{- if .Values.controller.annotations }}
       annotations:
         {{- range .Values.controller.annotations }}
