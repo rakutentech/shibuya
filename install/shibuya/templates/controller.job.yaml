@@ -31,6 +31,11 @@ spec:
           limits:
             cpu: {{ .Values.controller.resources.limits.cpu | quote }}
             memory: {{ .Values.controller.resources.limits.memory | quote }}
+        env:
+        {{- range .Values.controller.envvars }}
+        - name: {{ .key | quote }}
+          value: {{ .value | quote }}
+        {{- end }}
         volumeMounts:
         - name: shibuya-config
           mountPath: /config.json

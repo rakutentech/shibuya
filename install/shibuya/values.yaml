@@ -16,6 +16,9 @@ controller:
     limits:
       cpu: 0.1
       memory: 128Mi
+  envvars:
+    - key: env
+      value: local
 
 apiserver:
   resources:
