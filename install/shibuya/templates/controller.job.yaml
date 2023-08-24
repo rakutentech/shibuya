@@ -1,4 +1,4 @@
-{{ if eq .Values.runtime.distributed_mode true }}
+{{ if .Values.runtime.distributed_mode }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -35,7 +35,7 @@ spec:
         - name: shibuya-config
           mountPath: /config.json
           subPath: config.json
-        {{ if eq .Values.runtime.executors.in_cluster false }}
+        {{ if not .Values.runtime.executors.in_cluster }}
         - name: kubeconfig-volume
           mountPath: /root/.kube/config
           subPath: config
@@ -48,7 +48,7 @@ spec:
       - name: shibuya-config
         configMap:
           name: shibuya-config-{{ .Values.context }}
-      {{ if eq .Values.runtime.executors.in_cluster false }}
+      {{ if not .Values.runtime.executors.in_cluster }}
       - name: kubeconfig-volume
         configMap:
           defaultMode: 420
