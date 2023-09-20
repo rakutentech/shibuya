@@ -52,7 +52,7 @@ runtime:
     system_user: ""
     system_password: ""
     base_dn: ""
-    no_auth: true
+    no_auth: false
     session_key: ""
   http_config:
     proxy: ""

@@ -44,6 +44,7 @@ data:
         "ingress": {
             "image": {{ .Values.runtime.ingress.image | quote }},
             "cpu": {{ .Values.runtime.ingress.cpu | quote }}
+            "replicas": {{ .Values.runtime.ingress.replicas | quote }}
         },
         "dashboard": {
             "url": {{ .Values.runtime.dashboard.url | quote }},
@@ -52,7 +53,10 @@ data:
         },
         "object_storage": {
             "provider": {{ .Values.runtime.object_storage.provider | quote }},
-            "url": {{ .Values.runtime.object_storage.url | quote }}
+            {{- with .Values.runtime.object_storage.url }}
+            "url": {{ .url | quote }}
+            {{- end }}
+            "bucket": {{ .Values.runtime.object_storage.bucket | quote }}
         },
         "log_format": {
             "json": false
