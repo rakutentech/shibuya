@@ -657,7 +657,7 @@ func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.
 }
 
 func (s *ShibuyaAPI) collectionTriggerHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
