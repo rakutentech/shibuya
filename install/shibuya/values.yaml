@@ -37,7 +37,7 @@ apiserver:
       value: local
 
   image:
-    name: shibuya
+    name: api
     tag: local
 
 runtime:
@@ -52,7 +52,7 @@ runtime:
     system_user: ""
     system_password: ""
     base_dn: ""
-    no_auth: false
+    no_auth: true
     session_key: ""
   http_config:
     proxy: ""
@@ -81,6 +81,7 @@ runtime:
   ingress:
     image: "shibuya:ingress-controller"
     cpu: 0.1
+    replicas: 1
   dashboard:
     url: "http://localhost:3000"
     run_dashboard: "/d/RXY8nM1mk2/shibuya"
@@ -90,3 +91,4 @@ runtime:
     url: "http://storage:8080"
     user: ""
     password: ""
+    bucket: ""

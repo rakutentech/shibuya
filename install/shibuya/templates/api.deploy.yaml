@@ -10,7 +10,9 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: shibuya
+      {{- range .Values.apiserver.labels }}
+      {{.key }}: {{.value }}
+      {{- end }}
   template:
     metadata:
       labels:
@@ -28,7 +30,7 @@ spec:
       containers:
       - image: {{ .Values.apiserver.image.name }}:{{ .Values.apiserver.image.tag}}
         name: shibuya
-        resource:
+        resources:
           requests:
             cpu: {{ .Values.apiserver.resources.requests.cpu | quote }}
             memory: {{ .Values.apiserver.resources.requests.memory | quote }}

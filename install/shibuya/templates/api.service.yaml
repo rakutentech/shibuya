@@ -10,4 +10,6 @@ spec:
     protocol: TCP
     targetPort: 8080
   selector:
-    app: shibuya
+    {{- range .Values.apiserver.labels }}
+    {{.key }}: {{.value }}
+    {{- end }}
