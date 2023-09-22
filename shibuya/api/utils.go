@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/model"
 )
 
@@ -14,6 +15,17 @@ func retrieveClientIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return strings.Split(t, ",")[0]
+}
+
+func isAdmin(account *model.Account) bool {
+	for _, ml := range account.ML {
+		for _, admin := range config.SC.AuthConfig.AdminUsers {
+			if ml == admin {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func checkCollectionOwnership(r *http.Request, params httprouter.Params) (*model.Collection, error) {
@@ -30,7 +42,10 @@ func checkCollectionOwnership(r *http.Request, params httprouter.Params) (*model
 		return nil, err
 	}
 	if _, ok := account.MLMap[project.Owner]; !ok {
-		return nil, makeNoPermissionErr("")
+		if !isAdmin(account) {
+			return nil, makeNoPermissionErr("")
+		}
+
 	}
 	return collection, nil
 }
