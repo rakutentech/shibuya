@@ -36,8 +36,8 @@ grafana: grafana/
 .PHONY: shibuya
 shibuya: shibuya/ kubernetes/
 	cd shibuya && sh build.sh
-	docker build -f shibuya/Dockerfile --build-arg env=local -t shibuya:local shibuya
-	kind load docker-image shibuya:local --name shibuya
+	docker build -f shibuya/Dockerfile --build-arg env=local -t api:local shibuya
+	kind load docker-image api:local --name shibuya
 	helm uninstall shibuya || true
 	helm upgrade --install shibuya install/shibuya
 

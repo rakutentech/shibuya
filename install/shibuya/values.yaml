@@ -1,10 +1,11 @@
 namespace: shibuya-executors
 context: local
+tag: local
+repository: ""
 
 controller:
   image:
     name: controller
-    tag: local
   labels:
     - key: app
       value: shibuya-controller

@@ -28,7 +28,7 @@ spec:
     spec:
       serviceAccount: shibuya
       containers:
-      - image: {{ .Values.apiserver.image.name }}:{{ .Values.apiserver.image.tag}}
+      - image: {{ .Values.repository }}{{ .Values.apiserver.image.name }}:{{ .Values.tag }}
         name: shibuya
         resources:
           requests:

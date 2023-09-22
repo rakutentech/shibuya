@@ -21,7 +21,7 @@ spec:
       {{- end }}
     spec:
       containers:
-      - image: {{ .Values.controller.image.name }}:{{ .Values.controller.image.tag}}
+      - image: {{ .Values.repository }}{{ .Values.controller.image.name }}:{{ .Values.tag }}
         imagePullPolicy: IfNotPresent
         name: shibuya-sc
         resources:
