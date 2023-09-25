@@ -79,6 +79,8 @@ runtime:
       mem: 512Mi
     pull_secret: ""
     pull_policy: "IfNotPresent"
+    node_affinity: []
+    tolerations: []
   ingress:
     image: "shibuya:ingress-controller"
     cpu: 0.1

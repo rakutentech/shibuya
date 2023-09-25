@@ -40,6 +40,27 @@ data:
             },
             "pull_secret": {{ .Values.runtime.executors.pull_secret | quote }},
             "pull_policy": {{ .Values.runtime.executors.pull_policy | quote }}
+            {{- if len .Values.runtime.executors.node_affinity }}
+            ",node_affinity": [
+            {{- range .Values.runtime.executors.node_affinity }}
+                {
+                    "key": {{ .key }},
+                    "value": {{ .value }}
+                }
+            {{- end }}
+            ]
+            {{- end }}
+            {{- if len .Values.runtime.executors.tolerations -}}
+            ,tolerations: [
+            {{- range .Values.runtime.executors.tolerations }}
+                {
+                    "key": {{ .key }},
+                    "value": {{ .value }},
+                    "effect": {{ .effect }}
+                }
+            {{- end }}
+            ]
+            {{- end }}
         },
         "ingress": {
             "image": {{ .Values.runtime.ingress.image | quote }},
