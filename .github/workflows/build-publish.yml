@@ -49,6 +49,10 @@ jobs:
       run: |-
         echo '${{ steps.auth.outputs.access_token }}' | docker login -u oauth2accesstoken --password-stdin https://$GAR_LOCATION-docker.pkg.dev
 
+    - name: Helm configuration
+      run: |-
+        echo '${{ steps.auth.outputs.access_token }}' | helm registry login -u oauth2accesstoken --password-stdin https://$GAR_LOCATION-docker.pkg.dev
+
     # Build the Docker image
     - name: Build api
       run: |-
@@ -57,6 +61,10 @@ jobs:
     - name: Build controller
       run: |-
         cd shibuya && make controller_image component=controller
+
+    - name: Build helm charts
+      run: |-
+        cd install && make helm_charts
     # Push the Docker image to Google Artifact Registry
     # - name: Publish
     #   run: |-
