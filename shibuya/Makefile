@@ -20,3 +20,8 @@ controller_build:
 controller_image: controller_build
 	docker build -t $(img) -f Dockerfile --build-arg="binary_name=shibuya-controller" .
 	docker push $(img)
+
+.PHONY: helm_charts
+helm_charts:
+	helm create shibuya-install
+	helm package shibuya-install/
