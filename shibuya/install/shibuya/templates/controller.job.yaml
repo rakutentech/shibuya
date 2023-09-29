@@ -31,12 +31,6 @@ spec:
           limits:
             cpu: {{ .Values.controller.resources.limits.cpu | quote }}
             memory: {{ .Values.controller.resources.limits.memory | quote }}
-        {{- if .Values.image_pull_secrets }}
-        imagePullSecrets:
-          {{- range .Values.image_pull_secrets }}
-          - name: {{ .name }}
-          {{- end }}
-        {{- end }}
         env:
         {{- range .Values.controller.envvars }}
         - name: {{ .key | quote }}
@@ -55,6 +49,12 @@ spec:
       restartPolicy: OnFailure
       serviceAccount: shibuya
       serviceAccountName: shibuya
+      {{- if .Values.image_pull_secrets }}
+      imagePullSecrets:
+        {{- range .Values.image_pull_secrets }}
+        - name: {{ .name }}
+        {{- end }}
+      {{- end }}
       volumes:
       - name: shibuya-config
         configMap:

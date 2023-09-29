@@ -27,6 +27,12 @@ spec:
       {{- end }}
     spec:
       serviceAccount: shibuya
+      {{- if .Values.image_pull_secrets }}
+      imagePullSecrets:
+        {{- range .Values.image_pull_secrets }}
+        - name: {{ .name }}
+        {{- end }}
+      {{- end }}
       containers:
       - image: {{ .Values.repository }}{{ .Values.apiserver.image.name }}:{{ .Values.tag }}
         name: shibuya
@@ -37,12 +43,7 @@ spec:
           limits:
             cpu: {{ .Values.apiserver.resources.limits.cpu | quote }}
             memory: {{ .Values.apiserver.resources.limits.memory | quote }}
-        {{- if .Values.image_pull_secrets }}
-        imagePullSecrets:
-          {{- range .Values.image_pull_secrets }}
-          - name: {{ .name }}
-          {{- end }}
-        {{- end }}
+
         env:
         {{- range .Values.apiserver.envvars }}
         - name: {{ .key | quote }}
