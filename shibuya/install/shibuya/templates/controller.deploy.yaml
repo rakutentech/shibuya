@@ -1,12 +1,17 @@
 {{ if .Values.runtime.distributed_mode }}
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   labels:
     app: shibuya-controller
   name: shibuya-controller-{{ .Values.context }}
-  namespace: shibuya-executors
 spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- range .Values.controller.labels }}
+      {{.key }}: {{.value }}
+      {{- end }}
   template:
     metadata:
       labels:
@@ -46,7 +51,6 @@ spec:
           subPath: config
         {{- end }}
       dnsPolicy: ClusterFirst
-      restartPolicy: OnFailure
       serviceAccount: shibuya
       serviceAccountName: shibuya
       {{- if .Values.image_pull_secrets }}
