@@ -37,6 +37,12 @@ spec:
           limits:
             cpu: {{ .Values.apiserver.resources.limits.cpu | quote }}
             memory: {{ .Values.apiserver.resources.limits.memory | quote }}
+        {{- if .Values.image_pull_secrets }}
+        imagePullSecrets:
+          {{- range .Values.image_pull_secrets }}
+          - name: {{ .name }}
+          {{- end }}
+        {{- end }}
         env:
         {{- range .Values.apiserver.envvars }}
         - name: {{ .key | quote }}
@@ -61,6 +67,6 @@ spec:
       - name: kubeconfig-volume
         configMap:
           defaultMode: 420
-          name: shibuya-token-{{ .Values.context }}
+          name: shibuya-token-{{ .Values.cluster_name }}
       {{- end }}
 

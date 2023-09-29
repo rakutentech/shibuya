@@ -1,7 +1,9 @@
 namespace: shibuya-executors
 context: local
+cluster_name: local
 tag: local
 repository: ""
+image_pull_secrets: []
 
 controller:
   image:
