@@ -31,7 +31,7 @@ func checkCollectionOwnership(r *http.Request, params httprouter.Params) (*model
 	}
 	if _, ok := account.MLMap[project.Owner]; !ok {
 		if !account.IsAdmin() {
-			return nil, makeNoPermissionErr("")
+			return nil, makeNoPermissionErr("You are not the owner of the collection")
 		}
 	}
 	return collection, nil
