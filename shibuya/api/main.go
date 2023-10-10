@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -492,7 +492,7 @@ func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -538,7 +538,7 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, makeInvalidResourceError("file"))
 		return
 	}
-	raw, err := ioutil.ReadAll(file)
+	raw, err := io.ReadAll(file)
 	if err != nil {
 		s.handleErrors(w, makeInvalidRequestError("invalid file"))
 		return
@@ -657,7 +657,7 @@ func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.
 }
 
 func (s *ShibuyaAPI) collectionTriggerHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
