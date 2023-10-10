@@ -161,7 +161,7 @@ var Collection = Vue.component("collection", {
                     this.collection = resp.body;
                 },
                 function (resp) {
-                    console.log(resp.body);
+                    alert(resp.body.message);
                 }
             );
             this.$http.get("collections/" + this.collection_id + '/status').then(
@@ -170,7 +170,7 @@ var Collection = Vue.component("collection", {
                     this.updateCache(this.collection_status.status);
                 },
                 function (resp) {
-                    console.log(resp.body);
+                    alert(resp.body.message);
                 }
             );
         },
