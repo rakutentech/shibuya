@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
+	log "github.com/sirupsen/logrus"
 )
 
 type jmeterEngine struct {
@@ -29,7 +30,10 @@ func (je *jmeterEngine) readMetrics() chan *shibuyaMetric {
 				}
 				raw := ev.Data()
 				line := strings.Split(raw, "|")
-
+				if len(line) < 12 {
+					log.Infof("line length was less than required. Raw line is %s", raw)
+					continue
+				}
 				label := line[2]
 				status := line[3]
 				threads, _ := strconv.ParseFloat(line[9], 64)
