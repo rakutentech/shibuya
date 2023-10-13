@@ -45,7 +45,16 @@ func (u *UI) homeHandler(w http.ResponseWriter, r *http.Request, params httprout
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	IsAdmin := account.IsAdmin()
+	IsAdmin := false
+outer:
+	for _, ml := range account.ML {
+		for _, admin := range config.SC.AuthConfig.AdminUsers {
+			if ml == admin {
+				IsAdmin = true
+				break outer
+			}
+		}
+	}
 	enableSid := config.SC.EnableSid
 	resultDashboardURL := config.SC.DashboardConfig.Url + config.SC.DashboardConfig.RunDashboard
 	engineHealthDashboardURL := config.SC.DashboardConfig.Url + config.SC.DashboardConfig.EnginesDashboard

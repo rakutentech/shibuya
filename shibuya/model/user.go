@@ -39,14 +39,3 @@ func GetAccountBySession(r *http.Request) *Account {
 	}
 	return a
 }
-
-func (a *Account) IsAdmin() bool {
-	for _, ml := range a.ML {
-		for _, admin := range config.SC.AuthConfig.AdminUsers {
-			if ml == admin {
-				return true
-			}
-		}
-	}
-	return false
-}
