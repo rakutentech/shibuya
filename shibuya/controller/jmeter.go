@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
+	log "github.com/sirupsen/logrus"
 )
 
 type jmeterEngine struct {
@@ -29,7 +30,15 @@ func (je *jmeterEngine) readMetrics() chan *shibuyaMetric {
 				}
 				raw := ev.Data()
 				line := strings.Split(raw, "|")
-
+				// We use char "|" as the separator in jmeter jtl file. If some users somehow put another | in their label name
+				// we could end up a broken split. For those requests, we simply ignore otherwise the process will crash.
+				// With current jmeter setup, we are expecting 12 items to be presented in the JTL file after split.
+				// The column in the JTL files are:
+				// timeStamp|elapsed|label|responseCode|responseMessage|threadName|success|bytes|grpThreads|allThreads|Latency|Connect
+				if len(line) < 12 {
+					log.Infof("line length was less than required. Raw line is %s", raw)
+					continue
+				}
 				label := line[2]
 				status := line[3]
 				threads, _ := strconv.ParseFloat(line[9], 64)
