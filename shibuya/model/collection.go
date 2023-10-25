@@ -579,3 +579,25 @@ func (c *Collection) MarkUsageFinished(cxt string, vu int64) error {
 	}
 	return tx.Commit()
 }
+
+// Get the current launching collection by context. The context is different per controller
+func GetLaunchingCollectionByContext(cxt string) ([]int64, error) {
+	db := config.SC.DBC
+	q, err := db.Prepare("select collection_id from collection_launch_history2 where context=? and end_time is null")
+	var collectionIDs []int64
+	if err != nil {
+		return collectionIDs, err
+	}
+	defer q.Close()
+	rs, err := q.Query(cxt)
+	if err != nil {
+		return collectionIDs, err
+	}
+	defer rs.Close()
+	for rs.Next() {
+		var cid int64
+		rs.Scan(&cid)
+		collectionIDs = append(collectionIDs, cid)
+	}
+	return collectionIDs, nil
+}

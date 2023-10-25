@@ -249,11 +249,13 @@ func generateEnginesWithUrl(enginesRequired int, planID, collectionID, projectID
 func (ctr *Controller) fetchEngineMetrics() {
 	for {
 		time.Sleep(5 * time.Second)
-		deployedCollections, err := ctr.Scheduler.GetDeployedCollections()
+		// compared to previous approach(getting the deploy collection from the target k8s cluster), this one can
+		// reduce the engine metrics when there are multiple controller pointing to the same cluster
+		deployedCollections, err := model.GetLaunchingCollectionByContext(config.SC.Context)
 		if err != nil {
 			continue
 		}
-		for collectionID := range deployedCollections {
+		for _, collectionID := range deployedCollections {
 			c, err := model.GetCollection(collectionID)
 			if err != nil {
 				continue
