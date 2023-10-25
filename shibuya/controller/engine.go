@@ -268,6 +268,7 @@ func (ctr *Controller) fetchEngineMetrics() {
 				if err != nil {
 					// Some schedulers might not have the feature to expose the metrics
 					// We will return directly
+					log.Warn(err)
 					if errors.Is(err, scheduler.FeatureUnavailable) {
 						return
 					}

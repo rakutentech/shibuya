@@ -40,23 +40,31 @@ func (c *Controller) removeLocally(id int64) {
 	c.StatusStore.Delete(id)
 }
 
-func (c *Controller) deleteMetrics(runID string, collectionID string, planID string, engines int) {
+func (c *Controller) deleteEngineHealthMetrics(collectionID string, planID string, engines int) {
 	for i := 0; i < engines; i++ {
-		config.ThreadsGauge.Delete(prometheus.Labels{
-			"collection_id": collectionID,
-			"plan_id":       planID,
-			"run_id":        runID,
-			"engine_no":     strconv.Itoa(i),
-		})
+		engineID := strconv.Itoa(i)
 		config.CpuGauge.Delete(prometheus.Labels{
 			"collection_id": collectionID,
 			"plan_id":       planID,
-			"engine_no":     strconv.Itoa(i),
+			"engine_no":     engineID,
 		})
 		config.MemGauge.Delete(prometheus.Labels{
 			"collection_id": collectionID,
 			"plan_id":       planID,
-			"engine_no":     strconv.Itoa(i),
+			"engine_no":     engineID,
+		})
+		log.Infof("Delete engine health metrics %s-%s-%s", collectionID, planID, engineID)
+	}
+}
+
+func (c *Controller) deleteMetrics(runID string, collectionID string, planID string, engines int) {
+	for i := 0; i < engines; i++ {
+		engineID := strconv.Itoa(i)
+		config.ThreadsGauge.Delete(prometheus.Labels{
+			"collection_id": collectionID,
+			"plan_id":       planID,
+			"run_id":        runID,
+			"engine_no":     engineID,
 		})
 	}
 	config.PlanLatencySummary.Delete(prometheus.Labels{
