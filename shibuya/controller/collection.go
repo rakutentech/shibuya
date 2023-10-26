@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
@@ -58,6 +59,13 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) (err e
 	c.TermCollection(collection, true)
 	if err = c.Scheduler.PurgeCollection(collection.ID); err != nil {
 		return err
+	}
+	eps, err := collection.GetExecutionPlans()
+	if err != nil {
+		return err
+	}
+	for _, p := range eps {
+		c.deleteEngineHealthMetrics(strconv.Itoa(int(collection.ID)), strconv.Itoa(int(p.PlanID)), p.Engines)
 	}
 	return err
 }
