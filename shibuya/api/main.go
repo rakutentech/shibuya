@@ -448,11 +448,6 @@ func (s *ShibuyaAPI) collectionCreateHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	account := model.GetAccountBySession(r)
-	if account == nil {
-		s.handleErrors(w, makeLoginError())
-		return
-	}
 	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
