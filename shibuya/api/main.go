@@ -353,7 +353,7 @@ func (s *ShibuyaAPI) collectionFilesGetHandler(w http.ResponseWriter, _ *http.Re
 }
 
 func (s *ShibuyaAPI) collectionFilesUploadHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -373,7 +373,7 @@ func (s *ShibuyaAPI) collectionFilesUploadHandler(w http.ResponseWriter, r *http
 }
 
 func (s *ShibuyaAPI) collectionFilesDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
