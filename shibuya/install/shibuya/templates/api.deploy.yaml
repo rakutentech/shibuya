@@ -4,14 +4,14 @@ metadata:
   name: shibuya-apiserver-{{ .Values.context }}
   labels:
     {{- range .Values.apiserver.labels }}
-    {{.key }}: {{.value }}
+    {{ .key }}: {{ .value }}
     {{- end }}
 spec:
   replicas: 1
   selector:
     matchLabels:
       {{- range .Values.apiserver.labels }}
-      {{.key }}: {{.value }}
+      {{ .key }}: {{ .value }}
       {{- end }}
   template:
     metadata:
