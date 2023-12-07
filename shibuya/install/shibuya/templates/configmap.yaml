@@ -8,7 +8,7 @@ data:
         "enable_sid": true,
         "distributed_mode": {{ .Values.runtime.distributed_mode }},
         "auth_config": {
-            "admin_users": {{ .Values.runtime.auth_config.admin_users }},
+            "admin_users": {{ .Values.runtime.auth_config.admin_users | toJson }},
             "ldap_server": {{ .Values.runtime.auth_config.ldap_server | quote }},
             "ldap_port": {{ .Values.runtime.auth_config.ldap_port | quote }},
             "system_user": {{ .Values.runtime.auth_config.system_user | quote }},
