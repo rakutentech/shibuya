@@ -60,6 +60,11 @@ spec:
           mountPath: /root/.kube/config
           subPath: config
         {{- end }}
+        {{- if eq .Values.runtime.object_storage.provider "gcp" }}
+        - name: shibuya-gcp-auth
+          mountPath: /auth/shibuya-gcp.json
+          subPath: shibuya-gcp.json
+        {{- end }}
       volumes:
       - name: shibuya-config
         configMap:
@@ -69,5 +74,10 @@ spec:
         configMap:
           defaultMode: 420
           name: shibuya-token-{{ .Values.cluster_name }}
+      {{- end }}
+      {{- if eq .Values.runtime.object_storage.provider "gcp" }}
+      - name: shibuya-gcp-auth
+        secret:
+          secretName: shibuya-auth-keys-gcp
       {{- end }}
 
