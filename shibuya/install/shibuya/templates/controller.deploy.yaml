@@ -3,20 +3,22 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: shibuya-controller
+    {{- range .Values.controller.labels }}
+    {{ .key }}: {{ .value }}
+    {{- end }}
   name: shibuya-controller-{{ .Values.context }}
 spec:
   replicas: 1
   selector:
     matchLabels:
       {{- range .Values.controller.labels }}
-      {{.key }}: {{.value }}
+      {{ .key }}: {{ .value }}
       {{- end }}
   template:
     metadata:
       labels:
         {{- range .Values.controller.labels }}
-        {{.key }}: {{.value }}
+        {{ .key }}: {{ .value }}
         {{- end }}
       {{- if .Values.controller.annotations }}
       annotations:
