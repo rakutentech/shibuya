@@ -10,5 +10,6 @@
     - [Object Storage](./ops/object_storage.md)
 - [How to use Shibuya](./user/user_guide_intro.md)
     - [Basic Concepts](./user/concept.md)
+    - [Metrics](./user/metrics.md)
     - [FAQ](./user/faq.md)
 - [Shibuya developers](./dev/intro.md)
