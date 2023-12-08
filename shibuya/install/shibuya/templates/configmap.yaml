@@ -29,7 +29,9 @@ data:
         },
         "executors": {
             "cluster": {
-                "on_demand": {{ .Values.runtime.executors.cluster.on_demand }}
+                "on_demand": {{ .Values.runtime.executors.cluster.on_demand }},
+                "service_type": {{ .Values.runtime.executors.cluster.service_type | quote }},
+                "gc_duration": {{ .Values.runtime.executors.cluster.gc_duration }}
             },
             "in_cluster": {{ .Values.runtime.executors.in_cluster }},
             "namespace": {{ .Values.runtime.executors.namespace | quote }},
@@ -40,6 +42,7 @@ data:
             },
             "pull_secret": {{ .Values.runtime.executors.pull_secret | quote }},
             "pull_policy": {{ .Values.runtime.executors.pull_policy | quote }}
+
             {{- if len .Values.runtime.executors.node_affinity }}
             ",node_affinity": [
             {{- range .Values.runtime.executors.node_affinity }}
