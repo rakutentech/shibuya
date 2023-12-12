@@ -733,7 +733,11 @@ func (s *ShibuyaAPI) planLogHandler(w http.ResponseWriter, r *http.Request, para
 }
 
 func (s *ShibuyaAPI) streamCollectionMetrics(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Currently we don't do authentication for simplicity.
+	collection, err := checkCollectionOwnership(r, params)
+	if err != nil {
+		s.handleErrors(w, err)
+		return
+	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
@@ -744,11 +748,6 @@ func (s *ShibuyaAPI) streamCollectionMetrics(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	collection, err := getCollection(params.ByName("collection_id"))
-	if err != nil {
-		s.handleErrors(w, err)
-		return
-	}
 	clientIP := retrieveClientIP(r)
 	item := &controller.ApiMetricStream{
 		StreamClient: make(chan *controller.ApiMetricStreamEvent),
