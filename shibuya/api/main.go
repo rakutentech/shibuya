@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -353,7 +353,7 @@ func (s *ShibuyaAPI) collectionFilesGetHandler(w http.ResponseWriter, _ *http.Re
 }
 
 func (s *ShibuyaAPI) collectionFilesUploadHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -373,7 +373,7 @@ func (s *ShibuyaAPI) collectionFilesUploadHandler(w http.ResponseWriter, r *http
 }
 
 func (s *ShibuyaAPI) collectionFilesDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -448,23 +448,9 @@ func (s *ShibuyaAPI) collectionCreateHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	account := model.GetAccountBySession(r)
-	if account == nil {
-		s.handleErrors(w, makeLoginError())
-		return
-	}
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
-		return
-	}
-	project, err := model.GetProject(collection.ProjectID)
-	if err != nil {
-		s.handleErrors(w, err)
-		return
-	}
-	if _, ok := account.MLMap[project.Owner]; !ok {
-		s.handleErrors(w, makeNoPermissionErr("You don't have permission"))
 		return
 	}
 	if config.SC.ExecutorConfig.Cluster.OnDemand {
@@ -492,7 +478,7 @@ func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -531,6 +517,11 @@ func (s *ShibuyaAPI) collectionUpdateHandler(w http.ResponseWriter, _ *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	collection, err := checkCollectionOwnership(r, params)
+	if err != nil {
+		s.handleErrors(w, err)
+		return
+	}
 	e := new(model.ExecutionWrapper)
 	r.ParseMultipartForm(1 << 20) //parse 1 MB of data
 	file, _, err := r.FormFile("collectionYAML")
@@ -538,7 +529,7 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, makeInvalidResourceError("file"))
 		return
 	}
-	raw, err := ioutil.ReadAll(file)
+	raw, err := io.ReadAll(file)
 	if err != nil {
 		s.handleErrors(w, makeInvalidRequestError("invalid file"))
 		return
@@ -552,20 +543,14 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, makeInvalidResourceError("YAML file"))
 		return
 	}
-	collectionID, _ := strconv.ParseInt(params.ByName("collection_id"), 10, 64)
-	if (e.Content.CollectionID != 0) && (e.Content.CollectionID != collectionID) {
+	if e.Content.CollectionID != collection.ID {
 		s.handleErrors(w, makeInvalidRequestError("collection ID mismatch"))
 		return
 	}
-	collection, err := model.GetCollection(collectionID)
+	project, err := model.GetProject(collection.ProjectID)
 	if err != nil {
+		log.Error(err)
 		s.handleErrors(w, err)
-		return
-	}
-	project, _ := model.GetProject(collection.ProjectID)
-	account := model.GetAccountBySession(r)
-	if _, ok := account.MLMap[project.Owner]; !ok {
-		s.handleErrors(w, makeNoPermissionErr("You don't own the project"))
 		return
 	}
 	totalEnginesRequired := 0
@@ -626,7 +611,7 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -640,7 +625,7 @@ func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *ht
 }
 
 func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -657,7 +642,7 @@ func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.
 }
 
 func (s *ShibuyaAPI) collectionTriggerHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -669,7 +654,7 @@ func (s *ShibuyaAPI) collectionTriggerHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (s *ShibuyaAPI) collectionTermHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -681,7 +666,7 @@ func (s *ShibuyaAPI) collectionTermHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *ShibuyaAPI) collectionStatusHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -694,7 +679,7 @@ func (s *ShibuyaAPI) collectionStatusHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionPurgeHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
+	collection, err := checkCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -748,7 +733,11 @@ func (s *ShibuyaAPI) planLogHandler(w http.ResponseWriter, r *http.Request, para
 }
 
 func (s *ShibuyaAPI) streamCollectionMetrics(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	// Currently we don't do authentication for simplicity.
+	collection, err := checkCollectionOwnership(r, params)
+	if err != nil {
+		s.handleErrors(w, err)
+		return
+	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
@@ -759,11 +748,6 @@ func (s *ShibuyaAPI) streamCollectionMetrics(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	collection, err := getCollection(params.ByName("collection_id"))
-	if err != nil {
-		s.handleErrors(w, err)
-		return
-	}
 	clientIP := retrieveClientIP(r)
 	item := &controller.ApiMetricStream{
 		StreamClient: make(chan *controller.ApiMetricStreamEvent),
