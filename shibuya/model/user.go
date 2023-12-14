@@ -48,5 +48,10 @@ func (a *Account) IsAdmin() bool {
 			}
 		}
 	}
+	// systemuser is the user used for LDAP auth. If a user login with that account
+	// we can also treat it as a admin
+	if a.Name == config.SC.AuthConfig.SystemUser {
+		return true
+	}
 	return false
 }
