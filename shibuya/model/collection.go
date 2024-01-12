@@ -34,6 +34,16 @@ type Collection struct {
 	CSVSplit       bool             `json:"csv_split"`
 }
 
+type CollectionLaunchHistory struct {
+	Context      string    `json:"context"`
+	CollectionID int64     `json:"collection_id"`
+	Owner        string    `json:"owner"`
+	Vu           int       `json:"vu"`
+	StartedTime  time.Time `json:"started_time"`
+	EndTime      time.Time `json:"end_time"`
+	BillingHours float64   `json:"billing_hours"`
+}
+
 func CreateCollection(name string, projectID int64) (int64, error) {
 	DBC := config.SC.DBC
 	q, err := DBC.Prepare("insert collection set name=?,project_id=?")
