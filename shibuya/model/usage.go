@@ -145,6 +145,8 @@ func GetUsageSummary(startedTime, endTime string) (*TotalUsageSummary, error) {
 
 func GetUsageSummaryBySid(sid, startedTime, endTime string) (*OwnerUsageSummary, error) {
 	log.Printf("fetch history for %s", sid)
+	// we could implement something like get history by sid but this is not being indexed atm
+	// it will remain as a TODO in the future
 	history, err := GetHistory(startedTime, endTime)
 	if err != nil {
 		return nil, err
