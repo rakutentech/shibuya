@@ -2,6 +2,7 @@ package model
 
 import (
 	"math"
+	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -75,6 +76,13 @@ func makeCollectionsToProjects(history []*CollectionLaunchHistory) map[int64]Pro
 	return collectionsToProjects
 }
 
+func findOwner(owner string, project Project) string {
+	if _, err := strconv.ParseInt(owner, 10, 32); err != nil {
+		return project.SID
+	}
+	return owner
+}
+
 func GetUsageSummary(startedTime, endTime string) (*TotalUsageSummary, error) {
 	history, err := GetHistory(startedTime, endTime)
 	if err != nil {
@@ -103,16 +111,24 @@ func GetUsageSummary(startedTime, endTime string) (*TotalUsageSummary, error) {
 	for _, h := range history {
 		totalVUH := uu.TotalVUH
 		vhByOwner := s.VUHByOnwer
-		project, ok := collectionsToProjects[h.CollectionID]
-		// the project has been deleted so we cannot find the project
-		// TODO we should directly use the sid in the history
-		if !ok {
-			continue
+		owner := h.Owner
+		sid := owner
+		_, err := strconv.ParseInt(owner, 10, 32)
+
+		// the sid is using email. This could happen during transition period
+		// and we need to fetch the sid from project
+		if err != nil {
+			project, ok := collectionsToProjects[h.CollectionID]
+			// the project has been deleted so we cannot find the project
+			if !ok {
+				continue
+			}
+			sid = "unknown"
+			if project.SID != "" {
+				sid = project.SID
+			}
 		}
-		sid := "unknown"
-		if project.SID != "" {
-			sid = project.SID
-		}
+
 		// if users run 0.1 hours, we should bill them based on 1 hour.
 		billingHours := calBillingHours(h.StartedTime, h.EndTime)
 		vuh := calVUH(billingHours, float64(h.Vu))
@@ -142,11 +158,19 @@ func GetUsageSummaryBySid(sid, startedTime, endTime string) (*OwnerUsageSummary,
 		UnitUsage: uu,
 	}
 	for _, h := range history {
-		p, ok := collectionsToProjects[h.CollectionID]
-		if !ok {
-			continue
+		owner := h.Owner
+		_, err := strconv.ParseInt(h.Owner, 10, 32)
+		if err != nil {
+			p, ok := collectionsToProjects[h.CollectionID]
+			if !ok {
+				continue
+			}
+			if p.SID != sid {
+				continue
+			}
+			owner = p.SID
 		}
-		if p.SID != sid {
+		if owner != sid {
 			continue
 		}
 		sidHistory = append(sidHistory, h)
