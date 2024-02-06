@@ -113,6 +113,12 @@ func GetUsageSummary(startedTime, endTime string) (*TotalUsageSummary, error) {
 		vhByOwner := s.VUHByOnwer
 		owner := h.Owner
 		sid := owner
+
+		// we also change the ownership from ML to SID while keeping the old entries as they were.
+		// When we run the monthly billing, we could see mixed of ML and SID after first release,
+		// however, after a month or so, we should see all the entries to be billed by SID.
+		// During this transition period of time, we will parse the entry first and if it's still billed by
+		// ML, we will try to get the SID from its belonging SID.
 		_, err := strconv.ParseInt(owner, 10, 32)
 
 		// the sid is using email. This could happen during transition period
@@ -129,7 +135,8 @@ func GetUsageSummary(startedTime, endTime string) (*TotalUsageSummary, error) {
 			}
 		}
 
-		// if users run 0.1 hours, we should bill them based on 1 hour.
+		// if users run less than 1 hour, we should bill them by 1 hour.
+		// 1 hour is the minimum charging unit.
 		billingHours := calBillingHours(h.StartedTime, h.EndTime)
 		vuh := calVUH(billingHours, float64(h.Vu))
 		totalVUH[h.Context] += vuh
