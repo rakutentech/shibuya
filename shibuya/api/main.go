@@ -849,6 +849,9 @@ func (s *ShibuyaAPI) InitRoutes() Routes {
 
 		&Route{"files", "GET", "/api/files/:kind/:id/:name", s.fileDownloadHandler},
 
+		&Route{"usage_summary", "GET", "/api/usage/summary", s.usageSummaryHandler},
+		&Route{"usage_summary_by_sid", "GET", "/api/usage/summary_sid", s.usageSummaryHandlerBySid},
+
 		&Route{"admin_collections", "GET", "/api/admin/collections", s.collectionAdminGetHandler},
 	}
 }

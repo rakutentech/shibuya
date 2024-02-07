@@ -195,11 +195,11 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 			return err
 		}
 	}
-	owner := ""
+	sid := ""
 	if project, err := model.GetProject(collection.ProjectID); err == nil {
-		owner = project.Owner
+		sid = project.SID
 	}
-	if err := collection.NewLaunchEntry(owner, config.SC.Context, int64(enginesCount), nodesCount, int64(vu)); err != nil {
+	if err := collection.NewLaunchEntry(sid, config.SC.Context, int64(enginesCount), nodesCount, int64(vu)); err != nil {
 		return err
 	}
 	err = utils.Retry(func() error {
