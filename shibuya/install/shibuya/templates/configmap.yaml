@@ -43,24 +43,30 @@ data:
             "pull_secret": {{ .Values.runtime.executors.pull_secret | quote }},
             "pull_policy": {{ .Values.runtime.executors.pull_policy | quote }}
 
-            {{- if len .Values.runtime.executors.node_affinity }}
+            {{- $node_affinity := .Values.runtime.executors.node_affinity -}}
+            {{- $count := len $node_affinity -}}
+            {{- if $count }}
             ,"node_affinity": [
-            {{- range .Values.runtime.executors.node_affinity }}
+            {{- range $index, $item := $node_affinity }}
+                {{- $t := add $index 1 -}}
                 {
-                    "key": {{ .key }},
-                    "value": {{ .value }}
-                }
+                    "key": {{ $item.key | quote }},
+                    "value": {{ $item.value | quote }}
+                }{{- if lt $t $count }},{{- end }}
             {{- end }}
             ]
             {{- end }}
-            {{- if len .Values.runtime.executors.tolerations -}}
+            {{- $tolerations := .Values.runtime.executors.tolerations -}}
+            {{- $count := len $tolerations -}}
+            {{- if $count }}
             ,"tolerations": [
-            {{- range .Values.runtime.executors.tolerations }}
+            {{- range $index, $item := $tolerations }}
+                {{- $t := add $index 1 -}}
                 {
-                    "key": {{ .key }},
-                    "value": {{ .value }},
-                    "effect": {{ .effect }}
-                }
+                    "key": {{ $item.key | quote }},
+                    "value": {{ $item.value | quote }},
+                    "effect": {{ $item.effect | quote }}
+                }{{- if lt $t $count }},{{- end }}
             {{- end }}
             ]
             {{- end }}
