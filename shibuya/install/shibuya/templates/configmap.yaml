@@ -44,7 +44,7 @@ data:
             "pull_policy": {{ .Values.runtime.executors.pull_policy | quote }}
 
             {{- if len .Values.runtime.executors.node_affinity }}
-            ",node_affinity": [
+            ,"node_affinity": [
             {{- range .Values.runtime.executors.node_affinity }}
                 {
                     "key": {{ .key }},
@@ -54,7 +54,7 @@ data:
             ]
             {{- end }}
             {{- if len .Values.runtime.executors.tolerations -}}
-            ,tolerations: [
+            ,"tolerations": [
             {{- range .Values.runtime.executors.tolerations }}
                 {
                     "key": {{ .key }},
