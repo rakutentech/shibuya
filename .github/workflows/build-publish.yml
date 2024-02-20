@@ -14,7 +14,7 @@ name: Build and Deploy to GCP registry
 
 on:
   push:
-    branches: [ "split" ]
+    branches: [ "split", "master" ]
 
 env:
   GAR_LOCATION: asia-northeast1 # TODO: update region of the Artifact Registry
