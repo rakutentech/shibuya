@@ -120,6 +120,7 @@ var defaultIngressConfig = IngressConfig{
 type ShibuyaConfig struct {
 	ProjectHome      string           `json:"project_home"`
 	UploadFileHelp   string           `json:"upload_file_help"`
+	DistributedMode  bool             `json:"distributed_mode"`
 	DBConf           *MySQLConfig     `json:"db"`
 	ExecutorConfig   *ExecutorConfig  `json:"executors"`
 	DashboardConfig  *DashboardConfig `json:"dashboard"`
