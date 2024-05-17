@@ -2,7 +2,7 @@ apiVersion: v1
 data:
   config.json: |
     {
-        "bg_color": "#f5f5f5",
+        "bg_color": {{ .Values.runtime.bg_color | quote }},
         "project_home": "https://confluence.rakuten-it.com/confluence/display/SPRJ/Shibuya+Project+Home",
         "upload_file_help": "https://confluence.rakuten-it.com/confluence/display/SPRJ/Uploading+your+files+to+Shibuya",
         "enable_sid": true,
