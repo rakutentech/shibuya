@@ -76,9 +76,9 @@ func (c *Controller) StartRunning() {
 // In distributed mode, the func will be running as a standalone process
 // In non-distributed mode, the func will be run as a goroutine.
 func (c *Controller) IsolateBackgroundTasks() {
-	c.CheckRunningThenTerminate()
 	go c.AutoPurgeDeployments()
 	go c.AutoPurgeProjectIngressController()
+	c.CheckRunningThenTerminate()
 }
 
 func (c *Controller) streamToApi() {
