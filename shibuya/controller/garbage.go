@@ -40,6 +40,7 @@ func (c *Controller) CheckRunningThenTerminate() {
 	for {
 		runningPlans, err := model.GetRunningPlans()
 		if err != nil {
+			log.Error(err)
 			continue
 		}
 		localCache := make(map[int64]*model.Collection)
@@ -47,6 +48,7 @@ func (c *Controller) CheckRunningThenTerminate() {
 			var collection *model.Collection
 			var ok bool
 			collection, ok = localCache[rp.CollectionID]
+			log.Info("handling: ", rp.CollectionID)
 			if !ok {
 				collection, err = model.GetCollection(rp.CollectionID)
 				if err != nil {
@@ -108,6 +110,7 @@ func isCollectionStale(rh *model.RunHistory, launchTime time.Time) (bool, error)
 }
 
 func (c *Controller) AutoPurgeDeployments() {
+	log.Info("Start the loop for purging idle engines")
 	for {
 		deployedCollections, err := c.Scheduler.GetDeployedCollections()
 		if err != nil {
@@ -152,6 +155,7 @@ func (c *Controller) AutoPurgeDeployments() {
 // 1. If none of the collections has a run, it will be the last launch time of the engines of a collection
 // 2. If any of the collection has a run, it will be the end time of that run
 func (c *Controller) AutoPurgeProjectIngressController() {
+	log.Info("Start the loop for purging idle ingress controllers")
 	projectLastUsedTime := make(map[int64]time.Time)
 	ingressLifespan, err := time.ParseDuration(config.SC.IngressConfig.Lifespan)
 	if err != nil {
