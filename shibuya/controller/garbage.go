@@ -48,7 +48,6 @@ func (c *Controller) CheckRunningThenTerminate() {
 			var collection *model.Collection
 			var ok bool
 			collection, ok = localCache[rp.CollectionID]
-			log.Info("handling: ", rp.CollectionID)
 			if !ok {
 				collection, err = model.GetCollection(rp.CollectionID)
 				if err != nil {
