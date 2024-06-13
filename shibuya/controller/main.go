@@ -67,6 +67,10 @@ func (c *Controller) StartRunning() {
 	go c.readConnectedEngines()
 	go c.fetchEngineMetrics()
 	go c.cleanLocalStore()
+	// We can only move this func to an isolated controller process later
+	// because when we are terminating, we also need to close the opening connections
+	// Otherwise we might face connection leaks
+	go c.CheckRunningThenTerminate()
 	if !config.SC.DistributedMode {
 		log.Info("Controller is running in non-distributed mode!")
 		go c.IsolateBackgroundTasks()
@@ -77,8 +81,7 @@ func (c *Controller) StartRunning() {
 // In non-distributed mode, the func will be run as a goroutine.
 func (c *Controller) IsolateBackgroundTasks() {
 	go c.AutoPurgeDeployments()
-	go c.AutoPurgeProjectIngressController()
-	c.CheckRunningThenTerminate()
+	c.AutoPurgeProjectIngressController()
 }
 
 func (c *Controller) streamToApi() {
