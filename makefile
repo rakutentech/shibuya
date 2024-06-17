@@ -43,6 +43,7 @@ shibuya: shibuya/ kubernetes/
 
 .PHONY: jmeter
 jmeter: shibuya/engines/jmeter
+	cp shibuya/config_tmpl.json shibuya/config.json
 	cd shibuya && sh build.sh jmeter
 	docker build -t shibuya:jmeter -f shibuya/docker-local/Dockerfile.engines.jmeter shibuya
 	kind load docker-image shibuya:jmeter --name shibuya
