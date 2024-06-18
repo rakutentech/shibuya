@@ -7,6 +7,20 @@ type EngineDataConfig struct {
 	Duration    string                        `json:"duration"`
 	Concurrency string                        `json:"concurrency"`
 	Rampup      string                        `json:"rampup"`
+	RunID       int64                         `json:"run_id"`
+	EngineID    int                           `json:"engine_id"`
+}
+
+type ShibuyaMetric struct {
+	Threads      float64
+	Latency      float64
+	Label        string
+	Status       string
+	Raw          string
+	CollectionID string
+	PlanID       string
+	EngineID     string
+	RunID        string
 }
 
 func (edc *EngineDataConfig) deepCopy() *EngineDataConfig {

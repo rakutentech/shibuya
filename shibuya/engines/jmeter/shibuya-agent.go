@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,11 +15,16 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	etree "github.com/beevik/etree"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 
+	"github.com/rakutentech/shibuya/shibuya/config"
 	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
 
 	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
@@ -26,6 +32,7 @@ import (
 	"github.com/rakutentech/shibuya/shibuya/utils"
 
 	"github.com/hpcloud/tail"
+	metricsc "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 const (
@@ -58,9 +65,31 @@ type ShibuyaWrapper struct {
 	currentPid     int
 	storageClient  sos.StorageInterface
 	//stderr         io.ReadCloser
-	reader io.ReadCloser
-	writer io.Writer
-	buffer []byte
+	reader              io.ReadCloser
+	writer              io.Writer
+	buffer              []byte
+	runID               int
+	collectionID        string
+	planID              string
+	engineID            int
+	enableEngineMetrics bool
+}
+
+func findCollectionIDPlanID() (string, string) {
+	return os.Getenv("collection_id"), os.Getenv("plan_id")
+}
+
+func findNamespacePodName() (string, string) {
+	return os.Getenv("namespace"), os.Getenv("name")
+}
+
+func isEngineMetricsEnabled() bool {
+	r := os.Getenv("engine_metrics_enabled")
+	t, err := strconv.ParseBool(r)
+	if err != nil {
+		return false
+	}
+	return t
 }
 
 func NewServer() (sw *ShibuyaWrapper) {
@@ -75,7 +104,7 @@ func NewServer() (sw *ShibuyaWrapper) {
 		httpClient:     &http.Client{},
 		storageClient:  sos.Client.Storage,
 	}
-
+	sw.collectionID, sw.planID = findCollectionIDPlanID()
 	reader, writer, _ := os.Pipe()
 	mw := io.MultiWriter(writer, os.Stderr)
 	sw.reader = reader
@@ -98,6 +127,59 @@ func (sw *ShibuyaWrapper) readOutput() {
 		sw.buffer = append(sw.buffer, line...)
 	}
 }
+
+func parseRawMetrics(rawLine string) (controllerModel.ShibuyaMetric, error) {
+	line := strings.Split(rawLine, "|")
+	// We use char "|" as the separator in jmeter jtl file. If some users somehow put another | in their label name
+	// we could end up a broken split. For those requests, we simply ignore otherwise the process will crash.
+	// With current jmeter setup, we are expecting 12 items to be presented in the JTL file after split.
+	// The column in the JTL files are:
+	// timeStamp|elapsed|label|responseCode|responseMessage|threadName|success|bytes|grpThreads|allThreads|Latency|Connect
+	if len(line) < 12 {
+		log.Printf("line length was less than required. Raw line is %s", rawLine)
+		return controllerModel.ShibuyaMetric{}, fmt.Errorf("line length was less than required. Raw line is %s", rawLine)
+	}
+	label := line[2]
+	status := line[3]
+	threads, _ := strconv.ParseFloat(line[9], 64)
+	latency, err := strconv.ParseFloat(line[10], 64)
+	if err != nil {
+		return controllerModel.ShibuyaMetric{}, err
+	}
+	return controllerModel.ShibuyaMetric{
+		Threads: threads,
+		Label:   label,
+		Status:  status,
+		Latency: latency,
+		Raw:     rawLine,
+	}, nil
+}
+
+func (sw *ShibuyaWrapper) makePromMetrics(line string) {
+	metric, err := parseRawMetrics(line)
+	// we need to pass the engine meta(project, collection, plan), especially run id
+	// Run id is generated at controller side
+	if err != nil {
+		return
+	}
+	collectionID := sw.collectionID
+	planID := sw.planID
+	engineID := fmt.Sprintf("%d", sw.engineID)
+	runID := fmt.Sprintf("%d", sw.runID)
+
+	label := metric.Label
+	status := metric.Status
+	latency := metric.Latency
+	threads := metric.Threads
+
+	config.StatusCounter.WithLabelValues(metric.CollectionID, planID, runID, engineID, label, status).Inc()
+	config.CollectionLatencySummary.WithLabelValues(collectionID, runID).Observe(latency)
+	config.PlanLatencySummary.WithLabelValues(collectionID, planID, runID).Observe(latency)
+	config.LabelLatencySummary.WithLabelValues(collectionID, label, runID).Observe(latency)
+	config.ThreadsGauge.WithLabelValues(collectionID, planID, runID, engineID).Set(threads)
+
+}
+
 func (sw *ShibuyaWrapper) listen() {
 	for {
 		select {
@@ -115,6 +197,9 @@ func (sw *ShibuyaWrapper) listen() {
 		case event := <-sw.Bus:
 			// We got a new event from the outside!
 			// Send event to all connected clients
+			if sw.enableEngineMetrics {
+				sw.makePromMetrics(event)
+			}
 			for clientMessageChan, _ := range sw.clients {
 				clientMessageChan <- event
 			}
@@ -191,7 +276,8 @@ func (sw *ShibuyaWrapper) stopHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err := r.ParseForm()
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 	pid := sw.getPid()
 	if pid == 0 {
@@ -223,7 +309,7 @@ func (sw *ShibuyaWrapper) getPid() int {
 	return sw.currentPid
 }
 
-func (sw *ShibuyaWrapper) runCommand(w http.ResponseWriter) int {
+func (sw *ShibuyaWrapper) runCommand() int {
 	log.Printf("shibuya-agent: Start to run plan")
 	logFile := sw.makeLogFile()
 	cmd := exec.Command(JMETER_EXECUTABLE, "-n", "-t", JMX_FILEPATH, "-l", logFile,
@@ -231,7 +317,8 @@ func (sw *ShibuyaWrapper) runCommand(w http.ResponseWriter) int {
 	cmd.Stderr = sw.writer
 	err := cmd.Start()
 	if err != nil {
-		log.Panic(err)
+		log.Println(err)
+		return 0
 	}
 	pid := cmd.Process.Pid
 	sw.setPid(pid)
@@ -387,7 +474,7 @@ func (sw *ShibuyaWrapper) startHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		file, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			log.Panicln(err)
+			log.Println(err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -412,8 +499,9 @@ func (sw *ShibuyaWrapper) startHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		pid := sw.runCommand(w)
-
+		sw.runID = int(edc.RunID)
+		sw.engineID = edc.EngineID
+		pid := sw.runCommand()
 		go sw.tailJemeter()
 		log.Printf("shibuya-agent: Start running Jmeter process with pid: %d", pid)
 		w.Write([]byte(strconv.Itoa(pid)))
@@ -435,12 +523,57 @@ func (sw *ShibuyaWrapper) stdoutHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write(sw.buffer)
 }
 
+// This func reports the cpu/memory usage of the engine
+// It will run when the engine is started until it's finished.
+func (sw *ShibuyaWrapper) reportOwnMetrics(namespace, podName string) error {
+	k8sConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	metricClient, err := metricsc.NewForConfig(k8sConfig)
+	if err != nil {
+		return err
+	}
+	engineNumber := strconv.Itoa(sw.engineID)
+	for {
+		time.Sleep(5 * time.Second)
+		metrics, err := metricClient.MetricsV1beta1().PodMetricses(namespace).
+			Get(context.TODO(), podName, v1.GetOptions{})
+		if err != nil {
+			e := fmt.Errorf("shibuya-agent: issues with getting metrics. err: %w. Will retry later.", err)
+			log.Print(e.Error())
+			continue
+		}
+		for _, cm := range metrics.Containers {
+			for resourceName, item := range cm.Usage {
+				if resourceName == "cpu" {
+					config.CpuGauge.WithLabelValues(sw.collectionID, sw.planID, engineNumber).Set(float64(item.MilliValue()))
+				} else {
+					config.MemGauge.WithLabelValues(sw.collectionID, sw.planID, engineNumber).Set(float64(item.Value()))
+				}
+			}
+		}
+	}
+}
+
 func main() {
 	sw := NewServer()
+	sw.enableEngineMetrics = isEngineMetricsEnabled()
+	if sw.enableEngineMetrics {
+		namespace, name := findNamespacePodName()
+		go func() {
+			if err := sw.reportOwnMetrics(namespace, name); err != nil {
+				log.Fatal(err)
+			}
+		}()
+	}
 	http.HandleFunc("/start", sw.startHandler)
 	http.HandleFunc("/stop", sw.stopHandler)
 	http.HandleFunc("/stream", sw.streamHandler)
 	http.HandleFunc("/progress", sw.progressHandler)
 	http.HandleFunc("/output", sw.stdoutHandler)
+	if sw.enableEngineMetrics {
+		http.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
+	}
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

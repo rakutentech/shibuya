@@ -102,7 +102,7 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 			// When all the engines are triggered
 
 			pc := NewPlanController(ep, collection, c.Scheduler)
-			if err := pc.trigger(engineDataConfigs[i]); err != nil {
+			if err := pc.trigger(engineDataConfigs[i], runID); err != nil {
 				errs <- err
 				return
 			}
