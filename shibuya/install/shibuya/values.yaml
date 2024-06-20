@@ -99,3 +99,10 @@ runtime:
     secret_name: ""
     auth_file_name: ""
     config_map_name: "shibuya-config-local"
+  metric_storage:
+    - url: "http://prometheus:9090/api/v1/write"
+      token: ""
+  scraper_container:
+    image: "prom/prometheus"
+    cpu: "0.5"
+    mem: 100Mi
