@@ -21,7 +21,7 @@ func (c *Controller) CheckRunningThenTerminate() {
 					collection := j.collection
 					currRunID, err := collection.GetCurrentRun()
 					if currRunID != int64(0) {
-						pc.term(false, &c.connectedEngines)
+						pc.term(false)
 						log.Printf("Plan %d is terminated.", j.ep.PlanID)
 					}
 					if err != nil {
@@ -67,28 +67,6 @@ func (c *Controller) CheckRunningThenTerminate() {
 		}
 		time.Sleep(2 * time.Second)
 	}
-}
-
-func (c *Controller) cleanLocalStore() {
-	for {
-		// we can iterate any one of Labelstore or StatusStore because writes/deletes always happen at the same time on both
-		c.LabelStore.Range(func(runID interface{}, _ interface{}) bool {
-			runIDInt := runID.(int64)
-			runProperty, err := model.GetRun(runIDInt)
-			if err != nil {
-				log.Error(err)
-				return false
-			}
-			// if EndTime is Zero the plan is still running
-			if runProperty.EndTime.IsZero() {
-				return true
-			}
-			c.deleteMetricByRunID(runIDInt, runProperty.CollectionID)
-			return true
-		})
-		time.Sleep(120 * time.Second)
-	}
-	// this won't delete in edge case where the collection configuration has changed immediately
 }
 
 func isCollectionStale(rh *model.RunHistory, launchTime time.Time) (bool, error) {
