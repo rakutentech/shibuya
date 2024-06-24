@@ -27,9 +27,11 @@ type ShibuyaAPI struct {
 }
 
 func NewAPIServer() *ShibuyaAPI {
-	return &ShibuyaAPI{
+	c := &ShibuyaAPI{
 		ctr: controller.NewController(),
 	}
+	c.ctr.StartRunning()
+	return c
 }
 
 type JSONMessage struct {

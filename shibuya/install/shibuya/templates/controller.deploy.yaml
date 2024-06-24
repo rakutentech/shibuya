@@ -1,0 +1,84 @@
+{{ if .Values.runtime.distributed_mode }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- range .Values.controller.labels }}
+    {{ .key }}: {{ .value }}
+    {{- end }}
+  name: shibuya-controller-{{ .Values.context }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- range .Values.controller.labels }}
+      {{ .key }}: {{ .value }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- range .Values.controller.labels }}
+        {{ .key }}: {{ .value }}
+        {{- end }}
+      {{- if .Values.controller.annotations }}
+      annotations:
+        {{- range .Values.controller.annotations }}
+        {{.key }}: {{.value }}
+        {{- end }}
+      {{- end }}
+    spec:
+      containers:
+      - image: {{ .Values.repository }}{{ .Values.controller.image.name }}:{{ .Values.tag }}
+        imagePullPolicy: IfNotPresent
+        name: shibuya-sc
+        resources:
+          requests:
+            cpu: {{ .Values.controller.resources.requests.cpu | quote }}
+            memory: {{ .Values.controller.resources.requests.memory | quote }}
+          limits:
+            cpu: {{ .Values.controller.resources.limits.cpu | quote }}
+            memory: {{ .Values.controller.resources.limits.memory | quote }}
+        env:
+        {{- range .Values.controller.envvars }}
+        - name: {{ .key | quote }}
+          value: {{ .value | quote }}
+        {{- end }}
+        volumeMounts:
+        - name: shibuya-config
+          mountPath: /config.json
+          subPath: config.json
+        {{- if not .Values.runtime.executors.in_cluster }}
+        - name: kubeconfig-volume
+          mountPath: /root/.kube/config
+          subPath: config
+        {{- end }}
+        {{- if eq .Values.runtime.object_storage.provider "gcp" }}
+        - name: shibuya-gcp-auth
+          mountPath: /auth/shibuya-gcp.json
+          subPath: shibuya-gcp.json
+        {{- end }}
+      dnsPolicy: ClusterFirst
+      serviceAccount: shibuya
+      serviceAccountName: shibuya
+      {{- if .Values.image_pull_secrets }}
+      imagePullSecrets:
+        {{- range .Values.image_pull_secrets }}
+        - name: {{ .name }}
+        {{- end }}
+      {{- end }}
+      volumes:
+      - name: shibuya-config
+        configMap:
+          name: shibuya-config-{{ .Values.context }}
+      {{- if not .Values.runtime.executors.in_cluster }}
+      - name: kubeconfig-volume
+        configMap:
+          defaultMode: 420
+          name: shibuya-token-{{ .Values.cluster_name }}
+      {{- end }}
+      {{- if eq .Values.runtime.object_storage.provider "gcp" }}
+      - name: shibuya-gcp-auth
+        secret:
+          secretName: shibuya-auth-keys-gcp
+      {{- end }}
+{{ end }}

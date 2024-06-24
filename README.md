@@ -15,7 +15,8 @@ Collection is the unit where the actual tests are managed. Therefore, multiple t
 Pre-requisites:
 1. Kind (https://kind.sigs.k8s.io)
 2. kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl)
-3. Docker (https://docs.docker.com/install) *On OSX please increase your docker machine's spec or you may face performance issues*
+3. Helm (https://helm.sh/docs/intro/install/)
+4. Docker (https://docs.docker.com/install) *On OSX please increase your docker machine's spec or you may face performance issues*
 
 
 Run `make` to start local cluster
@@ -29,6 +30,17 @@ Then you can go to http://localhost:8080 to check.
 `make shibuya` to build and deploy changes to shibuya controller
 
 note: Local Shibuya does not have authentication. So you need to put `shibuya` as the ownership of the project. This is the same if you turn off authentication in the config file.
+
+## Distributed mode(WIP)
+
+In order to improve the scalibility of Shibuya, we are going to split the single Shibuya process into three components:
+
+- apiserver
+- controller.
+- Engine metric streamer(Not existing yet)
+
+By default, at locall, it will be run as non-distributed mode. You can enable to by set the `runtime.distributed_mode` to `true`.
+
 
 ### Production setup
 

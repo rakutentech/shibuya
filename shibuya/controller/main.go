@@ -44,17 +44,6 @@ func NewController() *Controller {
 	}
 	c.schedulerKind = config.SC.ExecutorConfig.Cluster.Kind
 	c.Scheduler = scheduler.NewEngineScheduler(config.SC.ExecutorConfig.Cluster)
-
-	// First we do is to resume the running plans
-	// This method should not be moved as later goroutines rely on it.
-	c.resumeRunningPlans()
-	go c.streamToApi()
-	go c.readConnectedEngines()
-	go c.checkRunningThenTerminate()
-	go c.fetchEngineMetrics()
-	go c.cleanLocalStore()
-	go c.autoPurgeDeployments()
-	go c.autoPurgeProjectIngressController()
 	return c
 }
 
@@ -68,6 +57,31 @@ type ApiMetricStreamEvent struct {
 	CollectionID string `json:"collection_id"`
 	Raw          string `json:"metrics"`
 	PlanID       string `json:"plan_id"`
+}
+
+func (c *Controller) StartRunning() {
+	// First we do is to resume the running plans
+	// This method should not be moved as later goroutines rely on it.
+	c.resumeRunningPlans()
+	go c.streamToApi()
+	go c.readConnectedEngines()
+	go c.fetchEngineMetrics()
+	go c.cleanLocalStore()
+	// We can only move this func to an isolated controller process later
+	// because when we are terminating, we also need to close the opening connections
+	// Otherwise we might face connection leaks
+	go c.CheckRunningThenTerminate()
+	if !config.SC.DistributedMode {
+		log.Info("Controller is running in non-distributed mode!")
+		go c.IsolateBackgroundTasks()
+	}
+}
+
+// In distributed mode, the func will be running as a standalone process
+// In non-distributed mode, the func will be run as a goroutine.
+func (c *Controller) IsolateBackgroundTasks() {
+	go c.AutoPurgeDeployments()
+	c.AutoPurgeProjectIngressController()
 }
 
 func (c *Controller) streamToApi() {

@@ -1,0 +1,98 @@
+apiVersion: v1
+data:
+  config.json: |
+    {
+        "bg_color": {{ .Values.runtime.bg_color | quote }},
+        "project_home": "https://confluence.rakuten-it.com/confluence/display/SPRJ/Shibuya+Project+Home",
+        "upload_file_help": "https://confluence.rakuten-it.com/confluence/display/SPRJ/Uploading+your+files+to+Shibuya",
+        "enable_sid": true,
+        "distributed_mode": {{ .Values.runtime.distributed_mode }},
+        "auth_config": {
+            "admin_users": {{ .Values.runtime.auth_config.admin_users | toJson }},
+            "ldap_server": {{ .Values.runtime.auth_config.ldap_server | quote }},
+            "ldap_port": {{ .Values.runtime.auth_config.ldap_port | quote }},
+            "system_user": {{ .Values.runtime.auth_config.system_user | quote }},
+            "system_password": {{ .Values.runtime.auth_config.system_password | quote }},
+            "base_dn": {{ .Values.runtime.auth_config.base_dn | quote }},
+            "session_key": {{ .Values.runtime.auth_config.session_key | quote }},
+            "no_auth": {{ .Values.runtime.auth_config.no_auth }}
+        },
+        "http_config": {
+            "proxy": ""
+        },
+        "db": {
+            "host": {{ .Values.runtime.db.host | quote }},
+            "user": {{ .Values.runtime.db.user | quote }},
+            "password": {{ .Values.runtime.db.password | quote }},
+            "database": {{ .Values.runtime.db.database | quote }},
+            "keypairs": {{ .Values.runtime.db.keypairs | quote }}
+        },
+        "executors": {
+            "cluster": {
+                "on_demand": {{ .Values.runtime.executors.cluster.on_demand }},
+                "service_type": {{ .Values.runtime.executors.cluster.service_type | quote }},
+                "gc_duration": {{ .Values.runtime.executors.cluster.gc_duration }}
+            },
+            "in_cluster": {{ .Values.runtime.executors.in_cluster }},
+            "namespace": {{ .Values.runtime.executors.namespace | quote }},
+            "jmeter": {
+                "image": {{ .Values.runtime.executors.jmeter.image | quote }},
+                "cpu": {{ .Values.runtime.executors.jmeter.cpu | quote }},
+                "mem": {{ .Values.runtime.executors.jmeter.mem | quote }}
+            },
+            "pull_secret": {{ .Values.runtime.executors.pull_secret | quote }},
+            "pull_policy": {{ .Values.runtime.executors.pull_policy | quote }}
+
+            {{- $node_affinity := .Values.runtime.executors.node_affinity -}}
+            {{- $count := len $node_affinity -}}
+            {{- if $count }}
+            ,"node_affinity": [
+            {{- range $index, $item := $node_affinity }}
+                {{- $t := add $index 1 -}}
+                {
+                    "key": {{ $item.key | quote }},
+                    "value": {{ $item.value | quote }}
+                }{{- if lt $t $count }},{{- end }}
+            {{- end }}
+            ]
+            {{- end }}
+            {{- $tolerations := .Values.runtime.executors.tolerations -}}
+            {{- $count := len $tolerations -}}
+            {{- if $count }}
+            ,"tolerations": [
+            {{- range $index, $item := $tolerations }}
+                {{- $t := add $index 1 -}}
+                {
+                    "key": {{ $item.key | quote }},
+                    "value": {{ $item.value | quote }},
+                    "effect": {{ $item.effect | quote }}
+                }{{- if lt $t $count }},{{- end }}
+            {{- end }}
+            ]
+            {{- end }}
+        },
+        "ingress": {
+            "image": {{ .Values.runtime.ingress.image | quote }},
+            "cpu": {{ .Values.runtime.ingress.cpu | quote }},
+            "replicas": {{ .Values.runtime.ingress.replicas }}
+        },
+        "dashboard": {
+            "url": {{ .Values.runtime.dashboard.url | quote }},
+            "run_dashboard": {{ .Values.runtime.dashboard.run_dashboard | quote }},
+            "engine_dashboard": {{ .Values.runtime.dashboard.engine_dashboard | quote }}
+        },
+        "object_storage": {
+            "provider": {{ .Values.runtime.object_storage.provider | quote }},
+            {{- with .Values.runtime.object_storage.url }}
+            "url": {{ . | quote }},
+            {{- end }}
+            "bucket": {{ .Values.runtime.object_storage.bucket | quote }}
+        },
+        "log_format": {
+            "json": false
+        }
+    }
+kind: ConfigMap
+metadata:
+  name: shibuya-config-{{ .Values.context }}
+  namespace: {{ .Values.namespace }}

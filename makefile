@@ -35,11 +35,11 @@ grafana: grafana/
 
 .PHONY: shibuya
 shibuya: shibuya/ kubernetes/
-	cp shibuya/config_tmpl.json shibuya/config.json
 	cd shibuya && sh build.sh
-	docker build -f shibuya/docker-local/Dockerfile --build-arg env=local -t shibuya:local shibuya
-	kind load docker-image shibuya:local --name shibuya
-	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/shibuya.yaml --force
+	docker build -f shibuya/Dockerfile --build-arg env=local -t api:local shibuya
+	kind load docker-image api:local --name shibuya
+	helm uninstall shibuya || true
+	helm upgrade --install shibuya install/shibuya
 
 .PHONY: jmeter
 jmeter: shibuya/engines/jmeter
@@ -85,3 +85,11 @@ ingress-controller:
 	# And update the image in the config.json
 	docker build -t shibuya:ingress-controller -f ingress-controller/Dockerfile ingress-controller
 	kind load docker-image shibuya:ingress-controller --name shibuya
+
+.PHONY: controller
+controller:
+	cd shibuya && sh build.sh controller
+	docker build -f shibuya/Dockerfile --build-arg env=local --build-arg="binary_name=shibuya-controller" -t controller:local shibuya
+	kind load docker-image controller:local --name shibuya
+	helm uninstall shibuya || true
+	helm upgrade --install shibuya install/shibuya

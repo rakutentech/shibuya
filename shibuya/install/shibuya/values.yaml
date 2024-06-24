@@ -1,0 +1,99 @@
+namespace: shibuya-executors
+context: local
+cluster_name: local
+tag: local
+repository: ""
+image_pull_secrets: []
+
+controller:
+  image:
+    name: controller
+  labels:
+    - key: app
+      value: shibuya-controller
+  annotations: []
+  resources:
+    requests:
+      cpu: 0.1
+      memory: 128Mi
+    limits:
+      cpu: 0.1
+      memory: 128Mi
+  envvars:
+    - key: env
+      value: local
+
+apiserver:
+  resources:
+    requests:
+      cpu: 0.1
+      memory: 128Mi
+    limits:
+      cpu: 0.1
+      memory: 128Mi
+  labels:
+    - key: app
+      value: shibuya-apiserver
+  annotations: []
+  envvars:
+    - key: env
+      value: local
+
+  image:
+    name: api
+    tag: local
+
+runtime:
+  bg_color: "#fff"
+  project_home: ""
+  upload_file_help: ""
+  distributed_mode: true
+  auth_config:
+    admin_users: []
+    ldap_server: ""
+    ldap_port: ""
+    system_user: ""
+    system_password: ""
+    base_dn: ""
+    no_auth: true
+    session_key: ""
+  http_config:
+    proxy: ""
+  db:
+    host: "db"
+    user: "root"
+    password: "root"
+    database: "shibuya"
+    keypairs: ""
+  executors:
+    cluster:
+      on_demand: false
+      project: ""
+      zone: ""
+      cluster_id: ""
+      gc_duration: ""
+      service_type: ""
+    in_cluster: true
+    namespace: "shibuya-executors"
+    jmeter:
+      image: shibuya:jmeter
+      cpu: 0.1
+      mem: 512Mi
+    pull_secret: ""
+    pull_policy: "IfNotPresent"
+    node_affinity: []
+    tolerations: []
+  ingress:
+    image: "shibuya:ingress-controller"
+    cpu: 0.1
+    replicas: 1
+  dashboard:
+    url: "http://localhost:3000"
+    run_dashboard: "/d/RXY8nM1mk2/shibuya"
+    engine_dashboard: "/d/9EH6xqTZz/shibuya-engine-health"
+  object_storage:
+    provider: local
+    url: "http://storage:8080"
+    user: ""
+    password: ""
+    bucket: ""
