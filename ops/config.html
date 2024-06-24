@@ -176,136 +176,136 @@
                         <h1 id="configuration-explanation"><a class="header" href="#configuration-explanation">Configuration Explanation</a></h1>
 <p>Below is a sample configuration of Shibuya. We will explain them by sections.</p>
 <pre><code>{
-    &quot;bg_color&quot;: &quot;#fff&quot;,
-    &quot;project_home&quot;: &quot;&quot;,
-    &quot;upload_file_help&quot;: &quot;&quot;,
-    &quot;auth_config&quot;: {
-        &quot;admin_users&quot;: [],
-        &quot;ldap_server&quot;: &quot;&quot;,
-        &quot;ldap_port&quot;: &quot;&quot;,
-        &quot;system_user&quot;: &quot;&quot;,
-        &quot;system_password&quot;: &quot;&quot;,
-        &quot;base_dn&quot;: &quot;&quot;,
-        &quot;no_auth&quot;: true
+    "bg_color": "#fff",
+    "project_home": "",
+    "upload_file_help": "",
+    "auth_config": {
+        "admin_users": [],
+        "ldap_server": "",
+        "ldap_port": "",
+        "system_user": "",
+        "system_password": "",
+        "base_dn": "",
+        "no_auth": true
     },
-    &quot;http_config&quot;: {
-        &quot;proxy&quot;: &quot;&quot;
+    "http_config": {
+        "proxy": ""
     },
-    &quot;db&quot;: {
-        &quot;host&quot;: &quot;db&quot;,
-        &quot;user&quot;: &quot;root&quot;,
-        &quot;password&quot;: &quot;root&quot;,
-        &quot;database&quot;: &quot;shibuya&quot;
+    "db": {
+        "host": "db",
+        "user": "root",
+        "password": "root",
+        "database": "shibuya"
     },
-    &quot;executors&quot;: {
-        &quot;cluster&quot;: {
-            &quot;on_demand&quot;: false
+    "executors": {
+        "cluster": {
+            "on_demand": false
         },
-        &quot;in_cluster&quot;: true,
-        &quot;namespace&quot;: &quot;shibuya-executors&quot;,
-        &quot;jmeter&quot;: {
-            &quot;image&quot;: &quot;shibuya:jmeter&quot;,
-            &quot;cpu&quot;: &quot;1&quot;,
-            &quot;mem&quot;: &quot;512Mi&quot;
+        "in_cluster": true,
+        "namespace": "shibuya-executors",
+        "jmeter": {
+            "image": "shibuya:jmeter",
+            "cpu": "1",
+            "mem": "512Mi"
         },
-        &quot;pull_secret&quot;: &quot;&quot;,
-        &quot;pull_policy&quot;: &quot;IfNotPresent&quot;
+        "pull_secret": "",
+        "pull_policy": "IfNotPresent"
     },
-    &quot;dashboard&quot;: {
-        &quot;url&quot;: &quot;http://localhost:3000&quot;,
-        &quot;run_dashboard&quot;: &quot;/d/RXY8nM1mk2/shibuya&quot;,
-        &quot;engine_dashboard&quot;: &quot;/d/9EH6xqTZz/shibuya-engine-health&quot;
+    "dashboard": {
+        "url": "http://localhost:3000",
+        "run_dashboard": "/d/RXY8nM1mk2/shibuya",
+        "engine_dashboard": "/d/9EH6xqTZz/shibuya-engine-health"
     },
-    &quot;object_storage&quot;: {
-        &quot;provider&quot;: &quot;local&quot;,
-        &quot;url&quot;: &quot;http://storage:8080&quot;,
-        &quot;user&quot;: &quot;&quot;,
-        &quot;password&quot;: &quot;&quot;
+    "object_storage": {
+        "provider": "local",
+        "url": "http://storage:8080",
+        "user": "",
+        "password": ""
     },
-    &quot;log_format&quot;: {
-        &quot;json&quot;: false
+    "log_format": {
+        "json": false
     }
 }
 </code></pre>
 <h2 id="general-configs"><a class="header" href="#general-configs">General Configs</a></h2>
-<pre><code>    &quot;bg_color&quot;: &quot;#fff&quot;,  # UI bg colour. Could be useful when you are using Shibuya in multiple networking environments.
-    &quot;project_home&quot;: &quot;&quot;,
-    &quot;upload_file_help&quot;: &quot;&quot;, # Document link for uploading the file
+<pre><code>    "bg_color": "#fff",  # UI bg colour. Could be useful when you are using Shibuya in multiple networking environments.
+    "project_home": "",
+    "upload_file_help": "", # Document link for uploading the file
 </code></pre>
 <h2 id="auth-related"><a class="header" href="#auth-related">Auth related</a></h2>
 <p>All authentication related logic is configured by this block</p>
-<pre><code>    &quot;auth_config&quot;: {
-        &quot;admin_users&quot;: [], # admin mailing list. A admin will have a dedicated page to view all the running collections
-        &quot;ldap_server&quot;: &quot;&quot;, 
-        &quot;ldap_port&quot;: &quot;&quot;,
-        &quot;system_user&quot;: &quot;&quot;, # ldap system user
-        &quot;system_password&quot;: &quot;&quot;, # ldap system pwd
-        &quot;base_dn&quot;: &quot;&quot;,
-        &quot;no_auth&quot;: true # Turn off auth completely
+<pre><code>    "auth_config": {
+        "admin_users": [], # admin mailing list. A admin will have a dedicated page to view all the running collections
+        "ldap_server": "", 
+        "ldap_port": "",
+        "system_user": "", # ldap system user
+        "system_password": "", # ldap system pwd
+        "base_dn": "",
+        "no_auth": true # Turn off auth completely
     }
 </code></pre>
 <h2 id="http-client"><a class="header" href="#http-client">HTTP client</a></h2>
 <p>Once this is configured, all the traffic will pass through proxy. Including metrics streaming and requests to k8s cluster.</p>
-<pre><code>    &quot;http_config&quot;: {
-        &quot;proxy&quot;: &quot;&quot;
+<pre><code>    "http_config": {
+        "proxy": ""
     }
 </code></pre>
 <h2 id="db-configurations"><a class="header" href="#db-configurations">DB configurations</a></h2>
-<pre><code>    &quot;db&quot;: {
-        &quot;host&quot;: &quot;db&quot;,
-        &quot;user&quot;: &quot;root&quot;,
-        &quot;password&quot;: &quot;root&quot;,
-        &quot;database&quot;: &quot;shibuya&quot;
+<pre><code>    "db": {
+        "host": "db",
+        "user": "root",
+        "password": "root",
+        "database": "shibuya"
     }
 </code></pre>
 <h2 id="executor-configurations"><a class="header" href="#executor-configurations">Executor configurations</a></h2>
 <p>Shibuya supports two types of clusters:</p>
 <ol>
-<li>on demand, specifically, GKE in Google Cloud Platform. </li>
+<li>on demand, specifically, GKE in Google Cloud Platform.</li>
 <li>on-premise cluster.</li>
 </ol>
-<p>With on demand mode, Shibuya is able to automatically create nodes and clean resources after usage. In most cases, the GKE cluster used by Shibuya has 0 worker nodes(to save money). </p>
+<p>With on demand mode, Shibuya is able to automatically create nodes and clean resources after usage. In most cases, the GKE cluster used by Shibuya has 0 worker nodes(to save money).</p>
 <p>Shibuya controller can be run outside of a k8s cluster, which usually is the cluster where the generators are deployed. If this is the case, <code>in_cluster</code> should be set to <code>false</code>, <code>true</code> for otherwise.</p>
-<pre><code>    &quot;executors&quot;: {
-        &quot;cluster&quot;: {
-            &quot;on_demand&quot;: false
+<pre><code>    "executors": {
+        "cluster": {
+            "on_demand": false
         },
-        &quot;in_cluster&quot;: true,
-        &quot;namespace&quot;: &quot;shibuya-executors&quot;, # this is the namespace where generators are deployed
-        &quot;jmeter&quot;: {
-            &quot;image&quot;: &quot;shibuya:jmeter&quot;, 
-            &quot;cpu&quot;: &quot;1&quot;, # resoures(requests) for the generator pod in a k8s cluster.
-            &quot;mem&quot;: &quot;512Mi&quot;
+        "in_cluster": true,
+        "namespace": "shibuya-executors", # this is the namespace where generators are deployed
+        "jmeter": {
+            "image": "shibuya:jmeter", 
+            "cpu": "1", # resoures(requests) for the generator pod in a k8s cluster.
+            "mem": "512Mi"
         },
-        &quot;pull_secret&quot;: &quot;&quot;,
-        &quot;pull_policy&quot;: &quot;IfNotPresent&quot;
+        "pull_secret": "",
+        "pull_policy": "IfNotPresent"
     }
 </code></pre>
 <h2 id="metrics-dashboard"><a class="header" href="#metrics-dashboard">Metrics dashboard</a></h2>
-<p>Shibuya uses external Grafana dashboard to visualise the metrics. </p>
-<pre><code>    &quot;dashboard&quot;: {
-        &quot;url&quot;: &quot;http://localhost:3000&quot;, # root of the dashboard url
-        &quot;run_dashboard&quot;: &quot;/d/RXY8nM1mk2/shibuya&quot;, # link to the metrics of all the runs.
-        &quot;engine_dashboard&quot;: &quot;/d/9EH6xqTZz/shibuya-engine-health&quot; # link to the health of the engines.
+<p>Shibuya uses external Grafana dashboard to visualise the metrics.</p>
+<pre><code>    "dashboard": {
+        "url": "http://localhost:3000", # root of the dashboard url
+        "run_dashboard": "/d/RXY8nM1mk2/shibuya", # link to the metrics of all the runs.
+        "engine_dashboard": "/d/9EH6xqTZz/shibuya-engine-health" # link to the health of the engines.
     }
 </code></pre>
 <h2 id="object-storage"><a class="header" href="#object-storage">Object storage</a></h2>
 <p>Shibuya uses object storage to store all the test plans. It supports two types storage:</p>
 <ol>
-<li>HTTP based storage service, like, Nexus. </li>
-<li>GCP bucket. </li>
+<li>HTTP based storage service, like, Nexus.</li>
+<li>GCP bucket.</li>
 </ol>
-<pre><code>    &quot;object_storage&quot;: {
-        &quot;provider&quot;: &quot;local&quot;, # either gcp, local, or Nexus
-        &quot;url&quot;: &quot;http://storage:8080&quot;,
-        &quot;user&quot;: &quot;&quot;, # HTTP basic authentication user and password
-        &quot;password&quot;: &quot;&quot;
+<pre><code>    "object_storage": {
+        "provider": "local", # either gcp, local, or Nexus
+        "url": "http://storage:8080",
+        "user": "", # HTTP basic authentication user and password
+        "password": ""
     },
 </code></pre>
-<p>Please bear in mind, <code>local</code> should be only used by Shibuya developers. </p>
+<p>Please bear in mind, <code>local</code> should be only used by Shibuya developers.</p>
 <h2 id="logging-support"><a class="header" href="#logging-support">Logging support</a></h2>
-<pre><code>    &quot;log_format&quot;: {
-        &quot;json&quot;: false
+<pre><code>    "log_format": {
+        "json": false
     }
 </code></pre>
 <p>If you require logs to be in JSON format, you can set <code>json: true</code>.</p>
