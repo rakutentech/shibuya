@@ -25,7 +25,26 @@ env:
   IMAGE: shibuya
 
 jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-20.04
+    outputs:
+      tag_name: ${{ steps.create_release.outputs.tag_name }}
+    steps:
+    - uses: google-github-actions/release-please-action@v4
+      id: create_release
+      with:
+        # this assumes that you have created a personal access token
+        # (PAT) and configured it as a GitHub action secret named
+        # `MY_RELEASE_PLEASE_TOKEN` (this secret name is not important).
+        token: ${{ secrets.GITHUB_TOKEN }}
+        # this is a built-in strategy in release-please, see "Action Inputs"
+        # for more options
+        release-type: simple
+
+
   setup-build-publish-deploy:
+    needs: release-please
     name: Setup, Build, Publish
     runs-on: ubuntu-20.04
     environment: production
@@ -51,27 +70,16 @@ jobs:
       run: |-
         echo '${{ steps.auth.outputs.access_token }}' | docker login -u oauth2accesstoken --password-stdin https://$GAR_LOCATION-docker.pkg.dev
 
-    - uses: google-github-actions/release-please-action@v4
-      id: create_release
-      with:
-        # this assumes that you have created a personal access token
-        # (PAT) and configured it as a GitHub action secret named
-        # `MY_RELEASE_PLEASE_TOKEN` (this secret name is not important).
-        token: ${{ secrets.GITHUB_TOKEN }}
-        # this is a built-in strategy in release-please, see "Action Inputs"
-        # for more options
-        release-type: simple
-
     # Build the Docker image
     - name: Build api
       env:
-        tag_name: ${{ steps.create_release.outputs.tag_name }}
+        tag_name: ${{ needs.release-please.outputs.tag_name }}
       run: |-
         cd shibuya && make api_image component=api
 
     - name: Build controller
       env:
-        tag_name: ${{ steps.create_release.outputs.tag_name }}
+        tag_name: ${{ needs.release-please.outputs.tag_name }}
       run: |-
         cd shibuya && make controller_image component=controller
 
