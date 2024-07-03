@@ -10,11 +10,15 @@
 #
 # For more support on how to run the workflow, please visit https://github.com/google-github-actions/setup-gcloud/tree/master/example-workflows/gke-kustomize
 
-name: Build and Deploy to GCP registry
+name: Release(tag), Build and push to GCP registry
 
 on:
   push:
     branches: [ "split", "master" ]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 env:
   GAR_LOCATION: asia-northeast1 # TODO: update region of the Artifact Registry
@@ -47,28 +51,43 @@ jobs:
       run: |-
         echo '${{ steps.auth.outputs.access_token }}' | docker login -u oauth2accesstoken --password-stdin https://$GAR_LOCATION-docker.pkg.dev
 
+    - uses: google-github-actions/release-please-action@v4
+      id: create_release
+      with:
+        # this assumes that you have created a personal access token
+        # (PAT) and configured it as a GitHub action secret named
+        # `MY_RELEASE_PLEASE_TOKEN` (this secret name is not important).
+        token: ${{ secrets.GITHUB_TOKEN }}
+        # this is a built-in strategy in release-please, see "Action Inputs"
+        # for more options
+        release-type: simple
+
     # Build the Docker image
     - name: Build api
+      env:
+        tag_name: ${{ steps.create_release.outputs.tag_name }}
       run: |-
         cd shibuya && make api_image component=api
 
     - name: Build controller
+      env:
+        tag_name: ${{ steps.create_release.outputs.tag_name }}
       run: |-
         cd shibuya && make controller_image component=controller
 
-    - name: Configure Git
-      run: |
-        git config user.name "$GITHUB_ACTOR"
-        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+    # - name: Configure Git
+    #   run: |
+    #     git config user.name "$GITHUB_ACTOR"
+    #     git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-    - name: Install Helm
-      uses: azure/setup-helm@v3
-      with:
-        version: "v3.13.3"
+    # - name: Install Helm
+    #   uses: azure/setup-helm@v3
+    #   with:
+    #     version: "v3.13.3"
 
-    - name: Run chart-releaser
-      uses: helm/chart-releaser-action@v1.5.0
-      with:
-        charts_dir: shibuya/install
-      env:
-        CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    # - name: Run chart-releaser
+    #   uses: helm/chart-releaser-action@v1.5.0
+    #   with:
+    #     charts_dir: shibuya/install
+    #   env:
+    #     CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
