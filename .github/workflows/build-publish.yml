@@ -48,6 +48,7 @@ jobs:
     name: Setup, Build, Publish
     runs-on: ubuntu-20.04
     environment: production
+    if: ${{ needs.release-please.outputs.tag_name != '' }}
 
     steps:
     - name: Checkout
