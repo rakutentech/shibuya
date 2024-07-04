@@ -7,7 +7,7 @@ upstream = rakutentech
 ifeq ($(GITHUB_REPOSITORY_OWNER), $(upstream))
 	tag=$(tag_name)
 else
-	tag=$(GITHUB_REPOSITORY)-$(tag_name)
+	tag=$(GITHUB_REPOSITORY_OWNER)-$(tag_name)
 endif
 
 .PHONY: api_build
