@@ -43,9 +43,9 @@ jobs:
         release-type: simple
 
 
-  setup-build-publish-deploy:
+  setup-build-publish-push:
     needs: release-please
-    name: Setup, Build, Publish
+    name: Setup, Build, push
     runs-on: ubuntu-20.04
     environment: production
     if: ${{ needs.release-please.outputs.tag_name != '' }}
