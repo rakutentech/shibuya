@@ -63,6 +63,10 @@ expose:
 	-kubectl -n $(shibuya-controller-ns) port-forward service/grafana 3000:3000 > /dev/null 2>&1 &
 	-kubectl -n $(shibuya-controller-ns) port-forward service/shibuya 8080:8080 > /dev/null 2>&1 &
 
+# TODO!
+# After k8s 1.22, service account token is no longer auto generated. We need to manually create the secret
+# for the service account. ref: "https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#manual-secret-management-for-serviceaccounts"
+# So we should fetch the token details from the manually created secret instead of the automatically created ones
 .PHONY: kubeconfig
 kubeconfig:
 	./kubernetes/generate_kubeconfig.sh $(shibuya-controller-ns)
