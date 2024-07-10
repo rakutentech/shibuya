@@ -61,7 +61,7 @@ jmeter: shibuya/engines/jmeter
 expose:
 	-killall kubectl
 	-kubectl -n $(shibuya-controller-ns) port-forward service/grafana 3000:3000 > /dev/null 2>&1 &
-	-kubectl -n $(shibuya-controller-ns) port-forward service/shibuya 8080:8080 > /dev/null 2>&1 &
+	-kubectl -n $(shibuya-controller-ns) port-forward service/shibuya-api-local 8080:8080 > /dev/null 2>&1 &
 
 # TODO!
 # After k8s 1.22, service account token is no longer auto generated. We need to manually create the secret
