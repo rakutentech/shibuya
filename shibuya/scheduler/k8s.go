@@ -672,10 +672,6 @@ func (kcm *K8sClientManager) PurgeCollection(collectionID int64) error {
 	if err != nil {
 		return err
 	}
-	err = kcm.deleteIngressRules(collectionID)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -841,15 +837,6 @@ func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceNam
 		log.Error(err)
 	}
 	return nil
-}
-
-func (kcm *K8sClientManager) deleteIngressRules(collectionID int64) error {
-	deletePolicy := metav1.DeletePropagationForeground
-	return kcm.client.NetworkingV1().Ingresses(kcm.Namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("collection=%d", collectionID),
-	})
 }
 
 func (kcm *K8sClientManager) GetNodesByCollection(collectionID string) ([]apiv1.Node, error) {
