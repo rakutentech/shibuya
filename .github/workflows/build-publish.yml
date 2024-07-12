@@ -31,7 +31,7 @@ jobs:
     outputs:
       tag_name: ${{ steps.create_release.outputs.tag_name }}
     steps:
-    - uses: google-github-actions/release-please-action@v4
+    - uses: googleapis/release-please-action@v4
       id: create_release
       with:
         # this assumes that you have created a personal access token
