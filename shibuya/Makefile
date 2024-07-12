@@ -1,7 +1,14 @@
 registry=$(GAR_LOCATION)-docker.pkg.dev/$(GCP_PROJECT)
 repository = shibuya
-tag=$(GITHUB_SHA)
+tag=$(tag_name)
 img=$(registry)/$(repository)/$(component):$(tag)
+upstream = rakutentech
+
+ifeq ($(GITHUB_REPOSITORY_OWNER), $(upstream))
+	tag=$(tag_name)
+else
+	tag=$(GITHUB_REPOSITORY_OWNER)-$(tag_name)
+endif
 
 .PHONY: api_build
 api_build:
