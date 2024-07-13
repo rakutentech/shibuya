@@ -30,5 +30,4 @@ controller_image: controller_build
 
 .PHONY: helm_charts
 helm_charts:
-	helm create shibuya-install
-	helm package shibuya-install/
+	helm package install/shibuya
