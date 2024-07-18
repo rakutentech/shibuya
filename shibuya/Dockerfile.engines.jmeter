@@ -1,12 +1,12 @@
 ARG jmeter_ver=3.3
 
-FROM gcr.io/shibuya-214807/alpine:3.10.2 AS jmeter
+FROM asia-northeast1-docker.pkg.dev/shibuya-214807/shibuya/alpine:3.10.2 AS jmeter
 ARG jmeter_ver
 ENV JMETER_VERSION=$jmeter_ver
 RUN wget archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.zip
 RUN unzip -qq apache-jmeter-${JMETER_VERSION}
 
-FROM gcr.io/shibuya-214807/openjdk:8u212-jdk
+FROM asia-northeast1-docker.pkg.dev/shibuya-214807/shibuya/openjdk:8u212-jdk
 ARG jmeter_ver
 ENV JMETER_VERSION=$jmeter_ver
 RUN mkdir /test-conf /test-result
