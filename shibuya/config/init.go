@@ -94,14 +94,17 @@ type HttpConfig struct {
 }
 
 type ObjectStorage struct {
-	Provider      string `json:"provider"`
-	Url           string `json:"url"`
-	User          string `json:"user"`
-	Password      string `json:"password"`
-	Bucket        string `json:"bucket"`
-	RequireProxy  bool   `json:"require_proxy"`
-	SecretName    string `json:"secret_name"`
-	AuthFileName  string `json:"auth_file_name"`
+	Provider     string `json:"provider"`
+	Url          string `json:"url"`
+	User         string `json:"user"`
+	Password     string `json:"password"`
+	Bucket       string `json:"bucket"`
+	RequireProxy bool   `json:"require_proxy"`
+	// This is the secret name created in the cluster for authenticating with object storage
+	SecretName string `json:"secret_name"`
+	// This is the mounted keys file name. e.g. /auth/shibuya-gcp.json
+	AuthFileName string `json:"auth_file_name"`
+	// This is the configuration file
 	ConfigMapName string `json:"config_map_name"`
 }
 
