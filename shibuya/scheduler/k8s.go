@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -632,16 +631,26 @@ func (kcm *K8sClientManager) ServiceReachable(engineUrl string) bool {
 }
 
 func (kcm *K8sClientManager) deleteService(collectionID int64) error {
-	// Delete services by collection is not supported as of yet
-	// Wait for this PR to be merged - https://github.com/kubernetes/kubernetes/pull/85802
-	cmd := exec.Command("kubectl", "-n", kcm.Namespace, "delete", "svc", "--force", "--grace-period=0", "-l", fmt.Sprintf("collection=%d", collectionID))
-	o, err := cmd.Output()
+	// We could not delete services by label
+	// So we firstly get them by label and then delete them one by one
+	// you can check here: https://github.com/kubernetes/kubernetes/issues/68468#issuecomment-419981870
+	corev1Client := kcm.client.CoreV1().Services(kcm.Namespace)
+	resp, err := corev1Client.List(context.TODO(), metav1.ListOptions{
+		LabelSelector: makeCollectionLabel(collectionID),
+	})
 	if err != nil {
-		log.Printf("Cannot delete services for collection %d", collectionID)
 		return err
 	}
-	log.Print(string(o))
-	return nil
+
+	// If there are any errors in deletion, we only return the last one
+	// the errors could be similar so we should avoid return a long list of errors
+	var lastError error
+	for _, svc := range resp.Items {
+		if err := corev1Client.Delete(context.TODO(), svc.Name, metav1.DeleteOptions{}); err != nil {
+			lastError = err
+		}
+	}
+	return lastError
 }
 
 func (kcm *K8sClientManager) deleteDeployment(collectionID int64) error {
@@ -669,10 +678,6 @@ func (kcm *K8sClientManager) PurgeCollection(collectionID int64) error {
 		return err
 	}
 	err = kcm.deleteService(collectionID)
-	if err != nil {
-		return err
-	}
-	err = kcm.deleteIngressRules(collectionID)
 	if err != nil {
 		return err
 	}
@@ -841,15 +846,6 @@ func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceNam
 		log.Error(err)
 	}
 	return nil
-}
-
-func (kcm *K8sClientManager) deleteIngressRules(collectionID int64) error {
-	deletePolicy := metav1.DeletePropagationForeground
-	return kcm.client.NetworkingV1().Ingresses(kcm.Namespace).DeleteCollection(context.TODO(), metav1.DeleteOptions{
-		PropagationPolicy: &deletePolicy,
-	}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("collection=%d", collectionID),
-	})
 }
 
 func (kcm *K8sClientManager) GetNodesByCollection(collectionID string) ([]apiv1.Node, error) {

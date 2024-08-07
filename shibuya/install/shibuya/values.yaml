@@ -71,7 +71,7 @@ runtime:
       project: ""
       zone: ""
       cluster_id: ""
-      gc_duration: ""
+      gc_duration: 30
       service_type: ""
     in_cluster: true
     namespace: "shibuya-executors"
