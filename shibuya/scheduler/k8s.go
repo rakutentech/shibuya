@@ -66,6 +66,35 @@ func makeNodeAffinity(key, value string) *apiv1.NodeAffinity {
 	return nodeAffinity
 }
 
+func prepareEngineMetaEnvvars(collectionID, planID int64) []apiv1.EnvVar {
+	return []apiv1.EnvVar{
+		{
+			Name:  "collection_id",
+			Value: fmt.Sprintf("%d", collectionID),
+		},
+		{
+			Name:  "plan_id",
+			Value: fmt.Sprintf("%d", planID),
+		},
+		{
+			Name: "namespace",
+			ValueFrom: &apiv1.EnvVarSource{
+				FieldRef: &apiv1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name: "name",
+			ValueFrom: &apiv1.EnvVarSource{
+				FieldRef: &apiv1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+	}
+}
+
 func makeTolerations(key string, value string, effect apiv1.TaintEffect) apiv1.Toleration {
 	toleration := apiv1.Toleration{
 		Effect:   effect,
@@ -148,7 +177,7 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 }
 
 func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas int, labels map[string]string, containerConfig *config.ExecutorContainer,
-	affinity *apiv1.Affinity, tolerations []apiv1.Toleration) appsv1.StatefulSet {
+	affinity *apiv1.Affinity, tolerations []apiv1.Toleration, envvars []apiv1.EnvVar) appsv1.StatefulSet {
 	t := true
 	deployment := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -183,6 +212,7 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 							Name:            planName,
 							Image:           containerConfig.Image,
 							ImagePullPolicy: kcm.ImagePullPolicy,
+							Env:             envvars,
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceCPU:    resource.MustParse(containerConfig.CPU),
@@ -399,8 +429,9 @@ func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, e
 	planName := makePlanName(projectID, collectionID, planID)
 	labels := makePlanLabel(projectID, collectionID, planID)
 	affinity := prepareAffinity(collectionID)
+	envvars := prepareEngineMetaEnvvars(collectionID, planID)
 	tolerations := prepareTolerations()
-	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations)
+	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations, envvars)
 	if _, err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).Create(context.TODO(), &planConfig, metav1.CreateOptions{}); err != nil {
 		return err
 	}
