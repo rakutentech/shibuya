@@ -13,6 +13,14 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 )
 
+const (
+	ConfigFileName = "config.json"
+)
+
+var (
+	ConfigFilePath = path.Join("/", ConfigFileName)
+)
+
 type LdapConfig struct {
 	BaseDN         string `json:"base_dn"`
 	SystemUser     string `json:"system_user"`
@@ -86,14 +94,15 @@ type HttpConfig struct {
 }
 
 type ObjectStorage struct {
-	Provider     string `json:"provider"`
-	Url          string `json:"url"`
-	User         string `json:"user"`
-	Password     string `json:"password"`
-	Bucket       string `json:"bucket"`
-	RequireProxy bool   `json:"require_proxy"`
-	SecretName   string `json:"secret_name"`
-	AuthFileName string `json:"auth_file_name"`
+	Provider      string `json:"provider"`
+	Url           string `json:"url"`
+	User          string `json:"user"`
+	Password      string `json:"password"`
+	Bucket        string `json:"bucket"`
+	RequireProxy  bool   `json:"require_proxy"`
+	SecretName    string `json:"secret_name"`
+	AuthFileName  string `json:"auth_file_name"`
+	ConfigMapName string `json:"config_map_name"`
 }
 
 type LogFormat struct {
@@ -188,7 +197,7 @@ func setupLogging() {
 func loadConfig() *ShibuyaConfig {
 	sc := new(ShibuyaConfig)
 	sc.IngressConfig = &defaultIngressConfig
-	f, err := os.Open("/config.json")
+	f, err := os.Open(ConfigFilePath)
 	if err != nil {
 		log.Fatal("Cannot find config file")
 	}

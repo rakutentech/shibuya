@@ -99,3 +99,4 @@ runtime:
     bucket: ""
     secret_name: ""
     auth_file_name: ""
+    config_map_name: "shibuya-config-local"

@@ -180,6 +180,25 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 		}
 		envvars = append(envvars, envvar)
 	}
+	cmVolumeName := "shibuya-config"
+	cmName := config.SC.ObjectStorage.ConfigMapName
+	cmVolume := apiv1.Volume{
+		Name: cmVolumeName,
+		VolumeSource: apiv1.VolumeSource{
+			ConfigMap: &apiv1.ConfigMapVolumeSource{
+				LocalObjectReference: apiv1.LocalObjectReference{
+					Name: cmName,
+				},
+			},
+		},
+	}
+	volumes = append(volumes, cmVolume)
+	cmVolumeMounts := apiv1.VolumeMount{
+		Name:      cmVolumeName,
+		MountPath: config.ConfigFilePath,
+		SubPath:   config.ConfigFileName,
+	}
+	volumeMounts = append(volumeMounts, cmVolumeMounts)
 	deployment := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:                       planName,
