@@ -13,6 +13,7 @@ import (
 
 	"github.com/rakutentech/shibuya/shibuya/config"
 	model "github.com/rakutentech/shibuya/shibuya/model"
+	"github.com/rakutentech/shibuya/shibuya/object_storage"
 	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -150,6 +151,35 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas int, labels map[string]string, containerConfig *config.ExecutorContainer,
 	affinity *apiv1.Affinity, tolerations []apiv1.Toleration) appsv1.StatefulSet {
 	t := true
+	volumes := []apiv1.Volume{}
+	volumeMounts := []apiv1.VolumeMount{}
+	envvars := []apiv1.EnvVar{}
+	if object_storage.IsProviderGCP() {
+		volumeName := "shibuya-gcp-auth"
+		secretName := config.SC.ObjectStorage.SecretName
+		authFileName := config.SC.ObjectStorage.AuthFileName
+		mountPath := fmt.Sprintf("/auth/%s", authFileName)
+		v := apiv1.Volume{
+			Name: volumeName,
+			VolumeSource: apiv1.VolumeSource{
+				Secret: &apiv1.SecretVolumeSource{
+					SecretName: secretName,
+				},
+			},
+		}
+		volumes = append(volumes, v)
+		vm := apiv1.VolumeMount{
+			Name:      volumeName,
+			MountPath: mountPath,
+			SubPath:   authFileName,
+		}
+		volumeMounts = append(volumeMounts, vm)
+		envvar := apiv1.EnvVar{
+			Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+			Value: mountPath,
+		}
+		envvars = append(envvars, envvar)
+	}
 	deployment := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:                       planName,
@@ -178,6 +208,7 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 					},
 					TerminationGracePeriodSeconds: new(int64),
 					HostAliases:                   kcm.makeHostAliases(),
+					Volumes:                       volumes,
 					Containers: []apiv1.Container{
 						{
 							Name:            planName,
@@ -200,6 +231,8 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 									ContainerPort: 8080,
 								},
 							},
+							VolumeMounts: volumeMounts,
+							Env:          envvars,
 						},
 					},
 				},

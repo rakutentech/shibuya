@@ -97,3 +97,5 @@ runtime:
     user: ""
     password: ""
     bucket: ""
+    secret_name: ""
+    auth_file_name: ""

@@ -92,6 +92,8 @@ type ObjectStorage struct {
 	Password     string `json:"password"`
 	Bucket       string `json:"bucket"`
 	RequireProxy bool   `json:"require_proxy"`
+	SecretName   string `json:"secret_name"`
+	AuthFileName string `json:"auth_file_name"`
 }
 
 type LogFormat struct {

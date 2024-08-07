@@ -86,7 +86,9 @@ data:
             {{- with .Values.runtime.object_storage.url }}
             "url": {{ . | quote }},
             {{- end }}
-            "bucket": {{ .Values.runtime.object_storage.bucket | quote }}
+            "bucket": {{ .Values.runtime.object_storage.bucket | quote }},
+            "secret_name": {{ .Values.runtime.object_storage.secret_name | quote }},
+            "auth_file_name": {{ .Values.runtime.object_storage.auth_file_name | quote }}
         },
         "log_format": {
             "json": false
