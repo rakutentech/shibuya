@@ -692,27 +692,6 @@ func (s *ShibuyaAPI) collectionPurgeHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (s *ShibuyaAPI) collectionNodesGetHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	s.jsonise(w, http.StatusNotImplemented, nil)
-}
-
-func (s *ShibuyaAPI) collectionNodesShutdownHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := getCollection(params.ByName("collection_id"))
-	if err != nil {
-		s.handleErrors(w, err)
-		return
-	}
-	if s.ctr.Scheduler.PodReadyCount(collection.ID) > 0 {
-		s.handleErrors(w, makeInvalidRequestError("You cannot shut down nodes while you have engines deployed. Please purge collection first."))
-		return
-	}
-	if err := s.ctr.PurgeNodes(collection); err != nil {
-		s.handleErrors(w, makeInternalServerError(err.Error()))
-		return
-	}
-	s.jsonise(w, http.StatusOK, true)
-}
-
 func (s *ShibuyaAPI) planLogHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	collectionID, err := strconv.Atoi(params.ByName("collection_id"))
 	if err != nil {
@@ -841,8 +820,6 @@ func (s *ShibuyaAPI) InitRoutes() Routes {
 		&Route{"get_run", "GET", "/api/collections/:collection_id/runs/:run_id", s.runGetHandler},
 		&Route{"delete_runs", "DELETE", "/api/collections/:collection_id/runs", s.runDeleteHandler},
 		&Route{"delete_run", "DELETE", "/api/collections/:collection_id/runs/:run_id", s.runDeleteHandler},
-		&Route{"get_nodes", "GET", "/api/collections/:collection_id/nodes", s.collectionNodesGetHandler},
-		&Route{"shutdown_nodes", "DELETE", "/api/collections/:collection_id/nodes", s.collectionNodesShutdownHandler},
 		&Route{"status", "GET", "/api/collections/:collection_id/status", s.collectionStatusHandler},
 		&Route{"stream", "GET", "/api/collections/:collection_id/stream", s.streamCollectionMetrics},
 		&Route{"get_plan_log", "GET", "/api/collections/:collection_id/logs/:plan_id", s.planLogHandler},
