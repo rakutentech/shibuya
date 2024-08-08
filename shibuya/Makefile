@@ -31,3 +31,14 @@ controller_image: controller_build
 .PHONY: helm_charts
 helm_charts:
 	helm package install/shibuya
+
+.PHONY: jmeter_agent
+jmeter_agent:
+	sh build.sh jmeter
+
+.PHONY: jmeter_agent_image
+jmeter_agent_image: jmeter_agent
+	docker build -t $(img) -f Dockerfile.engines.jmeter .
+	docker push $(img)
+
+

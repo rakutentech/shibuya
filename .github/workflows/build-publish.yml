@@ -102,6 +102,13 @@ jobs:
       run: |-
         cd shibuya && make controller_image component=controller
 
+    - name: build jmeter agent
+      env:
+        tag_name: ${{ needs.release-please.outputs.tag_name }}
+      # we specify the jmeter version we are using in the component name
+      # So we can cleary know which jmeter version we are using
+      run: |-
+        cd shibuya && make jmeter_agent_image component=jmeter-3.3
 
 
 

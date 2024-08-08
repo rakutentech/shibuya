@@ -47,6 +47,10 @@ func factoryConfig() PlatformConfig {
 	}
 }
 
+func IsProviderGCP() bool {
+	return config.SC.ObjectStorage.Provider == gcpStorageProvider
+}
+
 var Client PlatformConfig
 
 func init() {
