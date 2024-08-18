@@ -190,8 +190,8 @@ func (s *ShibuyaAPI) projectDeleteHandler(w http.ResponseWriter, r *http.Request
 		s.handleErrors(w, err)
 		return
 	}
-	if _, ok := account.MLMap[project.Owner]; !ok {
-		s.handleErrors(w, noPermissionErr)
+	if r := hasProjectOwnership(project, account); !r {
+		s.handleErrors(w, makeProjectOwnershipError())
 		return
 	}
 	collectionIDs, err := project.GetCollections()
@@ -257,8 +257,8 @@ func (s *ShibuyaAPI) planCreateHandler(w http.ResponseWriter, r *http.Request, _
 		s.handleErrors(w, err)
 		return
 	}
-	if _, ok := account.MLMap[project.Owner]; !ok {
-		s.handleErrors(w, makeNoPermissionErr("You don't own the project"))
+	if r := hasProjectOwnership(project, account); !r {
+		s.handleErrors(w, makeProjectOwnershipError())
 		return
 	}
 	name := r.Form.Get("name")
@@ -290,8 +290,8 @@ func (s *ShibuyaAPI) planDeleteHandler(w http.ResponseWriter, r *http.Request, p
 		s.handleErrors(w, err)
 		return
 	}
-	if _, ok := account.MLMap[project.Owner]; !ok {
-		s.handleErrors(w, makeLoginError())
+	if r := hasProjectOwnership(project, account); !r {
+		s.handleErrors(w, makeProjectOwnershipError())
 		return
 	}
 	using, err := plan.IsBeingUsed()
@@ -336,7 +336,7 @@ func (s *ShibuyaAPI) collectionFilesGetHandler(w http.ResponseWriter, _ *http.Re
 }
 
 func (s *ShibuyaAPI) collectionFilesUploadHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -356,7 +356,7 @@ func (s *ShibuyaAPI) collectionFilesUploadHandler(w http.ResponseWriter, r *http
 }
 
 func (s *ShibuyaAPI) collectionFilesDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -409,8 +409,8 @@ func (s *ShibuyaAPI) collectionCreateHandler(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, err)
 		return
 	}
-	if _, ok := account.MLMap[project.Owner]; !ok {
-		s.handleErrors(w, makeNoPermissionErr("You don't have the permission"))
+	if r := hasProjectOwnership(project, account); !r {
+		s.handleErrors(w, makeProjectOwnershipError())
 		return
 	}
 	collectionID, err := model.CreateCollection(collectionName, project.ID)
@@ -427,7 +427,7 @@ func (s *ShibuyaAPI) collectionCreateHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -457,7 +457,7 @@ func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -496,7 +496,7 @@ func (s *ShibuyaAPI) collectionUpdateHandler(w http.ResponseWriter, _ *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -590,7 +590,7 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -604,7 +604,7 @@ func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *ht
 }
 
 func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -621,7 +621,7 @@ func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.
 }
 
 func (s *ShibuyaAPI) collectionTriggerHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -633,7 +633,7 @@ func (s *ShibuyaAPI) collectionTriggerHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (s *ShibuyaAPI) collectionTermHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -645,7 +645,7 @@ func (s *ShibuyaAPI) collectionTermHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *ShibuyaAPI) collectionStatusHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -658,7 +658,7 @@ func (s *ShibuyaAPI) collectionStatusHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionPurgeHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -712,7 +712,7 @@ func (s *ShibuyaAPI) planLogHandler(w http.ResponseWriter, r *http.Request, para
 }
 
 func (s *ShibuyaAPI) streamCollectionMetrics(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(r, params)
+	collection, err := hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return

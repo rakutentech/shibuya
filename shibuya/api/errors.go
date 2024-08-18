@@ -32,3 +32,11 @@ func makeInternalServerError(message string) error {
 func makeInvalidResourceError(resource string) error {
 	return fmt.Errorf("%winvalid %s", invalidRequestErr, resource)
 }
+
+func makeProjectOwnershipError() error {
+	return fmt.Errorf("%w%s", noPermissionErr, "You don't own the project")
+}
+
+func makeCollectionOwnershipError() error {
+	return fmt.Errorf("%w%s", noPermissionErr, "You don't own the collection")
+}
