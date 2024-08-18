@@ -2,19 +2,10 @@ package api
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/rakutentech/shibuya/shibuya/model"
 )
-
-func retrieveClientIP(r *http.Request) string {
-	t := r.Header.Get("x-forwarded-for")
-	if t == "" {
-		return r.RemoteAddr
-	}
-	return strings.Split(t, ",")[0]
-}
 
 func hasProjectOwnership(project *model.Project, account *model.Account) bool {
 	if _, ok := account.MLMap[project.Owner]; !ok {
