@@ -270,16 +270,3 @@ func (c *Controller) CollectionStatus(collection *model.Collection) (*smodel.Col
 	}
 	return cs, nil
 }
-
-func (c *Controller) PurgeNodes(collection *model.Collection) error {
-	if config.SC.ExecutorConfig.Cluster.OnDemand {
-		operator := NewGCPOperator(collection.ID, int64(0))
-		if err := operator.destroyNodes(); err != nil {
-			return err
-		}
-		// we don't bill for on-demand cluster as for now.
-		//collection.MarkUsageFinished()
-		return nil
-	}
-	return nil
-}
