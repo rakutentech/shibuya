@@ -13,6 +13,14 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 )
 
+const (
+	ConfigFileName = "config.json"
+)
+
+var (
+	ConfigFilePath = path.Join("/", ConfigFileName)
+)
+
 type LdapConfig struct {
 	BaseDN         string `json:"base_dn"`
 	SystemUser     string `json:"system_user"`
@@ -92,6 +100,12 @@ type ObjectStorage struct {
 	Password     string `json:"password"`
 	Bucket       string `json:"bucket"`
 	RequireProxy bool   `json:"require_proxy"`
+	// This is the secret name created in the cluster for authenticating with object storage
+	SecretName string `json:"secret_name"`
+	// This is the mounted keys file name. e.g. /auth/shibuya-gcp.json
+	AuthFileName string `json:"auth_file_name"`
+	// This is the configuration file
+	ConfigMapName string `json:"config_map_name"`
 }
 
 type LogFormat struct {
@@ -178,15 +192,17 @@ func applyJsonLogging() {
 func setupLogging() {
 	log.SetOutput(os.Stdout)
 	log.SetReportCaller(true)
-	if SC.LogFormat.Json {
-		applyJsonLogging()
+	if SC.LogFormat != nil {
+		if SC.LogFormat.Json {
+			applyJsonLogging()
+		}
 	}
 }
 
 func loadConfig() *ShibuyaConfig {
 	sc := new(ShibuyaConfig)
 	sc.IngressConfig = &defaultIngressConfig
-	f, err := os.Open("/config.json")
+	f, err := os.Open(ConfigFilePath)
 	if err != nil {
 		log.Fatal("Cannot find config file")
 	}
@@ -199,8 +215,9 @@ func loadConfig() *ShibuyaConfig {
 	}
 	sc.Context = loadContext()
 	sc.DevMode = sc.Context == "local"
-	sc.makeHTTPClients()
-
+	if sc.HttpConfig != nil {
+		sc.makeHTTPClients()
+	}
 	// In jmeter agent, we also rely on this module, therefore we need to check whether this is nil or not. As jmeter
 	// configuration might provide an empty struct here
 	// TODO: we should not let jmeter code rely on this part
