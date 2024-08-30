@@ -116,9 +116,6 @@ func (c *Controller) AutoPurgeDeployments() {
 			log.Error(err)
 			continue
 		}
-		if config.SC.ExecutorConfig.Cluster.OnDemand {
-			c.autoPurgeNodes(deployedCollections)
-		}
 		for collectionID, launchTime := range deployedCollections {
 			collection, err := model.GetCollection(collectionID)
 			if err != nil {
@@ -234,47 +231,5 @@ func (c *Controller) AutoPurgeProjectIngressController() {
 		// If there is a run being executed for a minute, there is a chance the GC misses that run and the project
 		// ip will be deleted.
 		time.Sleep(gcInterval)
-	}
-}
-
-func (c *Controller) autoPurgeNodes(deployedCollections map[int64]time.Time) {
-	launchedNodes, err := c.Scheduler.GetAllNodesInfo()
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	for id, nodeInfo := range launchedNodes {
-		collectionID, err := strconv.ParseInt(id, 10, 64)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		// if has pods deployed, don't touch
-		if _, ok := deployedCollections[collectionID]; ok {
-			return
-		}
-		collection, err := model.GetCollection(collectionID)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		lr, err := collection.GetLastRun()
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		status, err := isCollectionStale(lr, nodeInfo.LaunchTime)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		if !status {
-			return
-		}
-		err = c.PurgeNodes(collection)
-		if err != nil {
-			log.Error(err)
-			return
-		}
 	}
 }
