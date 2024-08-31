@@ -23,7 +23,6 @@ var Collection = Vue.component("collection", {
             trigger_in_progress: false,
             stop_in_progress: false,
             purge_in_progress: false,
-            on_demand_cluster: on_demand_cluster,
             upload_file_help: upload_file_help,
             showing_log: false,
             showing_engines_detail: false,
@@ -34,12 +33,6 @@ var Collection = Vue.component("collection", {
         }
     },
     computed: {
-        nodes_plural: function () {
-            if (this.collection_status.pool_size > 1) {
-                return "nodes";
-            }
-            return "node";
-        },
         verb: function () {
             if (this.collection_status.pool_size > 1) {
                 return "are";
@@ -358,17 +351,6 @@ var Collection = Vue.component("collection", {
         },
         engineHealthGrafanaUrl: function () {
             return engine_health_dashboard + "?var-collectionID=" + this.collection_id;
-        },
-        purgeNodes: function () {
-            var url = "collections/" + this.collection_id + "/nodes";
-            this.$http.delete(url).then(
-                function (resp) {
-                    alert("Deleting nodes in process...This will take some time.");
-                },
-                function (resp) {
-                    alert(resp.body.message);
-                }
-            );
         },
         makeUploadURL: function (path) {
             switch (path) {

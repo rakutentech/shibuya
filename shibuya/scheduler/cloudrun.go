@@ -339,17 +339,12 @@ func (cr *CloudRun) GetDeployedCollections() (map[int64]time.Time, error) {
 	return deployCollections, nil
 }
 
-func (cr *CloudRun) GetAllNodesInfo() (smodel.AllNodesInfo, error) {
-	// For cloud run, nodes info is not needed
-	return nil, nil
-}
-
 func (cr *CloudRun) GetPodsMetrics(collectionID, planID int64) (map[string]apiv1.ResourceList, error) {
 	// For cloud run, pod metrics is not supported
 	return nil, FeatureUnavailable
 }
 
-//TODO: what we need is actually get the deployed engines account, not only ready ones.
+// TODO: what we need is actually get the deployed engines account, not only ready ones.
 // We also need to change this in k8s.go
 func (cr *CloudRun) PodReadyCount(collectionID int64) int {
 	items, err := cr.getEnginesByCollection(collectionID)

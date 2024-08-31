@@ -29,7 +29,6 @@ data:
         },
         "executors": {
             "cluster": {
-                "on_demand": {{ .Values.runtime.executors.cluster.on_demand }},
                 "service_type": {{ .Values.runtime.executors.cluster.service_type | quote }},
                 "gc_duration": {{ .Values.runtime.executors.cluster.gc_duration }}
             },

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"math"
 	"net/http"
 	"strconv"
 	"sync"
@@ -182,13 +181,6 @@ func (c *Controller) readConnectedEngines() {
 	}
 }
 
-func (c *Controller) calNodesRequired(enginesNum int) int64 {
-	masterCPU, _ := strconv.ParseFloat(config.SC.ExecutorConfig.JmeterContainer.CPU, 64)
-	enginePerNode := math.Floor(float64(config.SC.ExecutorConfig.Cluster.NodeCPUSpec) / masterCPU)
-	nodesRequired := math.Ceil(float64(enginesNum) / enginePerNode)
-	return int64(nodesRequired)
-}
-
 func (c *Controller) DeployCollection(collection *model.Collection) error {
 	eps, err := collection.GetExecutionPlans()
 	if err != nil {
@@ -200,14 +192,6 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	for _, e := range eps {
 		enginesCount += e.Engines
 		vu += e.Engines * e.Concurrency
-	}
-	if config.SC.ExecutorConfig.Cluster.OnDemand {
-		nodesCount = c.calNodesRequired(enginesCount)
-		operator := NewGCPOperator(collection.ID, nodesCount)
-		err := operator.prepareNodes()
-		if err != nil {
-			return err
-		}
 	}
 	sid := ""
 	if project, err := model.GetProject(collection.ProjectID); err == nil {
@@ -254,15 +238,6 @@ func (c *Controller) CollectionStatus(collection *model.Collection) (*smodel.Col
 	cs, err := c.Scheduler.CollectionStatus(collection.ProjectID, collection.ID, eps)
 	if err != nil {
 		return nil, err
-	}
-	if config.SC.ExecutorConfig.Cluster.OnDemand {
-		operator := NewGCPOperator(collection.ID, 0)
-		info := operator.GCPNodesInfo()
-		cs.PoolStatus = "LAUNCHED"
-		if info != nil {
-			cs.PoolSize = info.Size
-			cs.PoolStatus = info.Status
-		}
 	}
 	if config.SC.DevMode {
 		cs.PoolSize = 100
