@@ -20,6 +20,7 @@ import (
 
 	etree "github.com/beevik/etree"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	_ "go.uber.org/automaxprocs"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
 	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
