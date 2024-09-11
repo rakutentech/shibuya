@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
-	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
+	enginesModel "github.com/rakutentech/shibuya/shibuya/engines/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
@@ -24,7 +24,7 @@ import (
 )
 
 type shibuyaEngine interface {
-	trigger(edc *controllerModel.EngineDataConfig) error
+	trigger(edc *enginesModel.EngineDataConfig) error
 	deploy(scheduler.EngineScheduler) error
 	subscribe(runID int64) error
 	progress() bool
@@ -76,7 +76,7 @@ type baseEngine struct {
 	*config.ExecutorContainer
 }
 
-func sendTriggerRequest(url string, edc *controllerModel.EngineDataConfig) (*http.Response, error) {
+func sendTriggerRequest(url string, edc *enginesModel.EngineDataConfig) (*http.Response, error) {
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(&edc)
 	req, _ := http.NewRequest("POST", url, body)
@@ -164,7 +164,7 @@ func (be *baseEngine) deploy(manager scheduler.EngineScheduler) error {
 	return manager.DeployEngine(be.projectID, be.collectionID, be.planID, be.ID, be.ExecutorContainer)
 }
 
-func (be *baseEngine) trigger(edc *controllerModel.EngineDataConfig) error {
+func (be *baseEngine) trigger(edc *enginesModel.EngineDataConfig) error {
 	engineUrl := be.engineUrl
 	base := be.makeBaseUrl()
 	url := fmt.Sprintf(base, engineUrl, "start")
