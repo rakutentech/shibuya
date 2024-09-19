@@ -24,6 +24,13 @@ func main() {
 		r.Handle(route.Method, route.Path, route.HandlerFunc)
 	}
 	r.Handler("GET", "/metrics", promhttp.Handler())
-	r.ServeFiles("/static/*filepath", http.Dir("/static"))
+
+	fileServer := http.FileServer(http.Dir("/static"))
+	r.GET("/static/*filepath", func(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+		req.URL.Path = ps.ByName("filepath")
+		// Set the cache expiration time to 7 days
+		w.Header().Set("Cache-Control", "public, max-age=604800")
+		fileServer.ServeHTTP(w, req)
+	})
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", 8080), context.ClearHandler(r)))
 }
