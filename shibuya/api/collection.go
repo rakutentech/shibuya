@@ -25,7 +25,7 @@ func getCollection(collectionID string) (*model.Collection, error) {
 }
 
 func (s *ShibuyaAPI) collectionConfigGetHandler(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
-	collection, err := checkCollectionOwnership(req, params)
+	collection, err := hasCollectionOwnership(req, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
