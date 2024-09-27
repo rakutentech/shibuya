@@ -67,7 +67,6 @@ runtime:
     keypairs: ""
   executors:
     cluster:
-      on_demand: false
       project: ""
       zone: ""
       cluster_id: ""

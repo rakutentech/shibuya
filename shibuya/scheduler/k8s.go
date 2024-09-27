@@ -108,10 +108,6 @@ func collectionPodAffinity(collectionID int64) *apiv1.PodAffinity {
 
 func prepareAffinity(collectionID int64) *apiv1.Affinity {
 	affinity := &apiv1.Affinity{}
-	if config.SC.ExecutorConfig.Cluster.OnDemand {
-		affinity.NodeAffinity = collectionNodeAffinity(collectionID)
-		return affinity
-	}
 	affinity.PodAffinity = collectionPodAffinity(collectionID)
 	na := config.SC.ExecutorConfig.NodeAffinity
 	if len(na) > 0 {
@@ -898,42 +894,6 @@ func (kcm *K8sClientManager) CreateIngress(ingressClass, ingressName, serviceNam
 		log.Error(err)
 	}
 	return nil
-}
-
-func (kcm *K8sClientManager) GetNodesByCollection(collectionID string) ([]apiv1.Node, error) {
-	opts := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("collection_id=%s", collectionID),
-	}
-	return kcm.getNodes(opts)
-}
-
-func (kcm *K8sClientManager) getNodes(opts metav1.ListOptions) ([]apiv1.Node, error) {
-	nodeList, err := kcm.client.CoreV1().Nodes().List(context.TODO(), opts)
-	if err != nil {
-		return nil, err
-	}
-	return nodeList.Items, nil
-}
-
-func (kcm *K8sClientManager) GetAllNodesInfo() (smodel.AllNodesInfo, error) {
-	opts := metav1.ListOptions{}
-	nodes, err := kcm.getNodes(opts)
-	if err != nil {
-		return nil, err
-	}
-	r := make(smodel.AllNodesInfo)
-	for _, node := range nodes {
-		nodeInfo := r[node.ObjectMeta.Labels["collection_id"]]
-		if nodeInfo == nil {
-			nodeInfo = &smodel.NodesInfo{}
-			r[node.ObjectMeta.Labels["collection_id"]] = nodeInfo
-		}
-		nodeInfo.Size++
-		if nodeInfo.LaunchTime.IsZero() || nodeInfo.LaunchTime.After(node.ObjectMeta.CreationTimestamp.Time) {
-			nodeInfo.LaunchTime = node.ObjectMeta.CreationTimestamp.Time
-		}
-	}
-	return r, nil
 }
 
 func (kcm *K8sClientManager) GetDeployedCollections() (map[int64]time.Time, error) {

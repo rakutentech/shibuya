@@ -29,7 +29,6 @@ type HomeResp struct {
 	Account               string
 	BackgroundColour      string
 	Context               string
-	OnDemandCluster       bool
 	IsAdmin               bool
 	ResultDashboard       string
 	EnableSid             bool
@@ -56,7 +55,7 @@ func (u *UI) homeHandler(w http.ResponseWriter, r *http.Request, params httprout
 	sc := config.SC
 	gcDuration := config.SC.ExecutorConfig.Cluster.GCDuration
 	template.Execute(w, &HomeResp{account.Name, sc.BackgroundColour, sc.Context,
-		config.SC.ExecutorConfig.Cluster.OnDemand, IsAdmin, resultDashboardURL, enableSid,
+		IsAdmin, resultDashboardURL, enableSid,
 		engineHealthDashboardURL, sc.ProjectHome, sc.UploadFileHelp, gcDuration})
 }
 

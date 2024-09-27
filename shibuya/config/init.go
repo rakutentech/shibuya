@@ -43,8 +43,6 @@ type ClusterConfig struct {
 	ClusterID   string  `json:"cluster_id"`
 	Kind        string  `json:"kind"`
 	APIEndpoint string  `json:"api_endpoint"`
-	NodeCPUSpec int     `json:"node_cpu_spec"`
-	OnDemand    bool    `json:"on_demand"`
 	GCDuration  float64 `json:"gc_duration"` // in minutes
 	ServiceType string  `json:"service_type"`
 }

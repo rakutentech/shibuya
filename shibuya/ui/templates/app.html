@@ -12,7 +12,6 @@
         var result_dashboard = {{ .ResultDashboard }};
         var enable_sid = {{ .EnableSid }}
         var engine_health_dashboard = {{ .EngineHealthDashboard }};
-        var on_demand_cluster = {{ .OnDemandCluster }}
         var is_admin = {{ .IsAdmin }}
         var project_home = {{ .ProjectHome }}
         var upload_file_help = {{ .UploadFileHelp }}
@@ -104,10 +103,6 @@
                     <span class="badge badge-warning" v-if="trigger_in_progress">Tests are being started</span>
                     <span class="badge badge-warning" v-if="stop_in_progress">Tests are being stopped</span>
                     <span class="badge badge-warning" v-if="purge_tip">Engines are being purged</span>
-                    <div class="alert alert-warning" v-if="on_demand_cluster" style="margin: 20px 0px 10px 0px; text-align:center; padding: .3rem .5rem">
-                        <span>${collection_status.pool_size} ${nodes_plural} ${verb} ${collection_status.pool_status} in ${running_context}</span>
-                        <button @click="purgeNodes" v-if="collection_status.pool_size > 0" class="btn btn-link" style="padding:0px; margin:0px;vertical-align:baseline;text-decoration:underline">Shut down</button>
-                    </div>
                 </div>
                 <div class="card-header bg-light" title="Files will be copied across all engines. Plan data will have priority in case of conflict">
                     <div class="card-title" style="margin-bottom: 0px;">
@@ -376,27 +371,6 @@
                             <tr v-for="r in running_collections">
                                 <td><a :href="collection_url(r.collection_id)">${r.collection_id}</a></td>
                                 <td>${toLocalTZ(r.started_time)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="card" style="margin-top: 20px">
-                <div class="card-body">
-                    <div class="card-title">Nodes provisoned</div>
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Collection</th>
-                                <th>Nodes</th>
-                                <th>Launched Since</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(nodes, collection_id) in node_pools">
-                                <td><a :href="collection_url(collection_id)">${collection_id}</a></td>
-                                <td>${nodes.size}</td>
-                                <td>${toLocalTZ(nodes.launch_time)}</td>
                             </tr>
                         </tbody>
                     </table>

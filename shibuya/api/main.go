@@ -241,10 +241,6 @@ func (s *ShibuyaAPI) collectionAdminGetHandler(w http.ResponseWriter, r *http.Re
 	}
 	acr := new(AdminCollectionResponse)
 	acr.RunningCollections = collections
-	if config.SC.ExecutorConfig.Cluster.OnDemand {
-		// we ignore errors here for simplicity
-		acr.NodePools, _ = s.ctr.Scheduler.GetAllNodesInfo()
-	}
 	s.jsonise(w, http.StatusOK, acr)
 }
 
@@ -298,6 +294,7 @@ func (s *ShibuyaAPI) planDeleteHandler(w http.ResponseWriter, r *http.Request, p
 	if err != nil {
 		s.handleErrors(w, err)
 		return
+
 	}
 	if using {
 		s.handleErrors(w, makeInvalidRequestError("plan is being used"))
@@ -432,14 +429,6 @@ func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, err)
 		return
 	}
-	if config.SC.ExecutorConfig.Cluster.OnDemand {
-		operator := controller.NewGCPOperator(collection.ID, 0)
-		pool := operator.GetNodePool()
-		if pool != nil {
-			s.handleErrors(w, makeInvalidRequestError("You cannot delete collection when you have nodes launched"))
-			return
-		}
-	}
 	if s.ctr.Scheduler.PodReadyCount(collection.ID) > 0 {
 		s.handleErrors(w, makeInvalidRequestError("You cannot launch engines when there are engines already deployed"))
 		return
@@ -516,10 +505,6 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 	err = yaml.Unmarshal(raw, e)
 	if err != nil {
 		s.handleErrors(w, makeInvalidRequestError(err.Error()))
-		return
-	}
-	if e == nil {
-		s.handleErrors(w, makeInvalidResourceError("YAML file"))
 		return
 	}
 	if e.Content.CollectionID != collection.ID {
