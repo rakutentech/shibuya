@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/rakutentech/shibuya/compare/v1.0.0...v1.1.0) (2024-10-01)
+
+
+### Features
+
+* Enable engine metrics exposing in the agent ([#112](https://github.com/rakutentech/shibuya/issues/112)) ([d7d25ad](https://github.com/rakutentech/shibuya/commit/d7d25adcb96451bc33d1d536f5b7017a64e1f4ba))
+
 ## 1.0.0 (2024-08-30)
 
 
