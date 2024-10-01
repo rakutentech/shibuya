@@ -6,14 +6,14 @@ import (
 	"sync"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
-	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
+	enginesModel "github.com/rakutentech/shibuya/shibuya/engines/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	log "github.com/sirupsen/logrus"
 )
 
-func prepareCollection(collection *model.Collection) []*controllerModel.EngineDataConfig {
+func prepareCollection(collection *model.Collection) []*enginesModel.EngineDataConfig {
 	planCount := len(collection.ExecutionPlans)
-	edc := controllerModel.EngineDataConfig{
+	edc := enginesModel.EngineDataConfig{
 		EngineData: map[string]*model.ShibuyaFile{},
 	}
 	engineDataConfigs := edc.DeepCopies(planCount)
@@ -102,7 +102,7 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 			// When all the engines are triggered
 
 			pc := NewPlanController(ep, collection, c.Scheduler)
-			if err := pc.trigger(engineDataConfigs[i]); err != nil {
+			if err := pc.trigger(engineDataConfigs[i], runID); err != nil {
 				errs <- err
 				return
 			}

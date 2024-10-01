@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
-	controllerModel "github.com/rakutentech/shibuya/shibuya/controller/model"
+	enginesModel "github.com/rakutentech/shibuya/shibuya/engines/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
 	_ "github.com/rakutentech/shibuya/shibuya/utils"
@@ -37,7 +37,7 @@ func (pc *PlanController) deploy() error {
 	return nil
 }
 
-func (pc *PlanController) prepare(plan *model.Plan, edc *controllerModel.EngineDataConfig) []*controllerModel.EngineDataConfig {
+func (pc *PlanController) prepare(plan *model.Plan, edc *enginesModel.EngineDataConfig, runID int64) []*enginesModel.EngineDataConfig {
 	edc.Duration = strconv.Itoa(pc.ep.Duration)
 	edc.Concurrency = strconv.Itoa(pc.ep.Concurrency)
 	edc.Rampup = strconv.Itoa(pc.ep.Rampup)
@@ -52,6 +52,8 @@ func (pc *PlanController) prepare(plan *model.Plan, edc *controllerModel.EngineD
 		}
 		// Add test file to all engines
 		engineDataConfigs[i].EngineData[plan.TestFile.Filename] = plan.TestFile
+		engineDataConfigs[i].RunID = runID
+		engineDataConfigs[i].EngineID = i
 		// add all data uploaded in plans. This will override common data if same filename already exists
 		for _, d := range plan.Data {
 			sf := model.ShibuyaFile{
@@ -70,12 +72,12 @@ func (pc *PlanController) prepare(plan *model.Plan, edc *controllerModel.EngineD
 	return engineDataConfigs
 }
 
-func (pc *PlanController) trigger(engineDataConfig *controllerModel.EngineDataConfig) error {
+func (pc *PlanController) trigger(engineDataConfig *enginesModel.EngineDataConfig, runID int64) error {
 	plan, err := model.GetPlan(pc.ep.PlanID)
 	if err != nil {
 		return err
 	}
-	engineDataConfigs := pc.prepare(plan, engineDataConfig)
+	engineDataConfigs := pc.prepare(plan, engineDataConfig, runID)
 	engines, err := generateEnginesWithUrl(pc.ep.Engines, pc.ep.PlanID, pc.collection.ID, pc.collection.ProjectID,
 		JmeterEngineType, pc.scheduler)
 	if err != nil {

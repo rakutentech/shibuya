@@ -2,11 +2,16 @@ package model
 
 import "github.com/rakutentech/shibuya/shibuya/model"
 
-type EngineDataConfig struct {
-	EngineData  map[string]*model.ShibuyaFile `json:"engine_data"`
-	Duration    string                        `json:"duration"`
-	Concurrency string                        `json:"concurrency"`
-	Rampup      string                        `json:"rampup"`
+type ShibuyaMetric struct {
+	Threads      float64
+	Latency      float64
+	Label        string
+	Status       string
+	Raw          string
+	CollectionID string
+	PlanID       string
+	EngineID     string
+	RunID        string
 }
 
 func (edc *EngineDataConfig) deepCopy() *EngineDataConfig {

@@ -16,6 +16,7 @@ import (
 	"github.com/rakutentech/shibuya/shibuya/object_storage"
 	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	log "github.com/sirupsen/logrus"
+
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	v1networking "k8s.io/api/networking/v1"
@@ -65,6 +66,19 @@ func makeNodeAffinity(key, value string) *apiv1.NodeAffinity {
 		},
 	}
 	return nodeAffinity
+}
+
+func prepareEngineMetaEnvvars(collectionID, planID int64) []apiv1.EnvVar {
+	return []apiv1.EnvVar{
+		{
+			Name:  "collection_id",
+			Value: fmt.Sprintf("%d", collectionID),
+		},
+		{
+			Name:  "plan_id",
+			Value: fmt.Sprintf("%d", planID),
+		},
+	}
 }
 
 func makeTolerations(key string, value string, effect apiv1.TaintEffect) apiv1.Toleration {
@@ -145,11 +159,10 @@ func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
 }
 
 func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas int, labels map[string]string, containerConfig *config.ExecutorContainer,
-	affinity *apiv1.Affinity, tolerations []apiv1.Toleration) appsv1.StatefulSet {
+	affinity *apiv1.Affinity, tolerations []apiv1.Toleration, envvars []apiv1.EnvVar) appsv1.StatefulSet {
 	t := true
 	volumes := []apiv1.Volume{}
 	volumeMounts := []apiv1.VolumeMount{}
-	envvars := []apiv1.EnvVar{}
 	if object_storage.IsProviderGCP() {
 		volumeName := "shibuya-gcp-auth"
 		secretName := config.SC.ObjectStorage.SecretName
@@ -229,6 +242,7 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 							Name:            planName,
 							Image:           containerConfig.Image,
 							ImagePullPolicy: kcm.ImagePullPolicy,
+							Env:             envvars,
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceCPU:    resource.MustParse(containerConfig.CPU),
@@ -247,7 +261,6 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 								},
 							},
 							VolumeMounts: volumeMounts,
-							Env:          envvars,
 						},
 					},
 				},
@@ -447,8 +460,9 @@ func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, e
 	planName := makePlanName(projectID, collectionID, planID)
 	labels := makePlanLabel(projectID, collectionID, planID)
 	affinity := prepareAffinity(collectionID)
+	envvars := prepareEngineMetaEnvvars(collectionID, planID)
 	tolerations := prepareTolerations()
-	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations)
+	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations, envvars)
 	if _, err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).Create(context.TODO(), &planConfig, metav1.CreateOptions{}); err != nil {
 		return err
 	}
