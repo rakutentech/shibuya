@@ -681,6 +681,11 @@ func (s *ShibuyaAPI) streamCollectionMetrics(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, err)
 		return
 	}
+	if cid, _ := collection.GetCurrentRun(); cid == 0 {
+		msg := fmt.Sprintf("Current collection %d does not have any run", collection.ID)
+		s.makeFailMessage(w, msg, http.StatusBadRequest)
+		return
+	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
@@ -692,10 +697,11 @@ func (s *ShibuyaAPI) streamCollectionMetrics(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	clientIP := retrieveClientIP(r)
+	currentTime := time.Now().Unix()
 	item := &controller.ApiMetricStream{
 		StreamClient: make(chan *controller.ApiMetricStreamEvent),
 		CollectionID: fmt.Sprintf("%d", collection.ID),
-		ClientID:     fmt.Sprintf("%s-%s", clientIP, utils.RandStringRunes(6)),
+		ClientID:     fmt.Sprintf("%s-%v-%s", clientIP, currentTime, utils.RandStringRunes(6)),
 	}
 	s.ctr.ApiNewClients <- item
 	notify := w.(http.CloseNotifier).CloseNotify()

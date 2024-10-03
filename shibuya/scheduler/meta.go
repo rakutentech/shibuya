@@ -25,6 +25,10 @@ func makeIngressClass(projectID int64) string {
 	return fmt.Sprintf("ig-%d", projectID)
 }
 
+func makePromConfigName(collectionID int64) string {
+	return fmt.Sprintf("prom-collection-%d", collectionID)
+}
+
 func makeBaseLabel(projectID, collectionID int64) map[string]string {
 	return map[string]string{
 		"collection": strconv.FormatInt(collectionID, 10),
@@ -62,4 +66,15 @@ func makePlanLabel(projectID, collectionID, planID int64) map[string]string {
 
 func makeCollectionLabel(collectionID int64) string {
 	return fmt.Sprintf("collection=%d", collectionID)
+}
+
+func makeScraperDeploymentName(collectionID int64) string {
+	return fmt.Sprintf("prom-collection-%d", collectionID)
+}
+
+func makeScraperLabel(collectionID int64) map[string]string {
+	return map[string]string{
+		"kind":       "scraper",
+		"collection": strconv.FormatInt(collectionID, 10),
+	}
 }

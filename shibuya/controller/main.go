@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"sync"
@@ -15,18 +16,14 @@ import (
 )
 
 type Controller struct {
-	LabelStore         sync.Map
-	StatusStore        sync.Map
-	ApiNewClients      chan *ApiMetricStream
-	ApiStreamClients   map[string]map[string]chan *ApiMetricStreamEvent
-	ApiMetricStreamBus chan *ApiMetricStreamEvent
-	ApiClosingClients  chan *ApiMetricStream
-	readingEngines     chan shibuyaEngine
-	connectedEngines   sync.Map
-	filePath           string
-	httpClient         *http.Client
-	schedulerKind      string
-	Scheduler          scheduler.EngineScheduler
+	readingEngineRecords   sync.Map
+	ApiNewClients          chan *ApiMetricStream
+	ApiClosingClients      chan *ApiMetricStream
+	filePath               string
+	httpClient             *http.Client
+	schedulerKind          string
+	Scheduler              scheduler.EngineScheduler
+	clientStreamingWorkers int
 }
 
 func NewController() *Controller {
@@ -35,15 +32,20 @@ func NewController() *Controller {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		ApiMetricStreamBus: make(chan *ApiMetricStreamEvent),
-		ApiClosingClients:  make(chan *ApiMetricStream),
-		ApiNewClients:      make(chan *ApiMetricStream),
-		ApiStreamClients:   make(map[string]map[string]chan *ApiMetricStreamEvent),
-		readingEngines:     make(chan shibuyaEngine),
+		ApiClosingClients:      make(chan *ApiMetricStream),
+		ApiNewClients:          make(chan *ApiMetricStream),
+		clientStreamingWorkers: 5,
 	}
 	c.schedulerKind = config.SC.ExecutorConfig.Cluster.Kind
 	c.Scheduler = scheduler.NewEngineScheduler(config.SC.ExecutorConfig.Cluster)
 	return c
+}
+
+type subscribeState struct {
+	cancelfunc     context.CancelFunc
+	ctx            context.Context
+	readingEngines []shibuyaEngine
+	readyToClose   chan struct{}
 }
 
 type ApiMetricStream struct {
@@ -59,17 +61,7 @@ type ApiMetricStreamEvent struct {
 }
 
 func (c *Controller) StartRunning() {
-	// First we do is to resume the running plans
-	// This method should not be moved as later goroutines rely on it.
-	c.resumeRunningPlans()
 	go c.streamToApi()
-	go c.readConnectedEngines()
-	go c.fetchEngineMetrics()
-	go c.cleanLocalStore()
-	// We can only move this func to an isolated controller process later
-	// because when we are terminating, we also need to close the opening connections
-	// Otherwise we might face connection leaks
-	go c.CheckRunningThenTerminate()
 	if !config.SC.DistributedMode {
 		log.Info("Controller is running in non-distributed mode!")
 		go c.IsolateBackgroundTasks()
@@ -80,37 +72,90 @@ func (c *Controller) StartRunning() {
 // In non-distributed mode, the func will be run as a goroutine.
 func (c *Controller) IsolateBackgroundTasks() {
 	go c.AutoPurgeDeployments()
+	go c.CheckRunningThenTerminate()
 	c.AutoPurgeProjectIngressController()
 }
 
+func (c *Controller) handleStreamForClient(item *ApiMetricStream) error {
+	log.Printf("New Incoming connection :%s", item.ClientID)
+	cid, err := strconv.ParseInt(item.CollectionID, 10, 64)
+	if err != nil {
+		return err
+	}
+	collection, err := model.GetCollection(cid)
+	if err != nil {
+		return err
+	}
+	readingEngines, err := c.SubscribeCollection(collection)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	ss := subscribeState{
+		cancelfunc:     cancel,
+		ctx:            ctx,
+		readingEngines: readingEngines,
+		readyToClose:   make(chan struct{}),
+	}
+	c.readingEngineRecords.Store(item.ClientID, ss)
+	go func(readingEngines []shibuyaEngine) {
+		var wg sync.WaitGroup
+		for _, engine := range readingEngines {
+			wg.Add(1)
+			go func(e shibuyaEngine) {
+				defer wg.Done()
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case metric := <-e.readMetrics():
+						if metric != nil {
+							item.StreamClient <- &ApiMetricStreamEvent{
+								CollectionID: metric.collectionID,
+								PlanID:       metric.planID,
+								Raw:          metric.raw,
+							}
+						}
+					}
+				}
+			}(engine)
+		}
+		wg.Wait()
+		ss.readyToClose <- struct{}{}
+	}(readingEngines)
+	return nil
+}
+
 func (c *Controller) streamToApi() {
+	workerQueue := make(chan *ApiMetricStream)
+	for i := 0; i < c.clientStreamingWorkers; i++ {
+		go func() {
+			for item := range workerQueue {
+				if err := c.handleStreamForClient(item); err != nil {
+					log.Error(err)
+				}
+			}
+		}()
+	}
 	for {
 		select {
 		case item := <-c.ApiNewClients:
-			collectionID := item.CollectionID
-			clientID := item.ClientID
-			if m, ok := c.ApiStreamClients[collectionID]; !ok {
-				m = make(map[string]chan *ApiMetricStreamEvent)
-				m[clientID] = item.StreamClient
-				c.ApiStreamClients[collectionID] = m
-			} else {
-				m[clientID] = item.StreamClient
-			}
-			log.Printf("A client %s connects to collection %s, start streaming", clientID, collectionID)
+			workerQueue <- item
 		case item := <-c.ApiClosingClients:
-			collectionID := item.CollectionID
 			clientID := item.ClientID
-			m := c.ApiStreamClients[collectionID]
-			close(item.StreamClient)
-			delete(m, clientID)
-			log.Printf("Client %s disconnect from the API for collection %s.", clientID, collectionID)
-		case event := <-c.ApiMetricStreamBus:
-			streamClients, ok := c.ApiStreamClients[event.CollectionID]
-			if !ok {
-				continue
-			}
-			for _, streamClient := range streamClients {
-				streamClient <- event
+			collectionID := item.CollectionID
+			if t, ok := c.readingEngineRecords.Load(clientID); ok {
+				ss := t.(subscribeState)
+				for _, e := range ss.readingEngines {
+					go func(e shibuyaEngine) {
+						e.closeStream()
+					}(e)
+				}
+				ss.cancelfunc()
+				<-ss.readyToClose
+				close(item.StreamClient)
+				c.readingEngineRecords.Delete(clientID)
+				log.Printf("Client %s disconnect from the API for collection %s.", clientID, collectionID)
 			}
 		}
 	}
@@ -121,64 +166,6 @@ func (c *Controller) streamToApi() {
 type RunningPlan struct {
 	ep         *model.ExecutionPlan
 	collection *model.Collection
-}
-
-func (c *Controller) resumeRunningPlans() {
-	runningPlans, err := model.GetRunningPlans()
-	if err != nil {
-		log.Print(err)
-		return
-	}
-	localCache := make(map[int64]*model.Collection)
-	for _, rp := range runningPlans {
-		var collection *model.Collection
-		var ok bool
-		collection, ok = localCache[rp.CollectionID]
-		if !ok {
-			collection, err = model.GetCollection(rp.CollectionID)
-			if err != nil {
-				continue
-			}
-			localCache[rp.CollectionID] = collection
-		}
-		ep, err := model.GetExecutionPlan(collection.ID, rp.PlanID)
-		if err != nil {
-			continue
-		}
-		pc := NewPlanController(ep, collection, c.Scheduler)
-		pc.subscribe(&c.connectedEngines, c.readingEngines)
-	}
-}
-
-func (c *Controller) readConnectedEngines() {
-	for engine := range c.readingEngines {
-		go func(engine shibuyaEngine) {
-			ch := engine.readMetrics()
-			for metric := range ch {
-				collectionID := metric.collectionID
-				planID := metric.planID
-				runID := metric.runID
-				engineID := metric.engineID
-				label := metric.label
-				status := metric.status
-				latency := metric.latency
-				threads := metric.threads
-				c.ApiMetricStreamBus <- &ApiMetricStreamEvent{
-					CollectionID: metric.collectionID,
-					PlanID:       metric.planID,
-					Raw:          metric.raw,
-				}
-				config.StatusCounter.WithLabelValues(metric.collectionID, metric.planID, runID, engineID, label, status).Inc()
-				config.CollectionLatencySummary.WithLabelValues(collectionID, runID).Observe(latency)
-				config.PlanLatencySummary.WithLabelValues(collectionID, planID, runID).Observe(latency)
-				config.LabelLatencySummary.WithLabelValues(collectionID, label, runID).Observe(latency)
-				config.ThreadsGauge.WithLabelValues(collectionID, planID, runID, engineID).Set(threads)
-
-				rid, _ := strconv.ParseInt(runID, 10, 64)
-				go c.storeLocally(rid, label, status)
-			}
-		}(engine)
-	}
 }
 
 func (c *Controller) DeployCollection(collection *model.Collection) error {
@@ -204,6 +191,10 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 		return c.Scheduler.ExposeProject(collection.ProjectID)
 	}, nil)
 	if err != nil {
+		return err
+	}
+	if err = c.Scheduler.CreateCollectionScraper(collection.ID); err != nil {
+		log.Error(err)
 		return err
 	}
 	// we will assume collection deployment will always be successful

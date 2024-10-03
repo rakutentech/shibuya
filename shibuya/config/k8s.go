@@ -8,7 +8,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/flowcontrol"
-	metricsc "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 func newRateLimiter() flowcontrol.RateLimiter {
@@ -52,16 +51,4 @@ func GetKubeClient() (*kubernetes.Clientset, error) {
 		return nil, fmt.Errorf("could not get Kubernetes client: %s", err)
 	}
 	return client, nil
-}
-
-func GetMetricsClient() (*metricsc.Clientset, error) {
-	config, err := configForContext()
-	if err != nil {
-		return nil, err
-	}
-	clientset, err := metricsc.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return clientset, nil
 }
