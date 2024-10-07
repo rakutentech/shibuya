@@ -24,10 +24,10 @@ func getConfig() clientcmd.ClientConfig {
 }
 
 // configForContext creates a Kubernetes REST client configuration for a given kubeconfig context.
-func configForContext() (*rest.Config, error) {
+func configForContext(inCluster bool) (*rest.Config, error) {
 	var config *rest.Config
 	var err error
-	if SC.ExecutorConfig.InCluster {
+	if inCluster {
 		log.Print("Using in cluster config")
 		config, err = rest.InClusterConfig()
 	} else {
@@ -42,8 +42,8 @@ func configForContext() (*rest.Config, error) {
 }
 
 // GetKubeClient creates a Kubernetes config and client for a given kubeconfig context.
-func GetKubeClient() (*kubernetes.Clientset, error) {
-	config, err := configForContext()
+func GetKubeClient(cfg *ExecutorConfig) (*kubernetes.Clientset, error) {
+	config, err := configForContext(cfg.InCluster)
 	if err != nil {
 		return nil, err
 	}

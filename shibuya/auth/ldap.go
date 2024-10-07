@@ -19,12 +19,21 @@ type AuthResult struct {
 	ML []string
 }
 
-func Auth(username, password string) (*AuthResult, error) {
+type LdapAuth struct {
+	config.LdapConfig
+}
+
+func NewLdapAuth(c config.LdapConfig) LdapAuth {
+	return LdapAuth{
+		LdapConfig: c,
+	}
+}
+
+func (la *LdapAuth) Auth(username, password string) (*AuthResult, error) {
 	r := new(AuthResult)
-	ac := config.SC.AuthConfig
-	ldapServer := ac.LdapServer
-	ldapPort := ac.LdapPort
-	baseDN := ac.BaseDN
+	ldapServer := la.LdapServer
+	ldapPort := la.LdapPort
+	baseDN := la.BaseDN
 	r.ML = []string{}
 
 	filter := "(&(objectClass=user)(sAMAccountName=%s))"
@@ -33,8 +42,8 @@ func Auth(username, password string) (*AuthResult, error) {
 		return r, err
 	}
 	defer l.Close()
-	systemUser := ac.SystemUser
-	systemPassword := ac.SystemPassword
+	systemUser := la.SystemUser
+	systemPassword := la.SystemPassword
 	err = l.Bind(systemUser, systemPassword)
 	if err != nil {
 		return r, err

@@ -8,15 +8,26 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rakutentech/shibuya/shibuya/api"
+	"github.com/rakutentech/shibuya/shibuya/auth"
+	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/ui"
 	log "github.com/sirupsen/logrus"
 	_ "go.uber.org/automaxprocs"
 )
 
 func main() {
-	api := api.NewAPIServer()
+	sc := config.LoadConfig()
+	config.SetupLogging(sc)
+	if err := auth.CreateSesstionStore(sc); err != nil {
+		log.Fatal(err)
+	}
+	if err := model.CreateMySQLClient(sc.DBConf); err != nil {
+		log.Fatal(err)
+	}
+	api := api.NewAPIServer(sc)
 	routes := api.InitRoutes()
-	ui := ui.NewUI()
+	ui := ui.NewUI(sc)
 	uiRoutes := ui.InitRoutes()
 	routes = append(routes, uiRoutes...)
 	r := httprouter.New()

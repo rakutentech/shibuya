@@ -31,14 +31,14 @@ type CloudRun struct {
 	kind            string
 }
 
-func NewCloudRun(cfg *config.ClusterConfig) *CloudRun {
+func NewCloudRun(cfg *config.ExecutorConfig) *CloudRun {
 	ctx := context.Background()
 	//opts := option.ClientOption{}
-	rs, err := run.NewService(ctx, option.WithEndpoint(cfg.APIEndpoint))
+	rs, err := run.NewService(ctx, option.WithEndpoint(cfg.Cluster.APIEndpoint))
 	if err != nil {
 		log.Fatal(err)
 	}
-	projectID := cfg.Project
+	projectID := cfg.Cluster.Project
 	nsProjectID := fmt.Sprintf("namespaces/%s", projectID)
 	queue := make(chan *cloudRunRequest, 1000)
 
@@ -46,7 +46,7 @@ func NewCloudRun(cfg *config.ClusterConfig) *CloudRun {
 		projectID:       projectID,
 		nsProjectID:     nsProjectID,
 		throttlingQueue: queue,
-		region:          cfg.Region}
+		region:          cfg.Cluster.Region}
 	cr.httpClient = &http.Client{
 		Timeout: 30 * time.Second,
 	}

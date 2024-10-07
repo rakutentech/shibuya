@@ -1,4 +1,5 @@
-/* Gorilla Sessions backend for MySQL.
+/*
+	Gorilla Sessions backend for MySQL.
 
 Copyright (c) 2013 Contributors. See the list of contributors in the CONTRIBUTORS file for details.
 
@@ -45,15 +46,16 @@ type sessionRow struct {
 
 var SessionStore *MySQLStore
 
-func init() {
-	if config.SC.DBConf != nil {
+func CreateSesstionStore(sc config.ShibuyaConfig) error {
+	if sc.DBConf != nil {
 		var err error
-		SessionStore, err = NewMySQLStore(config.SC.DBEndpoint, "user_session", "/", 31536000, []byte(config.SC.DBConf.Keypairs))
+		SessionStore, err = NewMySQLStore(sc.DBEndpoint, "user_session", "/", 31536000, []byte(sc.DBConf.Keypairs))
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 	gob.Register(time.Time{})
+	return nil
 }
 
 func NewMySQLStore(endpoint string, tableName string, path string, maxAge int, keyPairs ...[]byte) (*MySQLStore, error) {

@@ -7,16 +7,16 @@ import (
 	"github.com/rakutentech/shibuya/shibuya/model"
 )
 
-func hasProjectOwnership(project *model.Project, account *model.Account) bool {
+func (s *ShibuyaAPI) hasProjectOwnership(project *model.Project, account *model.Account) bool {
 	if _, ok := account.MLMap[project.Owner]; !ok {
-		if !account.IsAdmin() {
+		if !account.IsAdmin(s.sc.AuthConfig) {
 			return false
 		}
 	}
 	return true
 }
 
-func hasCollectionOwnership(r *http.Request, params httprouter.Params) (*model.Collection, error) {
+func (s *ShibuyaAPI) hasCollectionOwnership(r *http.Request, params httprouter.Params) (*model.Collection, error) {
 	collection, err := getCollection(params.ByName("collection_id"))
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func hasCollectionOwnership(r *http.Request, params httprouter.Params) (*model.C
 	if err != nil {
 		return nil, err
 	}
-	if r := hasProjectOwnership(project, account); !r {
+	if r := s.hasProjectOwnership(project, account); !r {
 		return nil, makeCollectionOwnershipError()
 	}
 	return collection, nil

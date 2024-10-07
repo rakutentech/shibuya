@@ -24,12 +24,15 @@ import (
 )
 
 type ShibuyaAPI struct {
-	ctr *controller.Controller
+	sc         config.ShibuyaConfig
+	objStorage object_storage.StorageInterface
+	ctr        *controller.Controller
 }
 
-func NewAPIServer() *ShibuyaAPI {
+func NewAPIServer(sc config.ShibuyaConfig) *ShibuyaAPI {
 	c := &ShibuyaAPI{
-		ctr: controller.NewController(),
+		ctr:        controller.NewController(sc),
+		objStorage: object_storage.CreateObjStorageClient(sc),
 	}
 	c.ctr.StartRunning()
 	return c
@@ -159,7 +162,8 @@ func (s *ShibuyaAPI) projectCreateHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	var sid string
-	if config.SC.EnableSid {
+	sc := s.sc
+	if sc.EnableSid {
 		sid = r.Form.Get("sid")
 		if sid == "" {
 			s.handleErrors(w, makeInvalidRequestError("SID cannot be empty"))
@@ -190,7 +194,7 @@ func (s *ShibuyaAPI) projectDeleteHandler(w http.ResponseWriter, r *http.Request
 		s.handleErrors(w, err)
 		return
 	}
-	if r := hasProjectOwnership(project, account); !r {
+	if r := s.hasProjectOwnership(project, account); !r {
 		s.handleErrors(w, makeProjectOwnershipError())
 		return
 	}
@@ -234,7 +238,7 @@ type AdminCollectionResponse struct {
 }
 
 func (s *ShibuyaAPI) collectionAdminGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collections, err := model.GetRunningCollections()
+	collections, err := model.GetRunningCollections(s.sc.Context)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -253,7 +257,7 @@ func (s *ShibuyaAPI) planCreateHandler(w http.ResponseWriter, r *http.Request, _
 		s.handleErrors(w, err)
 		return
 	}
-	if r := hasProjectOwnership(project, account); !r {
+	if r := s.hasProjectOwnership(project, account); !r {
 		s.handleErrors(w, makeProjectOwnershipError())
 		return
 	}
@@ -286,7 +290,7 @@ func (s *ShibuyaAPI) planDeleteHandler(w http.ResponseWriter, r *http.Request, p
 		s.handleErrors(w, err)
 		return
 	}
-	if r := hasProjectOwnership(project, account); !r {
+	if r := s.hasProjectOwnership(project, account); !r {
 		s.handleErrors(w, makeProjectOwnershipError())
 		return
 	}
@@ -333,7 +337,7 @@ func (s *ShibuyaAPI) collectionFilesGetHandler(w http.ResponseWriter, _ *http.Re
 }
 
 func (s *ShibuyaAPI) collectionFilesUploadHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -344,16 +348,16 @@ func (s *ShibuyaAPI) collectionFilesUploadHandler(w http.ResponseWriter, r *http
 		s.handleErrors(w, makeInvalidRequestError("Something wrong with file you uploaded"))
 		return
 	}
-	err = collection.StoreFile(file, handler.Filename)
-	if err != nil {
+	if err = collection.StoreFile(s.objStorage, handler.Filename, file); err != nil {
 		s.handleErrors(w, err)
 		return
 	}
+
 	w.Write([]byte("success"))
 }
 
 func (s *ShibuyaAPI) collectionFilesDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -364,11 +368,12 @@ func (s *ShibuyaAPI) collectionFilesDeleteHandler(w http.ResponseWriter, r *http
 		s.handleErrors(w, makeInvalidRequestError("Collection file name cannot be empty"))
 		return
 	}
-	err = collection.DeleteFile(filename)
+	err = collection.DeleteFile(s.objStorage, filename)
 	if err != nil {
 		s.handleErrors(w, makeInternalServerError("Deletion was unsuccessful"))
 		return
 	}
+
 	w.Write([]byte("Deleted successfully"))
 }
 
@@ -406,7 +411,7 @@ func (s *ShibuyaAPI) collectionCreateHandler(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, err)
 		return
 	}
-	if r := hasProjectOwnership(project, account); !r {
+	if r := s.hasProjectOwnership(project, account); !r {
 		s.handleErrors(w, makeProjectOwnershipError())
 		return
 	}
@@ -424,7 +429,7 @@ func (s *ShibuyaAPI) collectionCreateHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -442,11 +447,11 @@ func (s *ShibuyaAPI) collectionDeleteHandler(w http.ResponseWriter, r *http.Requ
 		s.handleErrors(w, makeInvalidRequestError("You cannot delete the collection during testing period"))
 		return
 	}
-	collection.Delete()
+	collection.Delete(s.objStorage)
 }
 
 func (s *ShibuyaAPI) collectionGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -485,7 +490,7 @@ func (s *ShibuyaAPI) collectionUpdateHandler(w http.ResponseWriter, _ *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -535,9 +540,10 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 		}
 		totalEnginesRequired += ep.Engines
 	}
-	if totalEnginesRequired > config.SC.ExecutorConfig.MaxEnginesInCollection {
+	sc := s.sc
+	if totalEnginesRequired > sc.ExecutorConfig.MaxEnginesInCollection {
 		errMsg := fmt.Sprintf("You are reaching the resource limit of the cluster. Requesting engines: %d, limit: %d.",
-			totalEnginesRequired, config.SC.ExecutorConfig.MaxEnginesInCollection)
+			totalEnginesRequired, sc.ExecutorConfig.MaxEnginesInCollection)
 		s.handleErrors(w, makeInvalidRequestError(errMsg))
 		return
 	}
@@ -575,7 +581,7 @@ func (s *ShibuyaAPI) collectionUploadHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -589,7 +595,7 @@ func (s *ShibuyaAPI) collectionEnginesDetailHandler(w http.ResponseWriter, r *ht
 }
 
 func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -606,7 +612,7 @@ func (s *ShibuyaAPI) collectionDeploymentHandler(w http.ResponseWriter, r *http.
 }
 
 func (s *ShibuyaAPI) collectionTriggerHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -618,7 +624,7 @@ func (s *ShibuyaAPI) collectionTriggerHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (s *ShibuyaAPI) collectionTermHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -630,7 +636,7 @@ func (s *ShibuyaAPI) collectionTermHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *ShibuyaAPI) collectionStatusHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -643,7 +649,7 @@ func (s *ShibuyaAPI) collectionStatusHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *ShibuyaAPI) collectionPurgeHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return
@@ -676,7 +682,7 @@ func (s *ShibuyaAPI) planLogHandler(w http.ResponseWriter, r *http.Request, para
 }
 
 func (s *ShibuyaAPI) streamCollectionMetrics(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	collection, err := hasCollectionOwnership(r, params)
+	collection, err := s.hasCollectionOwnership(r, params)
 	if err != nil {
 		s.handleErrors(w, err)
 		return

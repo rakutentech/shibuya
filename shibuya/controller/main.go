@@ -27,9 +27,10 @@ type Controller struct {
 	httpClient         *http.Client
 	schedulerKind      string
 	Scheduler          scheduler.EngineScheduler
+	sc                 config.ShibuyaConfig
 }
 
-func NewController() *Controller {
+func NewController(sc config.ShibuyaConfig) *Controller {
 	c := &Controller{
 		filePath: "/test-data",
 		httpClient: &http.Client{
@@ -41,8 +42,8 @@ func NewController() *Controller {
 		ApiStreamClients:   make(map[string]map[string]chan *ApiMetricStreamEvent),
 		readingEngines:     make(chan shibuyaEngine),
 	}
-	c.schedulerKind = config.SC.ExecutorConfig.Cluster.Kind
-	c.Scheduler = scheduler.NewEngineScheduler(config.SC.ExecutorConfig.Cluster)
+	c.schedulerKind = sc.ExecutorConfig.Cluster.Kind
+	c.Scheduler = scheduler.NewEngineScheduler(sc.ExecutorConfig.Cluster)
 	return c
 }
 
@@ -197,7 +198,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 	if project, err := model.GetProject(collection.ProjectID); err == nil {
 		sid = project.SID
 	}
-	if err := collection.NewLaunchEntry(sid, config.SC.Context, int64(enginesCount), nodesCount, int64(vu)); err != nil {
+	if err := collection.NewLaunchEntry(sid, c.sc.Context, int64(enginesCount), nodesCount, int64(vu)); err != nil {
 		return err
 	}
 	err = utils.Retry(func() error {

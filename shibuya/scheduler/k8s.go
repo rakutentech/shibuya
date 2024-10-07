@@ -35,14 +35,14 @@ type K8sClientManager struct {
 	serviceAccount string
 }
 
-func NewK8sClientManager(cfg *config.ClusterConfig) *K8sClientManager {
-	c, err := config.GetKubeClient()
+func NewK8sClientManager(cfg *config.ExecutorConfig) *K8sClientManager {
+	c, err := config.GetKubeClient(cfg)
 	if err != nil {
 		log.Warning(err)
 	}
 	metricsc, err := config.GetMetricsClient()
 	return &K8sClientManager{
-		config.SC.ExecutorConfig, c, metricsc, "shibuya-ingress-serviceaccount-1",
+		cfg, c, metricsc, "shibuya-ingress-serviceaccount-1",
 	}
 
 }

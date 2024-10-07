@@ -11,17 +11,19 @@ import (
 )
 
 type nexusStorage struct {
-	nexusURL string
-	username string
-	password string
+	nexusURL   string
+	username   string
+	password   string
+	httpClient *http.Client
 }
 
-func NewNexusStorage() nexusStorage {
+func NewNexusStorage(c config.ShibuyaConfig) nexusStorage {
 	ns := new(nexusStorage)
-	o := config.SC.ObjectStorage
+	o := c.ObjectStorage
 	ns.nexusURL = o.Url
 	ns.username = o.User
 	ns.password = o.Password
+	ns.httpClient = c.HTTPClient
 	return *ns
 }
 
@@ -39,7 +41,7 @@ func (n nexusStorage) Upload(filename string, content io.ReadCloser) error {
 	}
 	req.Header.Set("Content-Type", "text/plain")
 	req.SetBasicAuth(n.username, n.password)
-	client := config.SC.HTTPClient
+	client := n.httpClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -58,7 +60,7 @@ func (n nexusStorage) Delete(filename string) error {
 		return err
 	}
 	req.SetBasicAuth(n.username, n.password)
-	client := config.SC.HTTPClient
+	client := n.httpClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -77,7 +79,7 @@ func (n nexusStorage) Download(filename string) ([]byte, error) {
 		return nil, err
 	}
 	req.SetBasicAuth(n.username, n.password)
-	client := config.SC.HTTPClient
+	client := n.httpClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

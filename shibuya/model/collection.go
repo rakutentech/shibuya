@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
-	"github.com/rakutentech/shibuya/shibuya/config"
+	"io"
+
 	"github.com/rakutentech/shibuya/shibuya/object_storage"
 
 	mysql "github.com/go-sql-driver/mysql"
@@ -45,8 +45,8 @@ type CollectionLaunchHistory struct {
 }
 
 func CreateCollection(name string, projectID int64) (int64, error) {
-	DBC := config.SC.DBC
-	q, err := DBC.Prepare("insert collection set name=?,project_id=?")
+	db := getDB()
+	q, err := db.Prepare("insert collection set name=?,project_id=?")
 	if err != nil {
 		return 0, err
 	}
@@ -61,9 +61,9 @@ func CreateCollection(name string, projectID int64) (int64, error) {
 }
 
 func GetCollection(ID int64) (*Collection, error) {
-	DBC := config.SC.DBC
+	db := getDB()
 
-	q, err := DBC.Prepare("select id, name, project_id, created_time, csv_split from collection where id=?")
+	q, err := db.Prepare("select id, name, project_id, created_time, csv_split from collection where id=?")
 	if err != nil {
 		return nil, err
 	}
@@ -81,15 +81,15 @@ func GetCollection(ID int64) (*Collection, error) {
 	return collection, nil
 }
 
-func (c *Collection) Delete() error {
-	DBC := config.SC.DBC
+func (c *Collection) Delete(objectStorage object_storage.StorageInterface) error {
+	DBC := getDB()
 	if err := c.DeleteExecutionPlans(); err != nil {
 		return err
 	}
 	if err := c.DeleteRunHistory(); err != nil {
 		return err
 	}
-	if err := c.DeleteAllFiles(); err != nil {
+	if err := c.DeleteAllFiles(objectStorage); err != nil {
 		return err
 	}
 	q, err := DBC.Prepare("delete from collection where id=?")
@@ -110,7 +110,7 @@ func (c *Collection) AddExecutionPlan(ep *ExecutionPlan) error {
 	if ep.CSVSplit {
 		CSVSplitDB = 1
 	}
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare(
 		"insert into collection_plan (plan_id, collection_id, rampup, concurrency, duration, engines, csv_split) values (?,?,?,?,?,?,?) on duplicate key update rampup=?, concurrency=?, duration=?, engines=?, csv_split=?")
 	if err != nil {
@@ -126,7 +126,7 @@ func (c *Collection) AddExecutionPlan(ep *ExecutionPlan) error {
 }
 
 func (c *Collection) GetExecutionPlans() ([]*ExecutionPlan, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select plan_id, rampup, concurrency, duration, engines, csv_split from collection_plan where collection_id=?")
 	if err != nil {
 		return nil, err
@@ -153,7 +153,7 @@ func (c *Collection) GetExecutionPlans() ([]*ExecutionPlan, error) {
 }
 
 func GetExecutionPlan(collectionID, planID int64) (*ExecutionPlan, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select plan_id, rampup, concurrency, duration, engines, csv_split from collection_plan where collection_id=? and plan_id=?")
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func GetExecutionPlan(collectionID, planID int64) (*ExecutionPlan, error) {
 }
 
 func (c *Collection) DeleteExecutionPlan(collectionID, planID int64) error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete from collection_plan where collection_id=? and plan_id=?")
 	if err != nil {
 		return err
@@ -186,7 +186,7 @@ func (c *Collection) DeleteExecutionPlan(collectionID, planID int64) error {
 }
 
 func (c *Collection) DeleteExecutionPlans() error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete from collection_plan where collection_id=?")
 	if err != nil {
 		return err
@@ -201,7 +201,7 @@ func (c *Collection) DeleteExecutionPlans() error {
 }
 
 func (c *Collection) DeleteRunHistory() error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete from collection_run_history where collection_id=?")
 	if err != nil {
 		return err
@@ -216,7 +216,7 @@ func (c *Collection) DeleteRunHistory() error {
 }
 
 func (c *Collection) updateCollectionCSVSplit(split bool) error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("update collection set csv_split=? where id=?")
 	if err != nil {
 		return err
@@ -270,9 +270,8 @@ func (c *Collection) MakeFileName(filename string) string {
 	return fmt.Sprintf("collection/%d/%s", c.ID, filename)
 }
 
-func (c *Collection) StoreFile(content io.ReadCloser, filename string) error {
-	filenameForStorage := c.MakeFileName(filename)
-	db := config.SC.DBC
+func (c *Collection) StoreFile(objStorage object_storage.StorageInterface, filename string, content io.ReadCloser) error {
+	db := getDB()
 	q, err := db.Prepare("insert into collection_data (collection_id, filename) values (?, ?)")
 	if err != nil {
 		return err
@@ -285,11 +284,11 @@ func (c *Collection) StoreFile(content io.ReadCloser, filename string) error {
 		}
 		return err
 	}
-	return object_storage.Client.Storage.Upload(filenameForStorage, content)
+	return objStorage.Upload(c.MakeFileName(filename), content)
 }
 
-func (c *Collection) DeleteFile(filename string) error {
-	db := config.SC.DBC
+func (c *Collection) DeleteFile(objStorage object_storage.StorageInterface, filename string) error {
+	db := getDB()
 	q, err := db.Prepare("delete from collection_data where filename=? and collection_id=?")
 	if err != nil {
 		return err
@@ -300,15 +299,11 @@ func (c *Collection) DeleteFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	err = object_storage.Client.Storage.Delete(c.MakeFileName(filename))
-	if err != nil {
-		return err
-	}
-	return nil
+	return objStorage.Delete(c.MakeFileName(filename))
 }
 
-func (c *Collection) DeleteAllFiles() error {
-	db := config.SC.DBC
+func (c *Collection) DeleteAllFiles(objectStorage object_storage.StorageInterface) error {
+	db := getDB()
 	q, err := db.Prepare("delete from collection_data where collection_id=?")
 	if err != nil {
 		return err
@@ -319,9 +314,8 @@ func (c *Collection) DeleteAllFiles() error {
 	if err != nil {
 		return err
 	}
-
 	for _, f := range c.Data {
-		err = c.DeleteFile(f.Filename)
+		err = c.DeleteFile(objectStorage, f.Filename)
 		if err != nil {
 			log.Error(err)
 		}
@@ -330,7 +324,7 @@ func (c *Collection) DeleteAllFiles() error {
 }
 
 func (c *Collection) getCollectionFiles() ([]*ShibuyaFile, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select filename from collection_data where collection_id=?")
 	if err != nil {
 		return nil, err
@@ -346,7 +340,7 @@ func (c *Collection) getCollectionFiles() ([]*ShibuyaFile, error) {
 		f := new(ShibuyaFile)
 		rows.Scan(&f.Filename)
 		f.Filepath = c.MakeFileName(f.Filename)
-		f.Filelink = object_storage.Client.Storage.GetUrl(f.Filepath)
+		f.Filelink = makeFilesUrl(f.Filepath)
 		r = append(r, f)
 	}
 	err = rows.Err()
@@ -357,7 +351,7 @@ func (c *Collection) getCollectionFiles() ([]*ShibuyaFile, error) {
 }
 
 func (c *Collection) NewRun(runID int64) error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("insert into collection_run_history (collection_id, run_id) values (?, ?)")
 	if err != nil {
 		return err
@@ -372,7 +366,7 @@ func (c *Collection) NewRun(runID int64) error {
 }
 
 func (c *Collection) RunFinish(runID int64) error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("update collection_run_history set end_time=NOW() where collection_id=? and run_id=?")
 	if err != nil {
 		return err
@@ -394,7 +388,7 @@ type RunHistory struct {
 }
 
 func GetRun(runID int64) (*RunHistory, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select run_id, collection_id, started_time, end_time from collection_run_history where run_id=?")
 	if err != nil {
 		return nil, err
@@ -414,7 +408,7 @@ func GetRun(runID int64) (*RunHistory, error) {
 }
 
 func (c *Collection) GetRuns() ([]*RunHistory, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select run_id, collection_id, started_time, end_time from collection_run_history where collection_id=? order by started_time desc")
 	if err != nil {
 		return nil, err
@@ -436,7 +430,7 @@ func (c *Collection) GetRuns() ([]*RunHistory, error) {
 }
 
 func (c *Collection) StartRun() (int64, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("insert into collection_run (collection_id) values(?)")
 	if err != nil {
 		return int64(0), err
@@ -454,7 +448,7 @@ func (c *Collection) StartRun() (int64, error) {
 }
 
 func (c *Collection) StopRun() error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete from collection_run where collection_id=?")
 	if err != nil {
 		return err
@@ -468,7 +462,7 @@ func (c *Collection) StopRun() error {
 }
 
 func (c *Collection) GetCurrentRun() (int64, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select id from collection_run where collection_id=?")
 	if err != nil {
 		return int64(0), err
@@ -488,7 +482,7 @@ func (c *Collection) GetCurrentRun() (int64, error) {
 }
 
 func (c *Collection) GetLastRun() (*RunHistory, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select run_id, started_time, end_time from collection_run_history where collection_id=? order by started_time desc limit 1")
 	if err != nil {
 		return nil, nil
@@ -510,7 +504,7 @@ func (c *Collection) GetLastRun() (*RunHistory, error) {
 }
 
 func (c *Collection) HasRunningPlan() (bool, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select count(1) from running_plan where collection_id=?")
 	if err != nil {
 		return false, err
@@ -530,7 +524,7 @@ func (c *Collection) HasRunningPlan() (bool, error) {
 }
 
 func (c *Collection) NewLaunchEntry(owner, cxt string, enginesCount, machinesCount, vu int64) error {
-	db := config.SC.DBC
+	db := getDB()
 	ct := context.TODO()
 	tx, err := db.BeginTx(ct, nil)
 	if err != nil {
@@ -560,7 +554,7 @@ func (c *Collection) NewLaunchEntry(owner, cxt string, enginesCount, machinesCou
 }
 
 func (c *Collection) MarkUsageFinished(cxt string, vu int64) error {
-	db := config.SC.DBC
+	db := getDB()
 	ct := context.TODO()
 
 	tx, err := db.BeginTx(ct, nil)
@@ -592,7 +586,7 @@ func (c *Collection) MarkUsageFinished(cxt string, vu int64) error {
 
 // Get the current launching collection by context. The context is different per controller
 func GetLaunchingCollectionByContext(cxt string) ([]int64, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select collection_id from collection_launch_history2 where context=? and end_time is null")
 	var collectionIDs []int64
 	if err != nil {

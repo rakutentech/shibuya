@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/controller"
 	log "github.com/sirupsen/logrus"
 )
@@ -9,6 +10,7 @@ import (
 // and make necessary queries to the scheduler.
 func main() {
 	log.Info("Controller is running in distributed mode")
-	controller := controller.NewController()
+	sc := config.LoadConfig()
+	controller := controller.NewController(sc)
 	controller.IsolateBackgroundTasks()
 }

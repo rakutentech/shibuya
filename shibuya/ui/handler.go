@@ -14,13 +14,18 @@ import (
 )
 
 type UI struct {
-	tmpl   *template.Template
-	Routes []*api.Route
+	sc         config.ShibuyaConfig
+	tmpl       *template.Template
+	Routes     []*api.Route
+	authMethod auth.LdapAuth
 }
 
-func NewUI() *UI {
+func NewUI(sc config.ShibuyaConfig) *UI {
+	authMethod := auth.NewLdapAuth(*sc.AuthConfig.LdapConfig)
 	u := &UI{
-		tmpl: template.Must(template.ParseGlob("/templates/*.html")),
+		sc:         sc,
+		tmpl:       template.Must(template.ParseGlob("/templates/*.html")),
+		authMethod: authMethod,
 	}
 	return u
 }
@@ -39,21 +44,21 @@ type HomeResp struct {
 }
 
 func (u *UI) homeHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	account := model.GetAccountBySession(r)
+	account := model.GetAccountBySession(r, u.sc.AuthConfig)
 	if account == nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	IsAdmin := account.IsAdmin()
-	enableSid := config.SC.EnableSid
-	resultDashboardURL := config.SC.DashboardConfig.Url + config.SC.DashboardConfig.RunDashboard
-	engineHealthDashboardURL := config.SC.DashboardConfig.Url + config.SC.DashboardConfig.EnginesDashboard
-	if config.SC.DashboardConfig.EnginesDashboard == "" {
+	IsAdmin := account.IsAdmin(u.sc.AuthConfig)
+	sc := u.sc
+	enableSid := sc.EnableSid
+	resultDashboardURL := sc.DashboardConfig.Url + sc.DashboardConfig.RunDashboard
+	engineHealthDashboardURL := sc.DashboardConfig.Url + sc.DashboardConfig.EnginesDashboard
+	if sc.DashboardConfig.EnginesDashboard == "" {
 		engineHealthDashboardURL = ""
 	}
 	template := u.tmpl.Lookup("app.html")
-	sc := config.SC
-	gcDuration := config.SC.ExecutorConfig.Cluster.GCDuration
+	gcDuration := sc.ExecutorConfig.Cluster.GCDuration
 	template.Execute(w, &HomeResp{account.Name, sc.BackgroundColour, sc.Context,
 		IsAdmin, resultDashboardURL, enableSid,
 		engineHealthDashboardURL, sc.ProjectHome, sc.UploadFileHelp, gcDuration})
@@ -62,13 +67,13 @@ func (u *UI) homeHandler(w http.ResponseWriter, r *http.Request, params httprout
 func (u *UI) loginHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	r.ParseForm()
 	ss := auth.SessionStore
-	session, err := ss.Get(r, config.SC.AuthConfig.SessionKey)
+	session, err := ss.Get(r, u.sc.AuthConfig.SessionKey)
 	if err != nil {
 		log.Print(err)
 	}
 	username := r.Form.Get("username")
 	password := r.Form.Get("password")
-	authResult, err := auth.Auth(username, password)
+	authResult, err := u.authMethod.Auth(username, password)
 	if err != nil {
 		loginUrl := fmt.Sprintf("/login?error_msg=%v", err)
 		http.Redirect(w, r, loginUrl, http.StatusSeeOther)
@@ -83,7 +88,7 @@ func (u *UI) loginHandler(w http.ResponseWriter, r *http.Request, params httprou
 }
 
 func (u *UI) logoutHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	session, err := auth.SessionStore.Get(r, config.SC.AuthConfig.SessionKey)
+	session, err := auth.SessionStore.Get(r, u.sc.AuthConfig.SessionKey)
 	if err != nil {
 		log.Print(err)
 		return

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/guregu/null"
-	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 type Project struct {
@@ -22,7 +21,7 @@ type Project struct {
 }
 
 func CreateProject(name, owner, sid string) (int64, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("insert project set name=?,owner=?,sid=?")
 	if err != nil {
 		return 0, err
@@ -47,7 +46,7 @@ func CreateProject(name, owner, sid string) (int64, error) {
 }
 
 func GetProjectsByOwners(owners []string) ([]*Project, error) {
-	db := config.SC.DBC
+	db := getDB()
 	r := []*Project{}
 	qs := []string{}
 	for _, o := range owners {
@@ -80,7 +79,7 @@ func GetProjectsByOwners(owners []string) ([]*Project, error) {
 }
 
 func GetProject(id int64) (*Project, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select id, name, owner, sid, created_time from project where id=?")
 	if err != nil {
 		return nil, err
@@ -98,7 +97,7 @@ func GetProject(id int64) (*Project, error) {
 }
 
 func (p *Project) Delete() error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete from project where id=?")
 	if err != nil {
 		return err
@@ -113,7 +112,7 @@ func (p *Project) Delete() error {
 }
 
 func (p *Project) GetCollections() ([]*Collection, error) {
-	db := config.SC.DBC
+	db := getDB()
 	r := []*Collection{}
 	q, err := db.Prepare("select id, name from collection where project_id=?")
 	if err != nil {
@@ -138,7 +137,7 @@ func (p *Project) GetCollections() ([]*Collection, error) {
 }
 
 func (p *Project) GetPlans() ([]*Plan, error) {
-	db := config.SC.DBC
+	db := getDB()
 	r := []*Plan{}
 	q, err := db.Prepare("select id, name, project_id, created_time from plan where project_id=?")
 	if err != nil {

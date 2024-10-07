@@ -30,13 +30,13 @@ type EngineScheduler interface {
 
 var FeatureUnavailable = errors.New("Feature unavailable")
 
-func NewEngineScheduler(cfg *config.ClusterConfig) EngineScheduler {
-	switch cfg.Kind {
+func NewEngineScheduler(cfg *config.ExecutorConfig) EngineScheduler {
+	switch cfg.Cluster.Kind {
 	case "k8s":
 		return NewK8sClientManager(cfg)
 	case "cloudrun":
 		return NewCloudRun(cfg)
 	}
-	log.Fatalf("Shibuya does not support %s as scheduler", cfg.Kind)
+	log.Fatalf("Shibuya does not support %s as scheduler", cfg.Cluster.Kind)
 	return nil
 }

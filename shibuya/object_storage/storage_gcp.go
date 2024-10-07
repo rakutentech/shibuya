@@ -2,19 +2,19 @@ package object_storage
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 	"time"
-	"golang.org/x/oauth2/google"
+
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	htransport "google.golang.org/api/transport/http"
 
 	"cloud.google.com/go/storage"
 	"github.com/rakutentech/shibuya/shibuya/config"
-	"google.golang.org/api/option"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/option"
 )
 
 type gcpStorage struct {
@@ -23,22 +23,22 @@ type gcpStorage struct {
 	bucket string
 }
 
-func NewGcpStorage() *gcpStorage {
+func NewGcpStorage(c config.ShibuyaConfig) *gcpStorage {
 	ctx := context.Background()
-	if config.SC.ObjectStorage.RequireProxy {
+	if c.ObjectStorage.RequireProxy {
 		// GCP's storage client needs OAuth2 token
 		// The golang/oauth2 lib relies on the httpClient passed in it's context to make http calls
 		log.Info("Setting up GCP OAuth client with proxy")
-		ctx = context.WithValue(context.Background(), oauth2.HTTPClient, config.SC.HTTPProxyClient)
+		ctx = context.WithValue(context.Background(), oauth2.HTTPClient, c.HTTPProxyClient)
 	}
 	return &gcpStorage{
-		client: newStorageClient(ctx),
+		client: newStorageClient(ctx, c),
 		ctx:    ctx,
-		bucket: config.SC.ObjectStorage.Bucket,
+		bucket: c.ObjectStorage.Bucket,
 	}
 }
 
-func newStorageClient(ctx context.Context) *storage.Client {
+func newStorageClient(ctx context.Context, c config.ShibuyaConfig) *storage.Client {
 	// in order to use proxy we need to supply our own http.Client
 	// But a new http.Client from net/http will not authenticate with gcp
 	// And for gcp's http.Client it also needs to know scope before setting up auth
@@ -51,9 +51,9 @@ func newStorageClient(ctx context.Context) *storage.Client {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if config.SC.ObjectStorage.RequireProxy {
+	if c.ObjectStorage.RequireProxy {
 		log.Info("Setting up GCP storage client with proxy")
-		baseTransportWithProxy, err := htransport.NewTransport(ctx, config.SC.HTTPProxyClient.Transport,
+		baseTransportWithProxy, err := htransport.NewTransport(ctx, c.HTTPProxyClient.Transport,
 			option.WithCredentials(creds))
 		if err != nil {
 			log.Fatal(err)
@@ -91,10 +91,6 @@ func (gs *gcpStorage) Delete(filename string) error {
 		return err
 	}
 	return nil
-}
-
-func (gs *gcpStorage) GetUrl(filename string) string {
-	return fmt.Sprintf("/api/files/%s", filename)
 }
 
 func (gs *gcpStorage) Download(filename string) ([]byte, error) {

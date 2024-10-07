@@ -13,17 +13,19 @@ import (
 )
 
 type localStorage struct {
-	url string
+	url        string
+	httpClient *http.Client
 }
 
-func NewLocalStorage() localStorage {
+func NewLocalStorage(c config.ShibuyaConfig) localStorage {
 	ls := new(localStorage)
-	o := config.SC.ObjectStorage
+	o := c.ObjectStorage
 	ls.url = o.Url
+	ls.httpClient = c.HTTPClient
 	return *ls
 }
 
-func (l localStorage) GetUrl(filename string) string {
+func (l localStorage) getUrl(filename string) string {
 	return fmt.Sprintf("%s/%s", l.url, filename)
 }
 
@@ -42,13 +44,13 @@ func (l localStorage) Upload(filename string, content io.ReadCloser) error {
 	}
 	w.Close()
 
-	url := l.GetUrl(filename)
+	url := l.getUrl(filename)
 	req, err := http.NewRequest("PUT", url, &b)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
-	client := config.SC.HTTPClient
+	client := l.httpClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -60,12 +62,12 @@ func (l localStorage) Upload(filename string, content io.ReadCloser) error {
 }
 
 func (l localStorage) Delete(filename string) error {
-	url := l.GetUrl(filename)
+	url := l.getUrl(filename)
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
-	client := config.SC.HTTPClient
+	client := l.httpClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -78,12 +80,12 @@ func (l localStorage) Delete(filename string) error {
 }
 
 func (l localStorage) Download(filename string) ([]byte, error) {
-	url := l.GetUrl(filename)
+	url := l.getUrl(filename)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	client := config.SC.HTTPClient
+	client := l.httpClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

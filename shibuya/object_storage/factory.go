@@ -19,26 +19,26 @@ type PlatformConfig struct {
 	Storage StorageInterface
 }
 
-func getStorageOfType(storageProvider string) (StorageInterface, error) {
+func getStorageOfType(storageProvider string, c config.ShibuyaConfig) (StorageInterface, error) {
 	switch storageProvider {
 	case nexusStorageProvider:
-		return NewNexusStorage(), nil
+		return NewNexusStorage(c), nil
 	case gcpStorageProvider:
-		return NewGcpStorage(), nil
+		return NewGcpStorage(c), nil
 	case localStorageProvider:
-		return NewLocalStorage(), nil
+		return NewLocalStorage(c), nil
 	default:
 		return nil, fmt.Errorf("Unknown storage type %s, valid storage types are %v", storageProvider, allStorageProvidder)
 	}
 }
 
-func factoryConfig() PlatformConfig {
-	storageProvider := config.SC.ObjectStorage.Provider
+func factoryConfig(c config.ShibuyaConfig) PlatformConfig {
+	storageProvider := c.ObjectStorage.Provider
 	if storageProvider == "" {
 		//default to local
 		storageProvider = localStorageProvider
 	}
-	s, err := getStorageOfType(storageProvider)
+	s, err := getStorageOfType(storageProvider, c)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -53,6 +53,7 @@ func IsProviderGCP() bool {
 
 var Client PlatformConfig
 
-func init() {
-	Client = factoryConfig()
+func CreateObjStorageClient(c config.ShibuyaConfig) StorageInterface {
+	cfg := factoryConfig(c)
+	return cfg.Storage
 }

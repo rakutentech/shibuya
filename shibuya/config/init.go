@@ -173,13 +173,13 @@ func (sc *ShibuyaConfig) makeHTTPClients() {
 	sc.HTTPProxyClient = &http.Client{Transport: rt}
 }
 
-func applyJsonLogging() {
+func applyJsonLogging(sc ShibuyaConfig) {
 	log.SetFormatter(&log.JSONFormatter{})
-	err := os.MkdirAll(SC.LogFormat.JsonPath, os.ModePerm)
+	err := os.MkdirAll(sc.LogFormat.JsonPath, os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
 	}
-	file, err := os.OpenFile(path.Join(SC.LogFormat.JsonPath, "shibuya.json"),
+	file, err := os.OpenFile(path.Join(sc.LogFormat.JsonPath, "shibuya.json"),
 		os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatalf("Failed to log to file. %v", err)
@@ -187,17 +187,17 @@ func applyJsonLogging() {
 	log.SetOutput(file)
 }
 
-func setupLogging() {
+func SetupLogging(sc ShibuyaConfig) {
 	log.SetOutput(os.Stdout)
 	log.SetReportCaller(true)
-	if SC.LogFormat != nil {
-		if SC.LogFormat.Json {
-			applyJsonLogging()
+	if sc.LogFormat != nil {
+		if sc.LogFormat.Json {
+			applyJsonLogging(sc)
 		}
 	}
 }
 
-func loadConfig() *ShibuyaConfig {
+func LoadConfig() ShibuyaConfig {
 	sc := new(ShibuyaConfig)
 	sc.IngressConfig = &defaultIngressConfig
 	f, err := os.Open(ConfigFilePath)
@@ -237,17 +237,5 @@ func loadConfig() *ShibuyaConfig {
 	if sc.IngressConfig.GCInterval == "" {
 		sc.IngressConfig.GCInterval = "30s"
 	}
-	return sc
-}
-
-var SC *ShibuyaConfig
-
-func init() {
-	sc := loadConfig()
-	SC = sc
-	setupLogging()
-	if sc.DBConf != nil {
-		sc.DBC = createMySQLClient(sc.DBConf)
-		sc.DBEndpoint = sc.DBConf.Endpoint
-	}
+	return *sc
 }

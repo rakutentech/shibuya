@@ -8,7 +8,6 @@ import (
 	"time"
 
 	mysql "github.com/go-sql-driver/mysql"
-	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/object_storage"
 	log "github.com/sirupsen/logrus"
 )
@@ -23,7 +22,7 @@ type Plan struct {
 }
 
 func CreatePlan(name string, projectID int64) (int64, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("insert plan set name=?,project_id=?")
 	if err != nil {
 		return 0, err
@@ -39,7 +38,7 @@ func CreatePlan(name string, projectID int64) (int64, error) {
 }
 
 func GetPlan(ID int64) (*Plan, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select id, name, project_id, created_time from plan where id=?")
 	if err != nil {
 		return nil, err
@@ -58,7 +57,7 @@ func GetPlan(ID int64) (*Plan, error) {
 }
 
 func (p *Plan) GetPlanFiles() (*ShibuyaFile, []*ShibuyaFile, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select filename from plan_data where plan_id=?")
 	if err != nil {
 		return nil, nil, err
@@ -74,7 +73,7 @@ func (p *Plan) GetPlanFiles() (*ShibuyaFile, []*ShibuyaFile, error) {
 		f := new(ShibuyaFile)
 		rows.Scan(&f.Filename)
 		f.Filepath = p.MakeFileName(f.Filename)
-		f.Filelink = object_storage.Client.Storage.GetUrl(f.Filepath)
+		f.Filelink = makeFilesUrl(f.Filepath)
 		r = append(r, f)
 	}
 	err = rows.Err()
@@ -92,7 +91,7 @@ func (p *Plan) GetPlanFiles() (*ShibuyaFile, []*ShibuyaFile, error) {
 		return nil, r, err
 	}
 	t.Filepath = p.MakeFileName(t.Filename)
-	t.Filelink = object_storage.Client.Storage.GetUrl(t.Filepath)
+	t.Filelink = makeFilesUrl(t.Filepath)
 	return t, r, nil
 }
 
@@ -100,7 +99,7 @@ func (p *Plan) Delete() error {
 	if err := p.DeleteAllFiles(); err != nil {
 		return err
 	}
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete from plan where id=?")
 	if err != nil {
 		return err
@@ -123,7 +122,7 @@ func (p *Plan) StoreFile(content io.ReadCloser, filename string) error {
 	if strings.HasSuffix(filename, ".jmx") {
 		table = "plan_test_file"
 	}
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare(fmt.Sprintf("insert into %s (plan_id, filename) values (?, ?)", table))
 	if err != nil {
 		return err
@@ -144,7 +143,7 @@ func (p *Plan) DeleteFile(filename string) error {
 	if strings.HasSuffix(filename, ".jmx") {
 		table = "plan_test_file"
 	}
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare(fmt.Sprintf("delete from %s where filename=? and plan_id=?", table))
 	if err != nil {
 		return err
@@ -163,7 +162,7 @@ func (p *Plan) DeleteFile(filename string) error {
 }
 
 func (p *Plan) DeleteAllFiles() error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete t, d from plan_test_file t, plan_data d where t.plan_id=? and t.plan_id = d.plan_id")
 	if err != nil {
 		return err
@@ -185,7 +184,7 @@ func (p *Plan) DeleteAllFiles() error {
 }
 
 func (p *Plan) IsBeingUsed() (bool, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select 1 from collection_plan where plan_id=?")
 	if err != nil {
 		return false, err
@@ -208,14 +207,14 @@ type RunningPlan struct {
 	StartedTime  time.Time `json:"started_time"`
 }
 
-func GetRunningCollections() ([]*RunningPlan, error) {
-	db := config.SC.DBC
+func GetRunningCollections(context string) ([]*RunningPlan, error) {
+	db := getDB()
 	q, err := db.Prepare("select collection_id, started_time from running_plan where context=? group by collection_id")
 	if err != nil {
 		return nil, err
 	}
 	defer q.Close()
-	rs, err := q.Query(config.SC.Context)
+	rs, err := q.Query(context)
 	if err != nil {
 		return nil, err
 	}
@@ -229,14 +228,14 @@ func GetRunningCollections() ([]*RunningPlan, error) {
 	return rps, nil
 }
 
-func GetRunningPlans() ([]*RunningPlan, error) {
-	db := config.SC.DBC
+func GetRunningPlans(context string) ([]*RunningPlan, error) {
+	db := getDB()
 	q, err := db.Prepare("select collection_id, plan_id, started_time from running_plan where context=?")
 	if err != nil {
 		return nil, err
 	}
 	defer q.Close()
-	rs, err := q.Query(config.SC.Context)
+	rs, err := q.Query(context)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +250,7 @@ func GetRunningPlans() ([]*RunningPlan, error) {
 }
 
 func GetRunningPlan(collectionID, planID int64) (*RunningPlan, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select collection_id, plan_id, started_time from running_plan where collection_id=? and plan_id=?")
 	if err != nil {
 		return nil, err
@@ -265,14 +264,14 @@ func GetRunningPlan(collectionID, planID int64) (*RunningPlan, error) {
 	return rp, nil
 }
 
-func AddRunningPlan(collectionID, planID int64) error {
-	db := config.SC.DBC
+func AddRunningPlan(context string, collectionID, planID int64) error {
+	db := getDB()
 	q, err := db.Prepare("insert running_plan set collection_id=?, plan_id=?, context=?")
 	if err != nil {
 		return err
 	}
 	defer q.Close()
-	_, err = q.Exec(collectionID, planID, config.SC.Context)
+	_, err = q.Exec(collectionID, planID, context)
 	if err != nil {
 		return err
 	}
@@ -280,7 +279,7 @@ func AddRunningPlan(collectionID, planID int64) error {
 }
 
 func DeleteRunningPlan(collectionID, planID int64) error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete from running_plan where collection_id=? and plan_id=?")
 	if err != nil {
 		return err
@@ -294,7 +293,7 @@ func DeleteRunningPlan(collectionID, planID int64) error {
 }
 
 func GetRunningPlansByCollection(collectionID int64) ([]*RunningPlan, error) {
-	db := config.SC.DBC
+	db := getDB()
 	var rps []*RunningPlan
 	q, err := db.Prepare("select collection_id, plan_id, started_time from running_plan where collection_id=?")
 	if err != nil {

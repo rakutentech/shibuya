@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/model"
 )
 
@@ -13,8 +14,8 @@ const (
 	accountKey = "account"
 )
 
-func authWithSession(r *http.Request) (*model.Account, error) {
-	account := model.GetAccountBySession(r)
+func authWithSession(r *http.Request, authConfig *config.AuthConfig) (*model.Account, error) {
+	account := model.GetAccountBySession(r, authConfig)
 	if account == nil {
 		return nil, makeLoginError()
 	}
@@ -30,7 +31,7 @@ func (s *ShibuyaAPI) authRequired(next httprouter.Handle) httprouter.Handle {
 	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		var account *model.Account
 		var err error
-		account, err = authWithSession(r)
+		account, err = authWithSession(r, s.sc.AuthConfig)
 		if err != nil {
 			s.handleErrors(w, err)
 			return
