@@ -37,8 +37,8 @@ const (
 	RESULT_ROOT      = "/test-result"
 	TEST_DATA_FOLDER = "/test-data"
 	PROPERTY_FILE    = "/test-conf/shibuya.properties"
-	JMETER_BIN_FOLER = "/apache-jmeter-3.3/bin"
-	JMETER_BIN       = "jmeter"
+	JMETER_BIN_FOLER = "/apache-jmeter-5.6/bin"
+	JMETER_BIN       = "jmeter.sh"
 	STDERR           = "/dev/stderr"
 	JMX_FILENAME     = "modified.jmx"
 )
