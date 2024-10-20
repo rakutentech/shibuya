@@ -1092,6 +1092,9 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID 
 	engines := []*smodel.EngineStatus{}
 	for _, p := range pods {
 		es := new(smodel.EngineStatus)
+		if kind, _ := p.Labels["kind"]; kind != "executor" {
+			continue
+		}
 		es.Name = p.Name
 		es.CreatedTime = p.ObjectMeta.CreationTimestamp.Time
 		es.Status = string(p.Status.Phase)
