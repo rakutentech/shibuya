@@ -145,22 +145,12 @@ func (sw *ShibuyaWrapper) makePromMetrics(line string) {
 	if err != nil {
 		return
 	}
-	collectionID := sw.collectionID
-	planID := sw.planID
-	engineID := fmt.Sprintf("%d", sw.engineID)
-	runID := fmt.Sprintf("%d", sw.runID)
+	metric.CollectionID = sw.collectionID
+	metric.PlanID = sw.planID
+	metric.EngineID = fmt.Sprintf("%d", sw.engineID)
+	metric.RunID = fmt.Sprintf("%d", sw.runID)
 
-	label := metric.Label
-	status := metric.Status
-	latency := metric.Latency
-	threads := metric.Threads
-
-	enginesModel.StatusCounter.WithLabelValues(sw.collectionID, planID, runID, engineID, label, status).Inc()
-	enginesModel.CollectionLatencySummary.WithLabelValues(collectionID, runID).Observe(latency)
-	enginesModel.PlanLatencySummary.WithLabelValues(collectionID, planID, runID).Observe(latency)
-	enginesModel.LabelLatencySummary.WithLabelValues(collectionID, label, runID).Observe(latency)
-	enginesModel.ThreadsGauge.WithLabelValues(collectionID, planID, runID, engineID).Set(threads)
-
+	metric.ToPrometheus()
 }
 
 func (sw *ShibuyaWrapper) listen() {

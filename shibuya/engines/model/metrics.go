@@ -18,27 +18,39 @@ type ShibuyaMetric struct {
 	RunID        string
 }
 
+func convertToMilliBuckets(buckets []float64) []float64 {
+	for i, b := range buckets {
+		buckets[i] = b * 1000
+	}
+	return buckets
+}
+
+func (sm ShibuyaMetric) ToPrometheus() {
+	CollectionLatencyHistogram.WithLabelValues(sm.CollectionID, sm.RunID, sm.EngineID).Observe(sm.Latency)
+	PlanLatencyHistogram.WithLabelValues(sm.CollectionID, sm.PlanID, sm.RunID, sm.EngineID).Observe(sm.Latency)
+	LabelLatencyHistogram.WithLabelValues(sm.CollectionID, sm.Label, sm.RunID, sm.EngineID).Observe(sm.Latency)
+	StatusCounter.WithLabelValues(sm.CollectionID, sm.PlanID, sm.RunID, sm.EngineID, sm.Label, sm.Status).Inc()
+	ThreadsGauge.WithLabelValues(sm.CollectionID, sm.PlanID, sm.RunID, sm.EngineID).Set(sm.Threads)
+}
+
 var (
-	// Average latency is not a good metric, percentile latency is the way to go
-	// But percentiles cannot be aggregated, so we need seperate latency vector for individual observations
-	CollectionLatencySummary = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Namespace:  "shibuya",
-		Name:       "latency_collection",
-		Help:       "Percentile latency of a collection",
-		Objectives: map[float64]float64{0.9: 0.01, 0.99: 0.001},
-	}, []string{"collection_id", "run_id"})
-	PlanLatencySummary = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Namespace:  "shibuya",
-		Name:       "latency_plan",
-		Help:       "Percentile latency of a collection",
-		Objectives: map[float64]float64{0.9: 0.01, 0.99: 0.001},
-	}, []string{"collection_id", "plan_id", "run_id"})
-	LabelLatencySummary = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Namespace:  "shibuya",
-		Name:       "latency_label",
-		Help:       "Percentile latency of a collection",
-		Objectives: map[float64]float64{0.9: 0.01, 0.99: 0.001},
-	}, []string{"collection_id", "label", "run_id"})
+	shibuyaBuckets = convertToMilliBuckets(prometheus.DefBuckets)
+
+	CollectionLatencyHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "shibuya",
+		Name:      "latency_collection_milliseconds",
+		Buckets:   shibuyaBuckets,
+	}, []string{"collection_id", "run_id", "engine_no"})
+	PlanLatencyHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "shibuya",
+		Name:      "latency_plan_milliseconds",
+		Buckets:   shibuyaBuckets,
+	}, []string{"collection_id", "plan_id", "run_id", "engine_no"})
+	LabelLatencyHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "shibuya",
+		Name:      "latency_label_milliseconds",
+		Buckets:   shibuyaBuckets,
+	}, []string{"collection_id", "label", "run_id", "engine_no"})
 
 	// This is similar to Latency but cannot use histogram here because we need a very accurate count of every status error that occured.
 	// So 200s are different bucket than 201s responses.
