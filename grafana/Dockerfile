@@ -8,5 +8,3 @@ COPY ./provisioning /etc/grafana/provisioning
 COPY config.ini /etc/grafana/config.ini
 COPY ./dashboards /var/lib/grafana/dashboards
 COPY --chown=grafana:grafana ./plugins /var/lib/grafana/plugins
-ARG CLUSTER=local
-COPY datasources/${CLUSTER}.yml /etc/grafana/provisioning/datasources/all.yml
