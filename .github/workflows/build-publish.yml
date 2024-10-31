@@ -87,7 +87,7 @@ jobs:
       run: |-
         cd shibuya
         make helm_charts
-        sh chart_releaser.sh
+        sh ../helm_utils/chart_releaser.sh install/shibuya
 
     # Build the Docker image
     - name: Build api
