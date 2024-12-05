@@ -11,7 +11,7 @@ data:
         metrics_path: /metrics
         static_configs:
           - targets:
-            - shibuya:8080
+            - shibuya-api-local:8080
 kind: ConfigMap
 metadata:
   name: prometheus
