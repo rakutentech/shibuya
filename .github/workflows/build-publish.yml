@@ -54,7 +54,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.18'
+        go-version: '1.19'
 
     - id: 'auth'
       uses: 'google-github-actions/auth@v1'
