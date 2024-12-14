@@ -97,6 +97,12 @@ jobs:
         helm package metrics-dashboard
         sh ../helm_utils/chart_releaser.sh metrics-dashboard
 
+    - name: build metrics dashboard image
+      env:
+        tag_name: ${{ needs.release-please.outputs.tag_name }}
+      run: |-
+        cd grafana && make metrics_dashboard_image
+
     # Build the Docker image
     - name: Build api
       env:
