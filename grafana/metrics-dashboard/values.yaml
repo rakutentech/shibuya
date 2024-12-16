@@ -8,7 +8,7 @@ namespace: "shibuya-executors"
 datasource: "http://prometheus:9090"
 
 image:
-  repository: grafana
+  repository: metrics-dashboard
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "local"
