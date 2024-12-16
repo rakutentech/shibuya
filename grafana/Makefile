@@ -2,6 +2,7 @@ registry=$(GAR_LOCATION)-docker.pkg.dev/$(GCP_PROJECT)
 repository = shibuya
 tag=$(tag_name)
 img=$(registry)/$(repository)/metrics-dashboard:$(tag)
+upstream = rakutentech
 
 ifeq ($(GITHUB_REPOSITORY_OWNER), $(upstream))
 	tag=$(tag_name)
