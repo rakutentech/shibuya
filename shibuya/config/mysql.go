@@ -30,7 +30,6 @@ func createMySQLClient(conf *MySQLConfig) *sql.DB {
 		dsn := fmt.Sprintf("%s=%s&", k, v)
 		endpoint += dsn
 	}
-	log.Printf(endpoint)
 	conf.Endpoint = endpoint
 	db, err := sql.Open("mysql", endpoint)
 	db.SetConnMaxLifetime(30 * time.Second)
