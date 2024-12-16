@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
@@ -60,13 +59,6 @@ func (c *Controller) TermAndPurgeCollection(collection *model.Collection) (err e
 	if err = c.Scheduler.PurgeCollection(collection.ID); err != nil {
 		return err
 	}
-	eps, err := collection.GetExecutionPlans()
-	if err != nil {
-		return err
-	}
-	for _, p := range eps {
-		c.deleteEngineHealthMetrics(strconv.Itoa(int(collection.ID)), strconv.Itoa(int(p.PlanID)), p.Engines)
-	}
 	return err
 }
 
@@ -106,12 +98,6 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 				errs <- err
 				return
 			}
-			// We don't wait all the engines. Because stream establishment can take some time
-			// We don't want the UI to be freeze for long time
-			if err := pc.subscribe(&c.connectedEngines, c.readingEngines); err != nil {
-				errs <- err
-				return
-			}
 			if err := model.AddRunningPlan(collection.ID, ep.PlanID); err != nil {
 				errs <- err
 				return
@@ -136,6 +122,29 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 	return nil
 }
 
+func (c *Controller) SubscribeCollection(collection *model.Collection) ([]shibuyaEngine, error) {
+	eps, err := collection.GetExecutionPlans()
+	if err != nil {
+		return nil, err
+	}
+	var wg sync.WaitGroup
+	connectedEngines := []shibuyaEngine{}
+	for _, executionPlan := range eps {
+		wg.Add(1)
+		go func(ep *model.ExecutionPlan) {
+			defer wg.Done()
+			pc := NewPlanController(ep, collection, c.Scheduler)
+			engines, err := pc.subscribe()
+			if err != nil {
+				return
+			}
+			connectedEngines = append(connectedEngines, engines...)
+		}(executionPlan)
+	}
+	wg.Wait()
+	return connectedEngines, nil
+}
+
 func (c *Controller) TermCollection(collection *model.Collection, force bool) (e error) {
 	eps, err := collection.GetExecutionPlans()
 	if err != nil {
@@ -150,8 +159,8 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 		wg.Add(1)
 		go func(ep *model.ExecutionPlan) {
 			defer wg.Done()
-			pc := NewPlanController(ep, collection, nil) // we don't need scheduler here
-			if err := pc.term(force, &c.connectedEngines); err != nil {
+			pc := NewPlanController(ep, collection, c.Scheduler) // we don't need scheduler here
+			if err := pc.term(force); err != nil {
 				log.Error(err)
 				e = err
 			}

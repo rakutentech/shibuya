@@ -33,10 +33,11 @@ spec:
         app: prometheus
     spec:
       containers:
-      - image: prom/prometheus:v2.5.0
+      - image: prom/prometheus:v2.54.1
         name: prometheus
         ports:
           - containerPort: 9090
+        args: ["--web.enable-remote-write-receiver", "--config.file=/etc/prometheus/prometheus.yml"]
         volumeMounts:
           - name: config
             mountPath: /etc/prometheus/

@@ -43,7 +43,7 @@ local_api:
 .PHONY: local_controller
 local_controller:
 	cd shibuya && sh build.sh controller
-	docker build -f shibuya/Dockerfile --build-arg env=local -t controller:local shibuya
+	docker build -f shibuya/Dockerfile --build-arg binary_name=shibuya-controller --build-arg env=local -t controller:local shibuya
 	kind load docker-image controller:local --name shibuya
 
 .PHONY: shibuya
