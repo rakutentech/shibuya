@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/rakutentech/shibuya/compare/v1.1.0...v1.1.1) (2024-12-16)
+
+
+### Bug Fixes
+
+* remove logging ([#129](https://github.com/rakutentech/shibuya/issues/129)) ([83f9353](https://github.com/rakutentech/shibuya/commit/83f93539c5b579ce1448fbfa752e254e7c8a2d8e))
+
 ## [1.1.0](https://github.com/rakutentech/shibuya/compare/v1.0.0...v1.1.0) (2024-10-01)
 
 
