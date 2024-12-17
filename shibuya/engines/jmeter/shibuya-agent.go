@@ -33,11 +33,12 @@ import (
 	"github.com/hpcloud/tail"
 )
 
-const (
-	RESULT_ROOT      = "/test-result"
+var (
+	AGENT_ROOT       = os.Getenv("AGENT_ROOT")
+	RESULT_ROOT      = path.Join(AGENT_ROOT, "/test-result")
 	TEST_DATA_FOLDER = "/test-data"
-	PROPERTY_FILE    = "/test-conf/shibuya.properties"
-	JMETER_BIN_FOLER = "/apache-jmeter-3.3/bin"
+	PROPERTY_FILE    = path.Join(AGENT_ROOT, "/test-conf/shibuya.properties")
+	JMETER_BIN_FOLER = path.Join(AGENT_ROOT, "/apache-jmeter-3.3/bin")
 	JMETER_BIN       = "jmeter"
 	STDERR           = "/dev/stderr"
 	JMX_FILENAME     = "modified.jmx"
@@ -313,11 +314,15 @@ func (sw *ShibuyaWrapper) runCommand() int {
 }
 
 func cleanTestData() error {
-	if err := os.RemoveAll(TEST_DATA_FOLDER); err != nil {
+	files, err := os.ReadDir(TEST_DATA_FOLDER)
+	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(TEST_DATA_FOLDER, os.ModePerm); err != nil {
-		return err
+	for _, file := range files {
+		f := path.Join(TEST_DATA_FOLDER, file.Name())
+		if err := os.Remove(f); err != nil {
+			return err
+		}
 	}
 	return nil
 }
