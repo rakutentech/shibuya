@@ -1,6 +1,6 @@
 module github.com/rakutentech/shibuya/shibuya
 
-go 1.19
+go 1.23.4
 
 require (
 	cloud.google.com/go/storage v1.10.0
