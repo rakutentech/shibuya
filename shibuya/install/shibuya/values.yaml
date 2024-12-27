@@ -76,8 +76,8 @@ runtime:
     namespace: "shibuya-executors"
     jmeter:
       image: shibuya:jmeter
-      cpu: 0.1
-      mem: 512Mi
+      cpu: 1
+      mem: 1Gi
     pull_secret: ""
     pull_policy: "IfNotPresent"
     node_affinity: []
