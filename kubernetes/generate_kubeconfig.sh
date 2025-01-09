@@ -23,13 +23,19 @@ if [ "$1" == "" ]; then
     exit 1
 fi
 
+if [ "$2" == "" ]; then
+    echo "Provide the service account secret name"
+    exit 1
+fi
+
+
 # get token from secret
-TOKEN=$(kubectl -n $1 get secrets $(kubectl -n $1 get sa shibuya -o=custom-columns=:."secrets[0].name") -o=custom-columns=:.data.token)
+TOKEN=$(kubectl -n $1 get secrets $2 -o=custom-columns=:.data.token)
 TOKEN=$(echo $TOKEN | base64 -d)
 kubeconfig=$(echo "$kubeconfig" | sed 's,TOKEN_HERE,'"$TOKEN"',g')
 
 # get ca.crt from secret
-CAcrt=$(kubectl -n $1 get secrets $(kubectl -n $1 get sa shibuya -o=custom-columns=:."secrets[0].name") -o=custom-columns=:.data."ca\.crt" | tr -d '\n')
+CAcrt=$(kubectl -n $1 get secrets $2 -o=custom-columns=:.data."ca\.crt" | tr -d '\n')
 kubeconfig=$(echo "$kubeconfig" | sed 's,CA_HERE,'"$CAcrt"',g')
 
 # get API server master url
