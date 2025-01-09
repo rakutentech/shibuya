@@ -33,7 +33,7 @@ CAcrt=$(kubectl -n $1 get secrets $(kubectl -n $1 get sa shibuya -o=custom-colum
 kubeconfig=$(echo "$kubeconfig" | sed 's,CA_HERE,'"$CAcrt"',g')
 
 # get API server master url
-SERVER=$(TERM=dumb kubectl cluster-info | grep "Kubernetes master" | awk '{print $NF}')
+SERVER=$(TERM=dumb kubectl cluster-info | grep "Kubernetes control" | awk '{print $NF}')
 kubeconfig=$(echo "$kubeconfig" | sed 's,SERVER_HERE,'"$SERVER"',g')
 
 # export kubeconfig to shibuya/config/kube_configs using context name
