@@ -30,8 +30,8 @@ db: shibuya/db kubernetes/db.yaml
 .PHONY: grafana
 grafana: grafana/
 	helm uninstall metrics-dashboard || true
-	docker build grafana/ -t grafana:local
-	kind load docker-image grafana:local --name shibuya
+	docker build grafana/ -t metrics-dashboard:local
+	kind load docker-image metrics-dashboard:local --name shibuya
 	helm upgrade --install metrics-dashboard grafana/metrics-dashboard
 
 .PHONY: local_api
