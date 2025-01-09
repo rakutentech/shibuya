@@ -94,9 +94,10 @@ local_storage:
 	kind load docker-image shibuya:storage --name shibuya
 	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/storage.yaml --force
 
-.PHONY: ingress-controller
-ingress-controller:
+.PHONY: local_coordinator
+local_coordinator:
 	# if you need to debug the controller, please use the makefile in the ingress controller folder
 	# And update the image in the config.json
-	docker build -t shibuya:ingress-controller -f ingress-controller/Dockerfile ingress-controller
-	kind load docker-image shibuya:ingress-controller --name shibuya
+	cd shibuya && sh build.sh coordinator
+	docker build -f shibuya/Dockerfile --build-arg binary_name=shibuya-coordinator -t coordinator:local shibuya
+	kind load docker-image coordinator:local --name shibuya
