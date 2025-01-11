@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/rakutentech/shibuya/shibuya/config"
 	enginesModel "github.com/rakutentech/shibuya/shibuya/engines/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
@@ -107,44 +106,39 @@ func (pc *PlanController) trigger(engineDataConfig *enginesModel.EngineDataConfi
 	return nil
 }
 
-func makePlanEngineKey(collectionID, planID int64, engineID int) string {
-	return fmt.Sprintf("%s-%d-%d-%d", config.SC.Context, collectionID, planID, engineID)
-}
-
-func (pc *PlanController) subscribe(connectedEngines *sync.Map, readingEngines chan shibuyaEngine) error {
+func (pc *PlanController) subscribe() ([]shibuyaEngine, error) {
 	ep := pc.ep
 	collection := pc.collection
 	engines, err := generateEnginesWithUrl(ep.Engines, ep.PlanID, collection.ID, collection.ProjectID,
 		JmeterEngineType, pc.scheduler)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	runID, err := collection.GetCurrentRun()
 	if err != nil {
-		return err
+		return nil, err
 	}
+	var wg sync.WaitGroup
+	readingEngines := []shibuyaEngine{}
 	for _, engine := range engines {
+		wg.Add(1)
 		go func(engine shibuyaEngine, runID int64) {
+			defer wg.Done()
 			//After this step, the engine instance has states including stream client
 			err := engine.subscribe(runID)
 			if err != nil {
 				return
 			}
-			key := makePlanEngineKey(collection.ID, ep.PlanID, engine.EngineID())
-			if _, loaded := connectedEngines.LoadOrStore(key, engine); !loaded {
-				readingEngines <- engine
-				log.Printf("Engine %s is subscribed", key)
-				return
-			}
-			// This might be triggered by some cases that multiple streams are being estabalished at the same time
-			// for example, when the plan was broken and later replaced by a working one without purging the engines
-			// In this case, we only mainain the first stream and close the current one
-			engine.closeStream()
-			log.Printf("Duplicate stream of engine %s is closed", key)
+			readingEngines = append(readingEngines, engine)
 		}(engine, runID)
 	}
+	wg.Wait()
 	log.Printf("Subscribe to Plan %d", ep.PlanID)
-	return nil
+	return readingEngines, err
+}
+
+func (pc *PlanController) UnSubscribe() {
+
 }
 
 // TODO. we can use the cached clients here.
@@ -166,22 +160,22 @@ func (pc *PlanController) progress() bool {
 	return !r
 }
 
-func (pc *PlanController) term(force bool, connectedEngines *sync.Map) error {
+func (pc *PlanController) term(force bool) error {
 	var wg sync.WaitGroup
 	ep := pc.ep
-	for i := 0; i < ep.Engines; i++ {
-		key := makePlanEngineKey(pc.collection.ID, ep.PlanID, i)
-		item, ok := connectedEngines.Load(key)
-		if ok {
-			wg.Add(1)
-			engine := item.(shibuyaEngine)
-			go func(engine shibuyaEngine) {
-				defer wg.Done()
-				engine.terminate(force)
-				connectedEngines.Delete(key)
-				log.Printf("Engine %s is terminated", key)
-			}(engine)
-		}
+	collection := pc.collection
+	engines, err := generateEnginesWithUrl(ep.Engines, ep.PlanID, collection.ID, collection.ProjectID, JmeterEngineType, pc.scheduler)
+	if err != nil {
+		return err
+	}
+	for _, engine := range engines {
+		wg.Add(1)
+		go func(e shibuyaEngine) {
+			defer wg.Done()
+			if err := e.terminate(force); err != nil {
+				log.Error(err)
+			}
+		}(engine)
 	}
 	wg.Wait()
 	model.DeleteRunningPlan(pc.collection.ID, ep.PlanID)

@@ -81,6 +81,11 @@ type JmeterContainer struct {
 	*ExecutorContainer
 }
 
+type ScraperContainer struct {
+	// TODO: we should make the name more neutrual
+	*ExecutorContainer
+}
+
 type DashboardConfig struct {
 	Url              string `json:"url"`
 	RunDashboard     string `json:"run_dashboard"`
@@ -122,6 +127,11 @@ type IngressConfig struct {
 	GCInterval string `json:"gc_period"`
 }
 
+type MetricStorage struct {
+	RemoteWriteUrl   string `json:"url"`
+	RemoteWriteToken string `json:"token"`
+}
+
 var defaultIngressConfig = IngressConfig{
 	Image:    "k8s.gcr.io/ingress-nginx/controller:v1.2.1",
 	Replicas: 1,
@@ -142,6 +152,8 @@ type ShibuyaConfig struct {
 	LogFormat        *LogFormat       `json:"log_format"`
 	BackgroundColour string           `json:"bg_color"`
 	IngressConfig    *IngressConfig   `json:"ingress"`
+	MetricStorage    []MetricStorage  `json:"metric_storage"`
+	ScraperContainer ScraperContainer `json:"scraper_container"`
 	EnableSid        bool             `json:"enable_sid"`
 
 	// below are configs generated from above values

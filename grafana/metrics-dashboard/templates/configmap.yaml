@@ -1,0 +1,16 @@
+apiVersion: v1
+data:
+  all.yml: |
+    datasources:
+    - name: 'shibuya_prom'
+      type: 'prometheus'
+      access: 'proxy'
+      org_id: 1
+      url: {{ .Values.datasource | quote }}
+      is_default: true
+      version: 1
+      editable: true
+kind: ConfigMap
+metadata:
+  name: {{ include "metrics-dashboard.fullname" . }}
+  namespace: {{ .Values.namespace }}

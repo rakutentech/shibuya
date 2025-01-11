@@ -54,7 +54,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.18'
+        go-version: '1.23.4'
 
     - id: 'auth'
       uses: 'google-github-actions/auth@v1'
@@ -81,13 +81,27 @@ jobs:
       with:
         version: "v3.13.3"
 
-    - name: build chart
+    - name: build app chart
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |-
         cd shibuya
         make helm_charts
-        sh chart_releaser.sh
+        sh ../helm_utils/chart_releaser.sh install/shibuya
+
+    - name: build metrics dashboard chart
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |-
+        cd grafana
+        helm package metrics-dashboard
+        sh ../helm_utils/chart_releaser.sh metrics-dashboard
+
+    - name: build metrics dashboard image
+      env:
+        tag_name: ${{ needs.release-please.outputs.tag_name }}
+      run: |-
+        cd grafana && make metrics_dashboard_image
 
     # Build the Docker image
     - name: Build api

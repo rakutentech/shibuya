@@ -12,11 +12,13 @@ import (
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
+	"github.com/rakutentech/shibuya/shibuya/engines/metrics"
 	model "github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/object_storage"
 	smodel "github.com/rakutentech/shibuya/shibuya/scheduler/model"
 	log "github.com/sirupsen/logrus"
 
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	v1networking "k8s.io/api/networking/v1"
@@ -25,13 +27,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	metricsc "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 type K8sClientManager struct {
 	*config.ExecutorConfig
 	client         *kubernetes.Clientset
-	metricClient   *metricsc.Clientset
 	serviceAccount string
 }
 
@@ -40,9 +40,8 @@ func NewK8sClientManager(cfg *config.ExecutorConfig) *K8sClientManager {
 	if err != nil {
 		log.Warning(err)
 	}
-	metricsc, err := config.GetMetricsClient()
 	return &K8sClientManager{
-		cfg, c, metricsc, "shibuya-ingress-serviceaccount-1",
+		cfg, c, "shibuya-ingress-serviceaccount-1",
 	}
 
 }
@@ -562,9 +561,17 @@ func (kcm *K8sClientManager) CollectionStatus(projectID, collectionID int64, eps
 		planStatuses[ep.PlanID] = ps
 	}
 	enginesReady := true
+	scraperDeployed := false
 	for _, pod := range pods {
 		if pod.Labels["kind"] == "ingress-controller" {
 			ingressControllerDeployed = true
+			continue
+		}
+		if pod.Labels["kind"] == "scraper" {
+			if pod.Status.Phase == apiv1.PodRunning {
+				scraperDeployed = true
+				continue
+			}
 			continue
 		}
 		planID, err := strconv.Atoi(pod.Labels["plan"])
@@ -585,7 +592,7 @@ func (kcm *K8sClientManager) CollectionStatus(projectID, collectionID int64, eps
 	fieldSelector := fmt.Sprintf("status.phase=Running")
 	ingressPods := kcm.GetPodsByCollection(collectionID, fieldSelector)
 	ingressControllerDeployed = len(ingressPods) >= 1
-	if !ingressControllerDeployed || !enginesReady {
+	if !ingressControllerDeployed || !enginesReady || !scraperDeployed {
 		for _, ps := range planStatuses {
 			cs.Plans = append(cs.Plans, ps)
 		}
@@ -743,6 +750,14 @@ func (kcm *K8sClientManager) PurgeCollection(collectionID int64) error {
 	if err != nil {
 		return err
 	}
+	if err := kcm.client.CoreV1().ConfigMaps(kcm.Namespace).Delete(context.TODO(),
+		makePromConfigName(collectionID), metav1.DeleteOptions{}); err != nil {
+		return err
+	}
+	if err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).Delete(context.TODO(), makeScraperDeploymentName(collectionID),
+		metav1.DeleteOptions{}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -853,6 +868,120 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 	return deployment
 }
 
+func (kcm *K8sClientManager) makeScraperConfig(collectionID int64) (apiv1.ConfigMap, error) {
+	empty := apiv1.ConfigMap{}
+	pc, err := metrics.MakeScraperConfig(collectionID, kcm.Namespace, config.SC.MetricStorage)
+	if err != nil {
+		return empty, err
+	}
+	c, err := yaml.Marshal(pc)
+	if err != nil {
+		return empty, err
+	}
+	data := map[string]string{}
+	data["prometheus.yml"] = string(c)
+	labels := makeScraperLabel(collectionID)
+	return apiv1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      makePromConfigName(collectionID),
+			Namespace: kcm.Namespace,
+			Labels:    labels,
+		},
+		Data: data,
+	}, nil
+}
+
+func (kcm *K8sClientManager) makeScraperDeployment(collectionID int64) appsv1.StatefulSet {
+	workloadName := makeScraperDeploymentName(collectionID)
+	labels := makeScraperLabel(collectionID)
+	// Currently scraper shares the affinity and tolerations with executors
+	affinity := prepareAffinity(collectionID)
+	tolerations := prepareTolerations()
+	scraperContainer := config.SC.ScraperContainer
+	return appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      workloadName,
+			Namespace: kcm.Namespace,
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: int32Ptr(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: apiv1.PodSpec{
+					ServiceAccountName: kcm.serviceAccount,
+					Affinity:           affinity,
+					Tolerations:        tolerations,
+					Containers: []apiv1.Container{
+						{
+							Name:  "prom",
+							Image: scraperContainer.Image,
+							Resources: apiv1.ResourceRequirements{
+								Limits: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(scraperContainer.CPU),
+									apiv1.ResourceMemory: resource.MustParse(scraperContainer.Mem),
+								},
+								Requests: apiv1.ResourceList{
+									apiv1.ResourceCPU:    resource.MustParse(scraperContainer.CPU),
+									apiv1.ResourceMemory: resource.MustParse(scraperContainer.Mem),
+								},
+							},
+							Ports: []apiv1.ContainerPort{
+								{
+									ContainerPort: int32(9090),
+								},
+							},
+							VolumeMounts: []apiv1.VolumeMount{
+								{
+									Name:      "prom-config",
+									MountPath: "/etc/prometheus",
+								},
+							},
+						},
+					},
+					Volumes: []apiv1.Volume{
+						{
+							Name: "prom-config",
+							VolumeSource: apiv1.VolumeSource{
+								ConfigMap: &apiv1.ConfigMapVolumeSource{
+									LocalObjectReference: apiv1.LocalObjectReference{
+										Name: makePromConfigName(collectionID),
+									},
+									DefaultMode: int32Ptr(420),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (kcm *K8sClientManager) CreateCollectionScraper(collectionID int64) error {
+	promDeployment := kcm.makeScraperDeployment(collectionID)
+	promConfig, err := kcm.makeScraperConfig(collectionID)
+	if err != nil {
+		return err
+	}
+	if _, err := kcm.client.CoreV1().ConfigMaps(kcm.Namespace).Create(context.TODO(), &promConfig, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			return nil
+		}
+	}
+	if _, err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).Create(context.TODO(), &promDeployment, metav1.CreateOptions{}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
 func (kcm *K8sClientManager) ExposeProject(projectID int64) error {
 	igName := makeIngressClass(projectID)
 	deployment := kcm.generateControllerDeployment(igName, projectID)
@@ -944,22 +1073,6 @@ func (kcm *K8sClientManager) GetDeployedServices() (map[int64]time.Time, error) 
 	return deployedServices, nil
 }
 
-func (kcm *K8sClientManager) GetPodsMetrics(collectionID, planID int64) (map[string]apiv1.ResourceList, error) {
-	metricsList, err := kcm.metricClient.MetricsV1beta1().PodMetricses(kcm.Namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("collection=%d,plan=%d", collectionID, planID),
-	})
-	if err != nil {
-		return nil, err
-	}
-	result := make(map[string]apiv1.ResourceList, len(metricsList.Items))
-	for _, pm := range metricsList.Items {
-		for _, cm := range pm.Containers {
-			result[getEngineNumber(pm.GetName())] = cm.Usage
-		}
-	}
-	return result, nil
-}
-
 func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID int64) (*smodel.CollectionDetails, error) {
 	labelSelector := fmt.Sprintf("collection=%d", collectionID)
 	pods, err := kcm.GetPods(labelSelector, "")
@@ -979,6 +1092,9 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID 
 	engines := []*smodel.EngineStatus{}
 	for _, p := range pods {
 		es := new(smodel.EngineStatus)
+		if kind, _ := p.Labels["kind"]; kind != "executor" {
+			continue
+		}
 		es.Name = p.Name
 		es.CreatedTime = p.ObjectMeta.CreationTimestamp.Time
 		es.Status = string(p.Status.Phase)

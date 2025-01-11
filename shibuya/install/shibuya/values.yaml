@@ -76,8 +76,8 @@ runtime:
     namespace: "shibuya-executors"
     jmeter:
       image: shibuya:jmeter
-      cpu: 0.1
-      mem: 512Mi
+      cpu: 1
+      mem: 1Gi
     pull_secret: ""
     pull_policy: "IfNotPresent"
     node_affinity: []
@@ -99,3 +99,10 @@ runtime:
     secret_name: ""
     auth_file_name: ""
     config_map_name: "shibuya-config-local"
+  metric_storage:
+    - url: "http://prometheus:9090/api/v1/write"
+      token: ""
+  scraper_container:
+    image: "prom/prometheus"
+    cpu: "0.5"
+    mem: 100Mi

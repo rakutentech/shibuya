@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.2](https://github.com/rakutentech/shibuya/compare/v1.1.1...v1.1.2) (2024-12-16)
+
+
+### Bug Fixes
+
+* fix metric dashboard repo url ([#131](https://github.com/rakutentech/shibuya/issues/131)) ([161c5e6](https://github.com/rakutentech/shibuya/commit/161c5e64208dcc5637aaf899d1b81298ee40adc3))
+
+## [1.1.1](https://github.com/rakutentech/shibuya/compare/v1.1.0...v1.1.1) (2024-12-16)
+
+
+### Bug Fixes
+
+* remove logging ([#129](https://github.com/rakutentech/shibuya/issues/129)) ([83f9353](https://github.com/rakutentech/shibuya/commit/83f93539c5b579ce1448fbfa752e254e7c8a2d8e))
+
 ## [1.1.0](https://github.com/rakutentech/shibuya/compare/v1.0.0...v1.1.0) (2024-10-01)
 
 

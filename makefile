@@ -29,9 +29,10 @@ db: shibuya/db kubernetes/db.yaml
 
 .PHONY: grafana
 grafana: grafana/
-	docker build grafana/ -t shibuya:grafana
-	kind load docker-image shibuya:grafana --name shibuya
-	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/grafana.yaml --force
+	helm uninstall metrics-dashboard || true
+	docker build grafana/ -t metrics-dashboard:local
+	kind load docker-image metrics-dashboard:local --name shibuya
+	helm upgrade --install metrics-dashboard grafana/metrics-dashboard
 
 .PHONY: local_api
 local_api:
@@ -42,11 +43,11 @@ local_api:
 .PHONY: local_controller
 local_controller:
 	cd shibuya && sh build.sh controller
-	docker build -f shibuya/Dockerfile --build-arg env=local -t controller:local shibuya
+	docker build -f shibuya/Dockerfile --build-arg binary_name=shibuya-controller --build-arg env=local -t controller:local shibuya
 	kind load docker-image controller:local --name shibuya
 
 .PHONY: shibuya
-shibuya: local_api local_controller
+shibuya: local_api local_controller grafana
 	helm uninstall shibuya || true
 	cd shibuya && helm upgrade --install shibuya install/shibuya
 
@@ -59,7 +60,7 @@ jmeter: shibuya/engines/jmeter
 .PHONY: expose
 expose:
 	-killall kubectl
-	-kubectl -n $(shibuya-controller-ns) port-forward service/grafana 3000:3000 > /dev/null 2>&1 &
+	-kubectl -n $(shibuya-controller-ns) port-forward service/shibuya-metrics-dashboard 3000:3000 > /dev/null 2>&1 &
 	-kubectl -n $(shibuya-controller-ns) port-forward service/shibuya-api-local 8080:8080 > /dev/null 2>&1 &
 
 # TODO!
