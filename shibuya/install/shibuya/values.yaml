@@ -83,7 +83,7 @@ runtime:
     node_affinity: []
     tolerations: []
   ingress:
-    image: "shibuya:ingress-controller"
+    image: "coordinator:local"
     cpu: 0.1
     replicas: 1
   dashboard:

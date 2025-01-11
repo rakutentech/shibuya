@@ -67,9 +67,14 @@ expose:
 # After k8s 1.22, service account token is no longer auto generated. We need to manually create the secret
 # for the service account. ref: "https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#manual-secret-management-for-serviceaccounts"
 # So we should fetch the token details from the manually created secret instead of the automatically created ones
+
+# the shell script used here will rely on the secret in kubernetes/service-account-secret.yaml. So please create the secret first
+# then export shibuya_sa_secret={secret name}
+
+# Then run the script below.
 .PHONY: kubeconfig
 kubeconfig:
-	./kubernetes/generate_kubeconfig.sh $(shibuya-controller-ns)
+	./kubernetes/generate_kubeconfig.sh $(shibuya-controller-ns) $(shibuya_sa_secret)
 
 .PHONY: permissions
 permissions:
@@ -94,9 +99,10 @@ local_storage:
 	kind load docker-image shibuya:storage --name shibuya
 	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/storage.yaml --force
 
-.PHONY: ingress-controller
-ingress-controller:
+.PHONY: local_coordinator
+local_coordinator:
 	# if you need to debug the controller, please use the makefile in the ingress controller folder
 	# And update the image in the config.json
-	docker build -t shibuya:ingress-controller -f ingress-controller/Dockerfile ingress-controller
-	kind load docker-image shibuya:ingress-controller --name shibuya
+	cd shibuya && sh build.sh coordinator
+	docker build -f shibuya/Dockerfile --build-arg binary_name=shibuya-coordinator -t coordinator:local shibuya
+	kind load docker-image coordinator:local --name shibuya
