@@ -106,3 +106,7 @@ local_coordinator:
 	cd shibuya && sh build.sh coordinator
 	docker build -f shibuya/Dockerfile --build-arg binary_name=shibuya-coordinator -t coordinator:local shibuya
 	kind load docker-image coordinator:local --name shibuya
+
+.PHONY: modeltests
+modeltests:
+	cd shibuya && go test -timeout 30s github.com/rakutentech/shibuya/shibuya/model
