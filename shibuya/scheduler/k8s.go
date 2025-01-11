@@ -30,18 +30,19 @@ import (
 )
 
 type K8sClientManager struct {
-	*config.ExecutorConfig
+	sc             config.ShibuyaConfig
 	client         *kubernetes.Clientset
 	serviceAccount string
+	Namespace      string
 }
 
-func NewK8sClientManager(cfg *config.ExecutorConfig) *K8sClientManager {
-	c, err := config.GetKubeClient(cfg)
+func NewK8sClientManager(cfg config.ShibuyaConfig) *K8sClientManager {
+	c, err := config.GetKubeClient(cfg.ExecutorConfig)
 	if err != nil {
 		log.Warning(err)
 	}
 	return &K8sClientManager{
-		cfg, c, "shibuya-ingress-serviceaccount-1",
+		cfg, c, "shibuya-ingress-serviceaccount-1", cfg.ExecutorConfig.Namespace,
 	}
 
 }
@@ -119,24 +120,22 @@ func collectionPodAffinity(collectionID int64) *apiv1.PodAffinity {
 	return makePodAffinity("collection", collectionIDStr)
 }
 
-func prepareAffinity(collectionID int64) *apiv1.Affinity {
+func prepareAffinity(collectionID int64, nodeAffinity []map[string]string) *apiv1.Affinity {
 	affinity := &apiv1.Affinity{}
 	affinity.PodAffinity = collectionPodAffinity(collectionID)
-	na := config.SC.ExecutorConfig.NodeAffinity
-	if len(na) > 0 {
-		t := na[0]
+	if len(nodeAffinity) > 0 {
+		t := nodeAffinity[0]
 		affinity.NodeAffinity = makeNodeAffinity(t["key"], t["value"])
 		return affinity
 	}
 	return affinity
 }
 
-func prepareTolerations() []apiv1.Toleration {
+func prepareTolerations(stolerations []config.Toleration) []apiv1.Toleration {
 	tolerations := []apiv1.Toleration{}
-	na := config.SC.ExecutorConfig.Tolerations
 
-	if len(na) > 0 {
-		for _, t := range na {
+	if len(stolerations) > 0 {
+		for _, t := range stolerations {
 			tolerations = append(tolerations, makeTolerations(t.Key, t.Value, t.Effect))
 		}
 	}
@@ -144,9 +143,10 @@ func prepareTolerations() []apiv1.Toleration {
 }
 
 func (kcm *K8sClientManager) makeHostAliases() []apiv1.HostAlias {
-	if kcm.HostAliases != nil {
+	preConfighostAliases := kcm.sc.ExecutorConfig.HostAliases
+	if preConfighostAliases != nil {
 		hostAliases := []apiv1.HostAlias{}
-		for _, ha := range kcm.HostAliases {
+		for _, ha := range preConfighostAliases {
 			hostAliases = append(hostAliases, apiv1.HostAlias{
 				Hostnames: []string{ha.Hostname},
 				IP:        ha.IP,
@@ -162,10 +162,10 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 	t := true
 	volumes := []apiv1.Volume{}
 	volumeMounts := []apiv1.VolumeMount{}
-	if object_storage.IsProviderGCP() {
+	if object_storage.IsProviderGCP(kcm.sc.ObjectStorage.Provider) {
 		volumeName := "shibuya-gcp-auth"
-		secretName := config.SC.ObjectStorage.SecretName
-		authFileName := config.SC.ObjectStorage.AuthFileName
+		secretName := kcm.sc.ObjectStorage.SecretName
+		authFileName := kcm.sc.ObjectStorage.AuthFileName
 		mountPath := fmt.Sprintf("/auth/%s", authFileName)
 		v := apiv1.Volume{
 			Name: volumeName,
@@ -189,7 +189,7 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 		envvars = append(envvars, envvar)
 	}
 	cmVolumeName := "shibuya-config"
-	cmName := config.SC.ObjectStorage.ConfigMapName
+	cmName := kcm.sc.ObjectStorage.ConfigMapName
 	cmVolume := apiv1.Volume{
 		Name: cmVolumeName,
 		VolumeSource: apiv1.VolumeSource{
@@ -229,7 +229,7 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 					AutomountServiceAccountToken: &t,
 					ImagePullSecrets: []apiv1.LocalObjectReference{
 						{
-							Name: kcm.ImagePullSecret,
+							Name: kcm.sc.ExecutorConfig.ImagePullSecret,
 						},
 					},
 					TerminationGracePeriodSeconds: new(int64),
@@ -239,7 +239,7 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 						{
 							Name:            planName,
 							Image:           containerConfig.Image,
-							ImagePullPolicy: kcm.ImagePullPolicy,
+							ImagePullPolicy: kcm.sc.ExecutorConfig.ImagePullPolicy,
 							Env:             envvars,
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
@@ -294,7 +294,7 @@ func (kcm *K8sClientManager) generateEngineDeployment(engineName string, labels 
 					AutomountServiceAccountToken: &t,
 					ImagePullSecrets: []apiv1.LocalObjectReference{
 						{
-							Name: kcm.ImagePullSecret,
+							Name: kcm.sc.ExecutorConfig.ImagePullSecret,
 						},
 					},
 					TerminationGracePeriodSeconds: new(int64),
@@ -303,7 +303,7 @@ func (kcm *K8sClientManager) generateEngineDeployment(engineName string, labels 
 						{
 							Name:            engineName,
 							Image:           containerConfig.Image,
-							ImagePullPolicy: kcm.ImagePullPolicy,
+							ImagePullPolicy: kcm.sc.ExecutorConfig.ImagePullPolicy,
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceCPU:    resource.MustParse(containerConfig.CPU),
@@ -362,7 +362,7 @@ func (kcm *K8sClientManager) expose(name string, deployment *appsv1.Deployment) 
 		},
 	}
 	if deployment.Labels["kind"] == "ingress-controller" {
-		switch kcm.Cluster.ServiceType {
+		switch kcm.sc.ExecutorConfig.Cluster.ServiceType {
 		case "NodePort":
 			service.Spec.Type = apiv1.ServiceTypeNodePort
 		case "LoadBalancer":
@@ -411,8 +411,8 @@ func (kcm *K8sClientManager) DeployEngine(projectID, collectionID, planID int64,
 	engineID int, containerConfig *config.ExecutorContainer) error {
 	engineName := makeEngineName(projectID, collectionID, planID, engineID)
 	labels := makeEngineLabel(projectID, collectionID, planID, engineName)
-	affinity := prepareAffinity(collectionID)
-	tolerations := prepareTolerations()
+	affinity := prepareAffinity(collectionID, kcm.sc.ExecutorConfig.NodeAffinity)
+	tolerations := prepareTolerations(kcm.sc.ExecutorConfig.Tolerations)
 	engineConfig := kcm.generateEngineDeployment(engineName, labels, containerConfig, affinity, tolerations)
 	if err := kcm.deploy(&engineConfig); err != nil && !errors.IsAlreadyExists(err) {
 		return err
@@ -457,9 +457,9 @@ func (kcm *K8sClientManager) makePlanService(name string, label map[string]strin
 func (kcm *K8sClientManager) DeployPlan(projectID, collectionID, planID int64, enginesNo int, containerconfig *config.ExecutorContainer) error {
 	planName := makePlanName(projectID, collectionID, planID)
 	labels := makePlanLabel(projectID, collectionID, planID)
-	affinity := prepareAffinity(collectionID)
+	affinity := prepareAffinity(collectionID, kcm.sc.ExecutorConfig.NodeAffinity)
 	envvars := prepareEngineMetaEnvvars(collectionID, planID)
-	tolerations := prepareTolerations()
+	tolerations := prepareTolerations(kcm.sc.ExecutorConfig.Tolerations)
 	planConfig := kcm.generatePlanDeployment(planName, enginesNo, labels, containerconfig, affinity, tolerations, envvars)
 	if _, err := kcm.client.AppsV1().StatefulSets(kcm.Namespace).Create(context.TODO(), &planConfig, metav1.CreateOptions{}); err != nil {
 		return err
@@ -479,10 +479,10 @@ func (kcm *K8sClientManager) GetIngressUrl(projectID int64) (string, error) {
 	if err != nil {
 		return "", makeSchedulerIngressError(err)
 	}
-	if kcm.InCluster {
+	if kcm.sc.ExecutorConfig.InCluster {
 		return serviceClient.Spec.ClusterIP, nil
 	}
-	if kcm.Cluster.ServiceType == "LoadBalancer" {
+	if kcm.sc.ExecutorConfig.Cluster.ServiceType == "LoadBalancer" {
 		// in case of GCP getting public IP is enough since it exposes to port 80
 		if len(serviceClient.Status.LoadBalancer.Ingress) == 0 {
 			return "", makeIPNotAssignedError()
@@ -775,7 +775,7 @@ func (kcm *K8sClientManager) PurgeProjectIngress(projectID int64) error {
 func int32Ptr(i int32) *int32 { return &i }
 
 func (kcm *K8sClientManager) generateControllerDeployment(igName string, projectID int64) appsv1.Deployment {
-	tolerations := prepareTolerations()
+	tolerations := prepareTolerations(kcm.sc.ExecutorConfig.Tolerations)
 	t := true
 	labels := makeIngressControllerLabel(projectID)
 	deployment := appsv1.Deployment{
@@ -784,7 +784,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 			Labels: labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(config.SC.IngressConfig.Replicas),
+			Replicas: int32Ptr(kcm.sc.IngressConfig.Replicas),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -804,16 +804,16 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 					Containers: []apiv1.Container{
 						{
 							Name:  "shibuya-ingress-controller",
-							Image: config.SC.IngressConfig.Image,
+							Image: kcm.sc.IngressConfig.Image,
 							Resources: apiv1.ResourceRequirements{
 								// Limits are whatever Kubernetes sets as the max value
 								Requests: apiv1.ResourceList{
-									apiv1.ResourceCPU:    resource.MustParse(config.SC.IngressConfig.CPU),
-									apiv1.ResourceMemory: resource.MustParse(config.SC.IngressConfig.Mem),
+									apiv1.ResourceCPU:    resource.MustParse(kcm.sc.IngressConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(kcm.sc.IngressConfig.Mem),
 								},
 								Limits: apiv1.ResourceList{
-									apiv1.ResourceCPU:    resource.MustParse(config.SC.IngressConfig.CPU),
-									apiv1.ResourceMemory: resource.MustParse(config.SC.IngressConfig.Mem),
+									apiv1.ResourceCPU:    resource.MustParse(kcm.sc.IngressConfig.CPU),
+									apiv1.ResourceMemory: resource.MustParse(kcm.sc.IngressConfig.Mem),
 								},
 							},
 							SecurityContext: &apiv1.SecurityContext{
@@ -869,7 +869,7 @@ func (kcm *K8sClientManager) generateControllerDeployment(igName string, project
 
 func (kcm *K8sClientManager) makeScraperConfig(collectionID int64) (apiv1.ConfigMap, error) {
 	empty := apiv1.ConfigMap{}
-	pc, err := metrics.MakeScraperConfig(collectionID, kcm.Namespace, config.SC.MetricStorage)
+	pc, err := metrics.MakeScraperConfig(collectionID, kcm.Namespace, kcm.sc.MetricStorage)
 	if err != nil {
 		return empty, err
 	}
@@ -894,9 +894,9 @@ func (kcm *K8sClientManager) makeScraperDeployment(collectionID int64) appsv1.St
 	workloadName := makeScraperDeploymentName(collectionID)
 	labels := makeScraperLabel(collectionID)
 	// Currently scraper shares the affinity and tolerations with executors
-	affinity := prepareAffinity(collectionID)
-	tolerations := prepareTolerations()
-	scraperContainer := config.SC.ScraperContainer
+	affinity := prepareAffinity(collectionID, kcm.sc.ExecutorConfig.NodeAffinity)
+	tolerations := prepareTolerations(kcm.sc.ExecutorConfig.Tolerations)
+	scraperContainer := kcm.sc.ScraperContainer
 	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workloadName,
@@ -1100,7 +1100,7 @@ func (kcm *K8sClientManager) GetCollectionEnginesDetail(projectID, collectionID 
 		engines = append(engines, es)
 	}
 	collectionDetails.Engines = engines
-	collectionDetails.ControllerReplicas = config.SC.IngressConfig.Replicas
+	collectionDetails.ControllerReplicas = kcm.sc.IngressConfig.Replicas
 	return collectionDetails, nil
 }
 

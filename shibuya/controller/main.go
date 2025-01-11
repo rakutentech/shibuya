@@ -16,19 +16,15 @@ import (
 )
 
 type Controller struct {
-	LabelStore         sync.Map
-	StatusStore        sync.Map
-	ApiNewClients      chan *ApiMetricStream
-	ApiStreamClients   map[string]map[string]chan *ApiMetricStreamEvent
-	ApiMetricStreamBus chan *ApiMetricStreamEvent
-	ApiClosingClients  chan *ApiMetricStream
-	readingEngines     chan shibuyaEngine
-	connectedEngines   sync.Map
-	filePath           string
-	httpClient         *http.Client
-	schedulerKind      string
-	Scheduler          scheduler.EngineScheduler
-	sc                 config.ShibuyaConfig
+	readingEngineRecords   sync.Map
+	ApiNewClients          chan *ApiMetricStream
+	ApiClosingClients      chan *ApiMetricStream
+	filePath               string
+	httpClient             *http.Client
+	schedulerKind          string
+	Scheduler              scheduler.EngineScheduler
+	clientStreamingWorkers int
+	sc                     config.ShibuyaConfig
 }
 
 func NewController(sc config.ShibuyaConfig) *Controller {
@@ -37,12 +33,13 @@ func NewController(sc config.ShibuyaConfig) *Controller {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		ApiClosingClients: make(chan *ApiMetricStream),
-		ApiNewClients:     make(chan *ApiMetricStream),
-		sc:                sc,
+		ApiClosingClients:      make(chan *ApiMetricStream),
+		ApiNewClients:          make(chan *ApiMetricStream),
+		clientStreamingWorkers: 5,
+		sc:                     sc,
 	}
 	c.schedulerKind = sc.ExecutorConfig.Cluster.Kind
-	c.Scheduler = scheduler.NewEngineScheduler(sc.ExecutorConfig)
+	c.Scheduler = scheduler.NewEngineScheduler(sc)
 	return c
 }
 
@@ -67,7 +64,7 @@ type ApiMetricStreamEvent struct {
 
 func (c *Controller) StartRunning() {
 	go c.streamToApi()
-	if !config.SC.DistributedMode {
+	if !c.sc.DistributedMode {
 		log.Info("Controller is running in non-distributed mode!")
 		go c.IsolateBackgroundTasks()
 	}
@@ -235,7 +232,7 @@ func (c *Controller) CollectionStatus(collection *model.Collection) (*smodel.Col
 	if err != nil {
 		return nil, err
 	}
-	if config.SC.DevMode {
+	if c.sc.DevMode {
 		cs.PoolSize = 100
 		cs.PoolStatus = "running"
 	}

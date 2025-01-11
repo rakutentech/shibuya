@@ -6,8 +6,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/rakutentech/shibuya/shibuya/config"
 )
 
 // vuh per context
@@ -29,7 +27,7 @@ type OwnerUsageSummary struct {
 }
 
 func GetHistory(startedTime, endTime string) ([]*CollectionLaunchHistory, error) {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("select collection_id, context, owner, vu, started_time, end_time from collection_launch_history2 where started_time > ? and end_time < ?")
 	if err != nil {
 		return nil, err

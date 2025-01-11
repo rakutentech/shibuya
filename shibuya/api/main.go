@@ -33,6 +33,7 @@ func NewAPIServer(sc config.ShibuyaConfig) *ShibuyaAPI {
 	c := &ShibuyaAPI{
 		ctr:        controller.NewController(sc),
 		objStorage: object_storage.CreateObjStorageClient(sc),
+		sc:         sc,
 	}
 	c.ctr.StartRunning()
 	return c
@@ -304,7 +305,7 @@ func (s *ShibuyaAPI) planDeleteHandler(w http.ResponseWriter, r *http.Request, p
 		s.handleErrors(w, makeInvalidRequestError("plan is being used"))
 		return
 	}
-	plan.Delete()
+	plan.Delete(s.objStorage)
 }
 
 func (s *ShibuyaAPI) planFilesUploadHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -319,7 +320,7 @@ func (s *ShibuyaAPI) planFilesUploadHandler(w http.ResponseWriter, r *http.Reque
 		s.handleErrors(w, makeInvalidRequestError("Something wrong with file you uploaded"))
 		return
 	}
-	err = plan.StoreFile(file, handler.Filename)
+	err = plan.StoreFile(s.objStorage, file, handler.Filename)
 	if err != nil {
 		// TODO need to handle the upload error here
 		s.handleErrors(w, err)
@@ -389,7 +390,7 @@ func (s *ShibuyaAPI) planFilesDeleteHandler(w http.ResponseWriter, r *http.Reque
 		s.handleErrors(w, makeInvalidRequestError("plan file name cannot be empty"))
 		return
 	}
-	err = plan.DeleteFile(filename)
+	err = plan.DeleteFile(s.objStorage, filename)
 	if err != nil {
 		s.handleErrors(w, makeInternalServerError("Deletetion was unsuccessful"))
 		return

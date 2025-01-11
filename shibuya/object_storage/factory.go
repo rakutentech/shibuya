@@ -47,8 +47,8 @@ func factoryConfig(c config.ShibuyaConfig) PlatformConfig {
 	}
 }
 
-func IsProviderGCP() bool {
-	return config.SC.ObjectStorage.Provider == gcpStorageProvider
+func IsProviderGCP(provider string) bool {
+	return provider == gcpStorageProvider
 }
 
 var Client PlatformConfig

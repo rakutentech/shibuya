@@ -20,7 +20,7 @@ func TestCreateAndGetCollection(t *testing.T) {
 	assert.Equal(t, name, c.Name)
 	assert.Equal(t, projectID, c.ProjectID)
 
-	c.Delete()
+	c.Delete(nil)
 	c, err = GetCollection(collectionID)
 	assert.NotNil(t, err)
 	assert.Nil(t, c)

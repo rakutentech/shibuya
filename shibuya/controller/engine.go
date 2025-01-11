@@ -158,7 +158,7 @@ func (be *baseEngine) terminate(force bool) error {
 }
 
 func (be *baseEngine) deploy(manager scheduler.EngineScheduler) error {
-	return manager.DeployEngine(be.projectID, be.collectionID, be.planID, be.ID, be.ExecutorContainer)
+	return nil
 }
 
 func (be *baseEngine) trigger(edc *enginesModel.EngineDataConfig) error {

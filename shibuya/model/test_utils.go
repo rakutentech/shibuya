@@ -1,11 +1,7 @@
 package model
 
-import (
-	"github.com/rakutentech/shibuya/shibuya/config"
-)
-
 func setupAndTeardown() error {
-	db := config.SC.DBC
+	db := getDB()
 	q, err := db.Prepare("delete from plan")
 	if err != nil {
 		return err

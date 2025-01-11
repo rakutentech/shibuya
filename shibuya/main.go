@@ -19,9 +19,11 @@ import (
 func main() {
 	sc := config.LoadConfig()
 	config.SetupLogging(sc)
-	if err := auth.CreateSesstionStore(sc); err != nil {
+	endpoint := model.MakeMySQLEndpoint(sc.DBConf)
+	if err := auth.CreateSesstionStore(endpoint, sc.DBConf.Keypairs); err != nil {
 		log.Fatal(err)
 	}
+
 	if err := model.CreateMySQLClient(sc.DBConf); err != nil {
 		log.Fatal(err)
 	}

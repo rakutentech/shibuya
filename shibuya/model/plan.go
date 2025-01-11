@@ -95,8 +95,8 @@ func (p *Plan) GetPlanFiles() (*ShibuyaFile, []*ShibuyaFile, error) {
 	return t, r, nil
 }
 
-func (p *Plan) Delete() error {
-	if err := p.DeleteAllFiles(); err != nil {
+func (p *Plan) Delete(objStorage object_storage.StorageInterface) error {
+	if err := p.DeleteAllFiles(objStorage); err != nil {
 		return err
 	}
 	db := getDB()
@@ -116,7 +116,7 @@ func (p *Plan) MakeFileName(filename string) string {
 	return fmt.Sprintf("plan/%d/%s", p.ID, filename)
 }
 
-func (p *Plan) StoreFile(content io.ReadCloser, filename string) error {
+func (p *Plan) StoreFile(objStorage object_storage.StorageInterface, content io.ReadCloser, filename string) error {
 	filenameForStorage := p.MakeFileName(filename)
 	table := "plan_data"
 	if strings.HasSuffix(filename, ".jmx") {
@@ -135,10 +135,10 @@ func (p *Plan) StoreFile(content io.ReadCloser, filename string) error {
 		}
 		return err
 	}
-	return object_storage.Client.Storage.Upload(filenameForStorage, content)
+	return objStorage.Upload(filenameForStorage, content)
 }
 
-func (p *Plan) DeleteFile(filename string) error {
+func (p *Plan) DeleteFile(objStorage object_storage.StorageInterface, filename string) error {
 	table := "plan_data"
 	if strings.HasSuffix(filename, ".jmx") {
 		table = "plan_test_file"
@@ -154,14 +154,14 @@ func (p *Plan) DeleteFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	err = object_storage.Client.Storage.Delete(p.MakeFileName(filename))
+	err = objStorage.Delete(p.MakeFileName(filename))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (p *Plan) DeleteAllFiles() error {
+func (p *Plan) DeleteAllFiles(objStorage object_storage.StorageInterface) error {
 	db := getDB()
 	q, err := db.Prepare("delete t, d from plan_test_file t, plan_data d where t.plan_id=? and t.plan_id = d.plan_id")
 	if err != nil {
@@ -175,7 +175,7 @@ func (p *Plan) DeleteAllFiles() error {
 	}
 
 	for _, f := range p.Data {
-		err = p.DeleteFile(f.Filename)
+		err = p.DeleteFile(objStorage, f.Filename)
 		if err != nil {
 			log.Error(err)
 		}

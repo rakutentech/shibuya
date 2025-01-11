@@ -22,7 +22,7 @@ func TestCreateAndGetPlan(t *testing.T) {
 	assert.Equal(t, name, p.Name)
 	assert.Equal(t, projectID, p.ProjectID)
 
-	p.Delete()
+	p.Delete(nil)
 	p, err = GetPlan(planID)
 	assert.NotNil(t, err)
 	assert.Nil(t, p)
@@ -31,7 +31,8 @@ func TestCreateAndGetPlan(t *testing.T) {
 func TestGetRunningPlans(t *testing.T) {
 	collectionID := int64(1)
 	planID := int64(1)
-	if err := AddRunningPlan(collectionID, planID); err != nil {
+	ctx := "test"
+	if err := AddRunningPlan(ctx, collectionID, planID); err != nil {
 		t.Fatal(err)
 	}
 	rp, err := GetRunningPlan(collectionID, planID)
@@ -41,7 +42,7 @@ func TestGetRunningPlans(t *testing.T) {
 	assert.Equal(t, rp.PlanID, planID)
 	assert.Equal(t, rp.CollectionID, collectionID)
 	assert.NotNil(t, rp.StartedTime)
-	rps, err := GetRunningPlans()
+	rps, err := GetRunningPlans(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +52,7 @@ func TestGetRunningPlans(t *testing.T) {
 	assert.Equal(t, rp.PlanID, planID)
 
 	DeleteRunningPlan(collectionID, planID)
-	rps, err = GetRunningPlans()
+	rps, err = GetRunningPlans(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

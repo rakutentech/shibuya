@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/rakutentech/shibuya/shibuya/config"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -15,7 +14,7 @@ var (
 	once sync.Once
 )
 
-func makeMySQLEndpoint(conf *config.MySQLConfig) string {
+func MakeMySQLEndpoint(conf *config.MySQLConfig) string {
 	return fmt.Sprintf("%s:%s@tcp(%s)/%s?", conf.User, conf.Password, conf.Host, conf.Database)
 }
 
@@ -24,13 +23,11 @@ func CreateMySQLClient(conf *config.MySQLConfig) error {
 	once.Do(func() {
 		params := make(map[string]string)
 		params["parseTime"] = "true"
-		endpoint := makeMySQLEndpoint(conf)
+		endpoint := MakeMySQLEndpoint(conf)
 		for k, v := range params {
 			dsn := fmt.Sprintf("%s=%s&", k, v)
 			endpoint += dsn
 		}
-		log.Printf(endpoint)
-		conf.Endpoint = endpoint
 		db, err = sql.Open("mysql", endpoint)
 		db.SetConnMaxLifetime(30 * time.Second)
 	})

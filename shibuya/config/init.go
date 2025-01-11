@@ -1,7 +1,6 @@
 package config
 
 import (
-	"database/sql"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -161,8 +160,6 @@ type ShibuyaConfig struct {
 	Context         string
 	HTTPClient      *http.Client
 	HTTPProxyClient *http.Client
-	DBC             *sql.DB
-	DBEndpoint      string
 }
 
 func loadContext() string {

@@ -20,7 +20,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
-	"github.com/rakutentech/shibuya/shibuya/config"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,13 +45,11 @@ type sessionRow struct {
 
 var SessionStore *MySQLStore
 
-func CreateSesstionStore(sc config.ShibuyaConfig) error {
-	if sc.DBConf != nil {
-		var err error
-		SessionStore, err = NewMySQLStore(sc.DBEndpoint, "user_session", "/", 31536000, []byte(sc.DBConf.Keypairs))
-		if err != nil {
-			return err
-		}
+func CreateSesstionStore(endpoint, keypairs string) error {
+	var err error
+	SessionStore, err = NewMySQLStore(endpoint, "user_session", "/", 31536000, []byte(keypairs))
+	if err != nil {
+		return err
 	}
 	gob.Register(time.Time{})
 	return nil

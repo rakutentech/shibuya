@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rakutentech/shibuya/shibuya/config"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	log "github.com/sirupsen/logrus"
 )
@@ -69,9 +68,9 @@ func (c *Controller) CheckRunningThenTerminate() {
 	}
 }
 
-func isCollectionStale(rh *model.RunHistory, launchTime time.Time) (bool, error) {
+func isCollectionStale(rh *model.RunHistory, launchTime time.Time, gcDuration float64) (bool, error) {
 	// wait for X minutes before purging any collection
-	if time.Since(launchTime).Minutes() < config.SC.ExecutorConfig.Cluster.GCDuration {
+	if time.Since(launchTime).Minutes() < gcDuration {
 		return false, nil
 	}
 	// if the collection has never been run before
@@ -80,7 +79,7 @@ func isCollectionStale(rh *model.RunHistory, launchTime time.Time) (bool, error)
 	}
 	// if collection is running or
 	// if X minutes haven't passed since last run, collection is still being used
-	if rh.EndTime.IsZero() || (time.Since(rh.EndTime).Minutes() < config.SC.ExecutorConfig.Cluster.GCDuration) {
+	if rh.EndTime.IsZero() || (time.Since(rh.EndTime).Minutes() < gcDuration) {
 		return false, nil
 	}
 	return true, nil
@@ -106,7 +105,7 @@ func (c *Controller) AutoPurgeDeployments() {
 				log.Error(err)
 				continue
 			}
-			status, err := isCollectionStale(lr, launchTime)
+			status, err := isCollectionStale(lr, launchTime, c.sc.ExecutorConfig.Cluster.GCDuration)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -131,11 +130,11 @@ func (c *Controller) AutoPurgeDeployments() {
 func (c *Controller) AutoPurgeProjectIngressController() {
 	log.Info("Start the loop for purging idle ingress controllers")
 	projectLastUsedTime := make(map[int64]time.Time)
-	ingressLifespan, err := time.ParseDuration(config.SC.IngressConfig.Lifespan)
+	ingressLifespan, err := time.ParseDuration(c.sc.IngressConfig.Lifespan)
 	if err != nil {
 		log.Fatal(err)
 	}
-	gcInterval, err := time.ParseDuration(config.SC.IngressConfig.GCInterval)
+	gcInterval, err := time.ParseDuration(c.sc.IngressConfig.GCInterval)
 	if err != nil {
 		log.Fatal(err)
 	}

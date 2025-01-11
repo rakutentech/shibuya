@@ -31,7 +31,8 @@ type CloudRun struct {
 	kind            string
 }
 
-func NewCloudRun(cfg *config.ExecutorConfig) *CloudRun {
+func NewCloudRun(sc config.ShibuyaConfig) *CloudRun {
+	cfg := sc.ExecutorConfig
 	ctx := context.Background()
 	//opts := option.ClientOption{}
 	rs, err := run.NewService(ctx, option.WithEndpoint(cfg.Cluster.APIEndpoint))

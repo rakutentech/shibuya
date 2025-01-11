@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rakutentech/shibuya/shibuya/config"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,7 +12,7 @@ type jmeterEngine struct {
 }
 
 func NewJmeterEngine(be *baseEngine) *jmeterEngine {
-	be.ExecutorContainer = config.SC.ExecutorConfig.JmeterContainer.ExecutorContainer
+	//be.ExecutorContainer = config.SC.ExecutorConfig.JmeterContainer.ExecutorContainer
 	e := &jmeterEngine{be}
 	return e
 }
