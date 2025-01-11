@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/rakutentech/shibuya/shibuya/config"
 	enginesModel "github.com/rakutentech/shibuya/shibuya/engines/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	"github.com/rakutentech/shibuya/shibuya/scheduler"
@@ -17,18 +18,20 @@ type PlanController struct {
 	ep         *model.ExecutionPlan
 	collection *model.Collection
 	scheduler  scheduler.EngineScheduler
+	sc         config.ShibuyaConfig
 }
 
-func NewPlanController(ep *model.ExecutionPlan, collection *model.Collection, scheduler scheduler.EngineScheduler) *PlanController {
+func NewPlanController(ep *model.ExecutionPlan, collection *model.Collection, scheduler scheduler.EngineScheduler, sc config.ShibuyaConfig) *PlanController {
 	return &PlanController{
 		ep:         ep,
 		collection: collection,
 		scheduler:  scheduler,
+		sc:         sc,
 	}
 }
 
 func (pc *PlanController) deploy() error {
-	engineConfig := findEngineConfig(JmeterEngineType)
+	engineConfig := findEngineConfig(JmeterEngineType, pc.sc)
 	if err := pc.scheduler.DeployPlan(pc.collection.ProjectID, pc.collection.ID, pc.ep.PlanID,
 		pc.ep.Engines, engineConfig); err != nil {
 		return err

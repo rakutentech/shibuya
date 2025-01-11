@@ -195,10 +195,10 @@ func (be *baseEngine) updateEngineUrl(url string) {
 	be.engineUrl = url
 }
 
-func findEngineConfig(et engineType) *config.ExecutorContainer {
+func findEngineConfig(et engineType, sc config.ShibuyaConfig) *config.ExecutorContainer {
 	switch et {
 	case JmeterEngineType:
-		return config.SC.ExecutorConfig.JmeterContainer.ExecutorContainer
+		return sc.ExecutorConfig.JmeterContainer.ExecutorContainer
 	}
 	return nil
 }

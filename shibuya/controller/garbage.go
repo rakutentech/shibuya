@@ -16,7 +16,7 @@ func (c *Controller) CheckRunningThenTerminate() {
 		go func(jobs <-chan *RunningPlan) {
 		jobLoop:
 			for j := range jobs {
-				pc := NewPlanController(j.ep, j.collection, c.Scheduler)
+				pc := NewPlanController(j.ep, j.collection, c.Scheduler, c.sc)
 				if running := pc.progress(); !running {
 					collection := j.collection
 					currRunID, err := collection.GetCurrentRun()
@@ -36,9 +36,9 @@ func (c *Controller) CheckRunningThenTerminate() {
 			}
 		}(jobs)
 	}
-	log.Printf("Getting all the running plans for %s", config.SC.Context)
+	log.Printf("Getting all the running plans for %s", c.sc.Context)
 	for {
-		runningPlans, err := model.GetRunningPlans()
+		runningPlans, err := model.GetRunningPlans(c.sc.Context)
 		if err != nil {
 			log.Error(err)
 			continue

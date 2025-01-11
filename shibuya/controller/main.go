@@ -39,6 +39,7 @@ func NewController(sc config.ShibuyaConfig) *Controller {
 		},
 		ApiClosingClients: make(chan *ApiMetricStream),
 		ApiNewClients:     make(chan *ApiMetricStream),
+		sc:                sc,
 	}
 	c.schedulerKind = sc.ExecutorConfig.Cluster.Kind
 	c.Scheduler = scheduler.NewEngineScheduler(sc.ExecutorConfig)
@@ -211,7 +212,7 @@ func (c *Controller) DeployCollection(collection *model.Collection) error {
 			wg.Add(1)
 			go func(ep *model.ExecutionPlan) {
 				defer wg.Done()
-				pc := NewPlanController(ep, collection, c.Scheduler)
+				pc := NewPlanController(ep, collection, c.Scheduler, c.sc)
 				utils.Retry(func() error {
 					return pc.deploy()
 				}, nil)

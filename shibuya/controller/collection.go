@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/rakutentech/shibuya/shibuya/config"
 	enginesModel "github.com/rakutentech/shibuya/shibuya/engines/model"
 	"github.com/rakutentech/shibuya/shibuya/model"
 	log "github.com/sirupsen/logrus"
@@ -43,7 +42,7 @@ func (c *Controller) calculateUsage(collection *model.Collection) error {
 	for _, ep := range eps {
 		vu += ep.Engines * ep.Concurrency
 	}
-	return collection.MarkUsageFinished(config.SC.Context, int64(vu))
+	return collection.MarkUsageFinished(c.sc.Context, int64(vu))
 }
 
 func (c *Controller) TermAndPurgeCollection(collection *model.Collection) (err error) {
@@ -93,12 +92,12 @@ func (c *Controller) TriggerCollection(collection *model.Collection) error {
 			// We wait for all the engines. Because we can only all the plan into running status
 			// When all the engines are triggered
 
-			pc := NewPlanController(ep, collection, c.Scheduler)
+			pc := NewPlanController(ep, collection, c.Scheduler, c.sc)
 			if err := pc.trigger(engineDataConfigs[i], runID); err != nil {
 				errs <- err
 				return
 			}
-			if err := model.AddRunningPlan(collection.ID, ep.PlanID); err != nil {
+			if err := model.AddRunningPlan(c.sc.Context, collection.ID, ep.PlanID); err != nil {
 				errs <- err
 				return
 			}
@@ -133,7 +132,7 @@ func (c *Controller) SubscribeCollection(collection *model.Collection) ([]shibuy
 		wg.Add(1)
 		go func(ep *model.ExecutionPlan) {
 			defer wg.Done()
-			pc := NewPlanController(ep, collection, c.Scheduler)
+			pc := NewPlanController(ep, collection, c.Scheduler, c.sc)
 			engines, err := pc.subscribe()
 			if err != nil {
 				return
@@ -159,7 +158,7 @@ func (c *Controller) TermCollection(collection *model.Collection, force bool) (e
 		wg.Add(1)
 		go func(ep *model.ExecutionPlan) {
 			defer wg.Done()
-			pc := NewPlanController(ep, collection, c.Scheduler) // we don't need scheduler here
+			pc := NewPlanController(ep, collection, c.Scheduler, c.sc) // we don't need scheduler here
 			if err := pc.term(force); err != nil {
 				log.Error(err)
 				e = err
