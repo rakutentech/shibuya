@@ -226,7 +226,6 @@ func (kcm *K8sClientManager) generatePlanDeployment(planName string, replicas in
 				Spec: apiv1.PodSpec{
 					Affinity:                     affinity,
 					Tolerations:                  tolerations,
-					ServiceAccountName:           kcm.serviceAccount,
 					AutomountServiceAccountToken: &t,
 					ImagePullSecrets: []apiv1.LocalObjectReference{
 						{
