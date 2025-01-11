@@ -130,6 +130,7 @@ func TestStorePlans(t *testing.T) {
 	ec = &ExecutionCollection{}
 	ec.Tests = []*ExecutionPlan{ep1}
 	err = c.Store(ec)
+	eps, _ = c.GetExecutionPlans()
 	assert.Equal(t, 1, len(eps))
 }
 

@@ -42,6 +42,6 @@ func TestGetProjectCollections(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, cid := range collections {
-		assert.Equal(t, collection_id, cid)
+		assert.Equal(t, collection_id, cid.ID)
 	}
 }

@@ -62,7 +62,7 @@ expose:
 	-killall kubectl
 	-kubectl -n $(shibuya-controller-ns) port-forward service/shibuya-metrics-dashboard 3000:3000 > /dev/null 2>&1 &
 	-kubectl -n $(shibuya-controller-ns) port-forward service/shibuya-api-local 8080:8080 > /dev/null 2>&1 &
-
+	-kubectl -n $(shibuya-controller-ns) port-forward service/db 3306:3306 > /dev/null 2>&1 &
 # TODO!
 # After k8s 1.22, service account token is no longer auto generated. We need to manually create the secret
 # for the service account. ref: "https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/#manual-secret-management-for-serviceaccounts"
