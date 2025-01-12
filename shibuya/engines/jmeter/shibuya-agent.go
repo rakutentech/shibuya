@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	_ "go.uber.org/automaxprocs"
 
+	"github.com/rakutentech/shibuya/shibuya/config"
 	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
 
 	"github.com/rakutentech/shibuya/shibuya/engines/containerstats"
@@ -76,7 +77,7 @@ func findCollectionIDPlanID() (string, string) {
 	return os.Getenv("collection_id"), os.Getenv("plan_id")
 }
 
-func NewServer() (sw *ShibuyaWrapper) {
+func NewServer(sc config.ShibuyaConfig) (sw *ShibuyaWrapper) {
 	// Instantiate a broker
 	sw = &ShibuyaWrapper{
 		newClients:     make(chan chan string),
@@ -86,7 +87,7 @@ func NewServer() (sw *ShibuyaWrapper) {
 		logCounter:     0,
 		Bus:            make(chan string),
 		httpClient:     &http.Client{},
-		storageClient:  sos.Client.Storage,
+		storageClient:  sos.CreateObjStorageClient(sc),
 	}
 	sw.collectionID, sw.planID = findCollectionIDPlanID()
 	reader, writer, _ := os.Pipe()
@@ -528,7 +529,8 @@ func (sw *ShibuyaWrapper) reportOwnMetrics(interval time.Duration) error {
 }
 
 func main() {
-	sw := NewServer()
+	sc := config.LoadConfig()
+	sw := NewServer(sc)
 	go func() {
 		if err := sw.reportOwnMetrics(5 * time.Second); err != nil {
 			// if the engine is having issues with reading stats from cgroup
