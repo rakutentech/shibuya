@@ -131,13 +131,6 @@ type MetricStorage struct {
 	RemoteWriteToken string `json:"token"`
 }
 
-var defaultIngressConfig = IngressConfig{
-	Image:    "k8s.gcr.io/ingress-nginx/controller:v1.2.1",
-	Replicas: 1,
-	CPU:      "2",
-	Mem:      "1Gi",
-}
-
 type ShibuyaConfig struct {
 	ProjectHome      string           `json:"project_home"`
 	UploadFileHelp   string           `json:"upload_file_help"`
@@ -208,7 +201,6 @@ func SetupLogging(sc ShibuyaConfig) {
 
 func LoadConfig() ShibuyaConfig {
 	sc := new(ShibuyaConfig)
-	sc.IngressConfig = &defaultIngressConfig
 	f, err := os.Open(ConfigFilePath)
 	if err != nil {
 		log.Fatal("Cannot find config file")

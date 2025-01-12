@@ -85,6 +85,7 @@ runtime:
   ingress:
     image: "coordinator:local"
     cpu: 0.1
+    mem: 128Mi
     replicas: 1
   dashboard:
     url: "http://localhost:3000"

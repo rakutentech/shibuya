@@ -73,6 +73,7 @@ data:
         "ingress": {
             "image": {{ .Values.runtime.ingress.image | quote }},
             "cpu": {{ .Values.runtime.ingress.cpu | quote }},
+            "mem": {{ .Values.runtime.ingress.mem | quote }},
             "replicas": {{ .Values.runtime.ingress.replicas }}
         },
         "dashboard": {
