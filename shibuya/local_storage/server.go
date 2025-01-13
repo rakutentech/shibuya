@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -38,11 +37,11 @@ func (lf *LocalFile) store(content io.ReadCloser) error {
 	if err := os.MkdirAll(lf.FolderPath, 0777); err != nil {
 		return err
 	}
-	fileContents, err := ioutil.ReadAll(content)
+	fileContents, err := io.ReadAll(content)
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(lf.FilePath, fileContents, 0777); err != nil {
+	if err := os.WriteFile(lf.FilePath, fileContents, 0777); err != nil {
 		return err
 	}
 	return nil
@@ -61,7 +60,7 @@ func fileGetHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 		return
 	}
-	file, err := ioutil.ReadFile(lf.FilePath)
+	file, err := os.ReadFile(lf.FilePath)
 	if err != nil {
 		http.Error(w, "File not Found", 404)
 		return
