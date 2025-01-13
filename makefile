@@ -95,7 +95,8 @@ node-permissions:
 
 .PHONY: local_storage
 local_storage:
-	docker build -t shibuya:storage local_storage
+	cd shibuya && sh build.sh local_storage
+	docker build -t shibuya:storage -f shibuya/Dockerfile --build-arg="binary_name=shibuya-local-storage" shibuya
 	kind load docker-image shibuya:storage --name shibuya
 	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/storage.yaml --force
 

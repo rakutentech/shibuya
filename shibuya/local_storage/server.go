@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/julienschmidt/httprouter"
 )
 
 const ROOT = "/storage"
@@ -57,8 +55,8 @@ func (lf *LocalFile) validateLocalFile() bool {
 	return true
 }
 
-func fileGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	lf, err := newLocalFile(params.ByName("kind"), params.ByName("folder"), params.ByName("file"))
+func fileGetHandler(w http.ResponseWriter, r *http.Request) {
+	lf, err := newLocalFile(r.PathValue("kind"), r.PathValue("folder"), r.PathValue("file"))
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -72,8 +70,8 @@ func fileGetHandler(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 	return
 }
 
-func filePutHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	lf, err := newLocalFile(params.ByName("kind"), params.ByName("folder"), params.ByName("file"))
+func filePutHandler(w http.ResponseWriter, r *http.Request) {
+	lf, err := newLocalFile(r.PathValue("kind"), r.PathValue("folder"), r.PathValue("file"))
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -98,8 +96,8 @@ func filePutHandler(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 	return
 }
 
-func fileDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	lf, err := newLocalFile(params.ByName("kind"), params.ByName("folder"), params.ByName("file"))
+func fileDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	lf, err := newLocalFile(r.PathValue("kind"), r.PathValue("folder"), r.PathValue("file"))
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -110,10 +108,11 @@ func fileDeleteHandler(w http.ResponseWriter, r *http.Request, params httprouter
 	}
 	http.Error(w, "deleted", 204)
 }
+
 func main() {
-	r := httprouter.New()
-	r.GET("/:kind/:folder/:file", fileGetHandler)
-	r.PUT("/:kind/:folder/:file", filePutHandler)
-	r.DELETE("/:kind/:folder/:file", fileDeleteHandler)
-	log.Fatal(http.ListenAndServe(":8080", r))
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{kind}/{folder}/{file}", fileGetHandler)
+	mux.HandleFunc("PUT /{kind}/{folder}/{file}", filePutHandler)
+	mux.HandleFunc("DELETE /{kind}/{folder}/{file}", fileDeleteHandler)
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }

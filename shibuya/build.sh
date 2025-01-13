@@ -12,6 +12,8 @@ case "$target" in
     ;;
     "coordinator") GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/shibuya-coordinator $(pwd)/coordinator
     ;;
+    "local_storage") GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/shibuya-local-storage $(pwd)/local_storage
+    ;;
     *)
     GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/shibuya
 esac
