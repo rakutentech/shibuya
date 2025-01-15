@@ -92,6 +92,19 @@ data:
         },
         "log_format": {
             "json": false
+        },
+        "metric_storage": [
+        {{- range $index, $item := .Values.runtime.metric_storage }}
+            {
+                "url": {{ $item.url | quote }},
+                "token": {{ $item.token | quote }}
+            }
+        {{- end }}
+        ],
+        "scraper_container": {
+            "image": "{{ .Values.runtime.scraper_container.image }}",
+            "cpu": "{{ .Values.runtime.scraper_container.cpu }}",
+            "mem": "{{ .Values.runtime.scraper_container.mem }}"
         }
     }
 kind: ConfigMap

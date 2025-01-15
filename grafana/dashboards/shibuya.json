@@ -200,22 +200,40 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "(sum(rate(shibuya_latency_collection_sum{run_id=\"$runID\"}[2s])) by (run_id)) / (sum(rate(shibuya_status_counter{run_id=\"$runID\"}[2s])) by (run_id))",
+          "expr": "histogram_quantile(0.99, sum(rate(shibuya_latency_collection_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
           "format": "time_series",
           "hide": false,
           "instant": false,
-          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "Average",
+          "legendFormat": "0.99",
           "refId": "A"
         },
         {
-          "expr": "shibuya_latency_collection{run_id=\"$runID\"}",
+          "expr": "histogram_quantile(0.9, sum(rate(shibuya_latency_collection_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
           "format": "time_series",
           "hide": false,
+          "instant": false,
           "intervalFactor": 1,
-          "legendFormat": "{{quantile}}",
+          "legendFormat": "0.9",
           "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(shibuya_latency_collection_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
+          "format": "time_series",
+          "hide": false,
+          "instant": false,
+          "intervalFactor": 1,
+          "legendFormat": "0.5",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(rate(shibuya_latency_collection_milliseconds_sum{run_id=\"$runID\"}[5s])) by (run_id) / sum(rate(shibuya_latency_collection_milliseconds_count{run_id=\"$runID\"}[5s])) by (run_id)",
+          "format": "time_series",
+          "hide": false,
+          "instant": false,
+          "intervalFactor": 1,
+          "legendFormat": "Average",
+          "refId": "D"
         }
       ],
       "thresholds": [],
@@ -804,7 +822,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(increase(shibuya_status_counter{run_id=\"$runID\", status!=\"200\"}[2s])) by (status)",
+          "expr": "sum(increase(shibuya_status_counter{run_id=\"$runID\", status!=\"200\"}[5s])) by (status)",
           "format": "time_series",
           "instant": false,
           "interval": "1s",
@@ -1028,20 +1046,40 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "(sum(rate(shibuya_latency_plan_sum{run_id=\"$runID\", plan_id=\"$planID\"}[2s])) by (plan_id)) / (sum(rate(shibuya_status_counter{run_id=\"$runID\", plan_id=\"$planID\"}[2s])) by (plan_id))",
+              "expr": "histogram_quantile(0.99, sum(rate(shibuya_latency_plan_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "intervalFactor": 1,
+              "legendFormat": "0.99",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(shibuya_latency_plan_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "intervalFactor": 1,
+              "legendFormat": "0.9",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(shibuya_latency_plan_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "intervalFactor": 1,
+              "legendFormat": "0.5",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(rate(shibuya_latency_plan_milliseconds_sum{run_id=\"$runID\"}[5s])) by (run_id) / sum(rate(shibuya_latency_plan_milliseconds_count{run_id=\"$runID\"}[5s])) by (run_id)",
               "format": "time_series",
               "instant": false,
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "Average",
-              "refId": "A"
-            },
-            {
-              "expr": "shibuya_latency_plan{plan_id=\"$planID\", run_id=\"$runID\"}",
-              "format": "time_series",
-              "intervalFactor": 1,
-              "legendFormat": "{{quantile}}",
-              "refId": "B"
+              "refId": "D"
             }
           ],
           "thresholds": [],
@@ -1479,7 +1517,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(increase(shibuya_status_counter{run_id=\"$runID\", status!=\"200\", plan_id=\"$planID\"}[2s])) by (status)",
+              "expr": "sum(increase(shibuya_status_counter{run_id=\"$runID\", status!=\"200\", plan_id=\"$planID\"}[5s])) by (status)",
               "format": "time_series",
               "instant": false,
               "interval": "1s",
@@ -1708,20 +1746,40 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "(sum(rate(shibuya_latency_label_sum{run_id=\"$runID\", label=\"$label\"}[2s])) by (label)) / (sum(rate(shibuya_status_counter{run_id=\"$runID\", label=\"$label\"}[2s])) by (label))",
+              "expr": "histogram_quantile(0.99, sum(rate(shibuya_latency_label_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "intervalFactor": 1,
+              "legendFormat": "0.99",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(shibuya_latency_label_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "intervalFactor": 1,
+              "legendFormat": "0.9",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(shibuya_latency_label_milliseconds_bucket{run_id=\"$runID\"}[5s])) by (le))",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "intervalFactor": 1,
+              "legendFormat": "0.5",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(rate(shibuya_latency_label_milliseconds_sum{run_id=\"$runID\"}[5s])) by (run_id) / sum(rate(shibuya_latency_label_milliseconds_count{run_id=\"$runID\"}[5s])) by (run_id)",
               "format": "time_series",
               "instant": false,
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "Average",
-              "refId": "A"
-            },
-            {
-              "expr": "shibuya_latency_label{label=\"$label\", run_id=\"$runID\"}",
-              "format": "time_series",
-              "intervalFactor": 1,
-              "legendFormat": "{{quantile}}",
-              "refId": "B"
+              "refId": "D"
             }
           ],
           "thresholds": [],

@@ -22,7 +22,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	_ "go.uber.org/automaxprocs"
 
-	"github.com/rakutentech/shibuya/shibuya/config"
 	sos "github.com/rakutentech/shibuya/shibuya/object_storage"
 
 	"github.com/rakutentech/shibuya/shibuya/engines/containerstats"
@@ -146,22 +145,12 @@ func (sw *ShibuyaWrapper) makePromMetrics(line string) {
 	if err != nil {
 		return
 	}
-	collectionID := sw.collectionID
-	planID := sw.planID
-	engineID := fmt.Sprintf("%d", sw.engineID)
-	runID := fmt.Sprintf("%d", sw.runID)
+	metric.CollectionID = sw.collectionID
+	metric.PlanID = sw.planID
+	metric.EngineID = fmt.Sprintf("%d", sw.engineID)
+	metric.RunID = fmt.Sprintf("%d", sw.runID)
 
-	label := metric.Label
-	status := metric.Status
-	latency := metric.Latency
-	threads := metric.Threads
-
-	config.StatusCounter.WithLabelValues(sw.collectionID, planID, runID, engineID, label, status).Inc()
-	config.CollectionLatencySummary.WithLabelValues(collectionID, runID).Observe(latency)
-	config.PlanLatencySummary.WithLabelValues(collectionID, planID, runID).Observe(latency)
-	config.LabelLatencySummary.WithLabelValues(collectionID, label, runID).Observe(latency)
-	config.ThreadsGauge.WithLabelValues(collectionID, planID, runID, engineID).Set(threads)
-
+	metric.ToPrometheus()
 }
 
 func (sw *ShibuyaWrapper) listen() {
@@ -526,9 +515,9 @@ func (sw *ShibuyaWrapper) reportOwnMetrics(interval time.Duration) error {
 		if err != nil {
 			return err
 		}
-		config.CpuGauge.WithLabelValues(sw.collectionID,
+		enginesModel.CpuGauge.WithLabelValues(sw.collectionID,
 			sw.planID, engineNumber).Set(float64(used))
-		config.MemGauge.WithLabelValues(sw.collectionID,
+		enginesModel.MemGauge.WithLabelValues(sw.collectionID,
 			sw.planID, engineNumber).Set(float64(memoryUsage))
 	}
 }

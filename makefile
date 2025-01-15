@@ -30,8 +30,8 @@ db: shibuya/db kubernetes/db.yaml
 .PHONY: grafana
 grafana: grafana/
 	helm uninstall metrics-dashboard || true
-	docker build grafana/ -t grafana:local
-	kind load docker-image grafana:local --name shibuya
+	docker build grafana/ -t metrics-dashboard:local
+	kind load docker-image metrics-dashboard:local --name shibuya
 	helm upgrade --install metrics-dashboard grafana/metrics-dashboard
 
 .PHONY: local_api
@@ -43,7 +43,7 @@ local_api:
 .PHONY: local_controller
 local_controller:
 	cd shibuya && sh build.sh controller
-	docker build -f shibuya/Dockerfile --build-arg env=local -t controller:local shibuya
+	docker build -f shibuya/Dockerfile --build-arg binary_name=shibuya-controller --build-arg env=local -t controller:local shibuya
 	kind load docker-image controller:local --name shibuya
 
 .PHONY: shibuya
