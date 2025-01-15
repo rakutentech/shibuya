@@ -10,6 +10,8 @@ case "$target" in
     ;;
     "controller") GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/shibuya-controller $(pwd)/controller/cmd
     ;;
+    "coordinator") GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/shibuya-coordinator $(pwd)/coordinator
+    ;;
     *)
     GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o build/shibuya
 esac

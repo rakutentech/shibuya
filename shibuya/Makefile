@@ -41,4 +41,13 @@ jmeter_agent_image: jmeter_agent
 	docker build -t $(img) -f Dockerfile.engines.jmeter .
 	docker push $(img)
 
+.PHONY: coordinator_build
+coordinator_build:
+	sh build.sh coordinator
+
+.PHONY coordinator_image
+coordinator_image: coordinator_build
+	docker build -t $(img) -f Dockerfile --build-arg="binary_name=shibuya-coordinator" .
+	docker push $(img)
+
 
