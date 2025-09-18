@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/herirusmanto/shibuya/compare/v1.3.0...v1.3.1) (2025-09-18)
+
+
+### Bug Fixes
+
+* re trigger pipeline ([1f2d00b](https://github.com/herirusmanto/shibuya/commit/1f2d00be547b1aa478270e9264e544cf946da63f))
+
 ## [1.2.1](https://github.com/herirusmanto/shibuya/compare/v1.2.0...v1.2.1) (2025-09-18)
 
 
