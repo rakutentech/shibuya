@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/herirusmanto/shibuya/compare/v1.3.1...v1.4.0) (2025-09-18)
+
+
+### Features
+
+* disabled CGO ([0695930](https://github.com/herirusmanto/shibuya/commit/0695930e22028dc6bf70f2c2338ed3344d49f5eb))
+
 ## [1.3.1](https://github.com/herirusmanto/shibuya/compare/v1.3.0...v1.3.1) (2025-09-18)
 
 
