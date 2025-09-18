@@ -41,7 +41,6 @@ In order to improve the scalibility of Shibuya, we are going to split the single
 
 By default, at locall, it will be run as non-distributed mode. You can enable to by set the `runtime.distributed_mode` to `true`.
 
-
 ### Production setup
 
 Please read the makefile to understand what components are needed and how to set them up in detail.
