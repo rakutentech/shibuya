@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/herirusmanto/shibuya/compare/v1.2.0...v1.2.1) (2025-09-18)
+
+
+### Bug Fixes
+
+* re trigger deploy ([9837286](https://github.com/herirusmanto/shibuya/commit/98372861b3252816e9e71e6fa0f1a7dc765b3f7a))
+
 ## [1.2.0](https://github.com/herirusmanto/shibuya/compare/v1.1.2...v1.2.0) (2025-09-18)
 
 
