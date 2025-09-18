@@ -5,5 +5,5 @@ ADD go.mod go.mod
 ADD go.sum go.sum
 RUN go mod download
 ADD main.go main.go
-RUN go build -o storage
+RUN CGO_ENABLED=0 go build -o storage
 CMD ["./storage"]
