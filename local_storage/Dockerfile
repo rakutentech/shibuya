@@ -1,4 +1,4 @@
-FROM gcr.io/shibuya-214807/golang:1.13.6-stretch
+FROM golang:1.25.1-alpine3.22
 
 WORKDIR /go/src/storage
 ADD go.mod go.mod

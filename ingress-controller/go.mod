@@ -1,6 +1,6 @@
 module ingress-controller
 
-go 1.20
+go 1.25.1
 
 require (
 	github.com/sirupsen/logrus v1.9.0
