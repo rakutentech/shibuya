@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/herirusmanto/shibuya/compare/v1.1.2...v1.2.0) (2025-09-18)
+
+
+### Features
+
+* add claude ([36a9c7e](https://github.com/herirusmanto/shibuya/commit/36a9c7ed727d0b7b3caacbf779a3a2fb413448c2))
+* update golang version to 1.25.1 and alpine 3.22 base image ([3a9c573](https://github.com/herirusmanto/shibuya/commit/3a9c5738c593094dd1df1aebfebcdeb6bbc014a1))
+* update ubuntu to latest version ([12cdf4e](https://github.com/herirusmanto/shibuya/commit/12cdf4ead5c104ef352723631cb1691196519ff6))
+
+
+### Bug Fixes
+
+* upgrade go version to latest ([#133](https://github.com/herirusmanto/shibuya/issues/133)) ([a8dbe3b](https://github.com/herirusmanto/shibuya/commit/a8dbe3b45b49f4fef2db05b48f5cd60d7a295467))
+* upgrade underscorejs to v1.13.7 ([#134](https://github.com/herirusmanto/shibuya/issues/134)) ([3ffdf05](https://github.com/herirusmanto/shibuya/commit/3ffdf05edd8d38cb4f80c2286b11b5080b3901a3))
+
 ## [1.1.2](https://github.com/rakutentech/shibuya/compare/v1.1.1...v1.1.2) (2024-12-16)
 
 
