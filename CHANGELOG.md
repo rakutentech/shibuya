@@ -1,13 +1,4 @@
-### Features
-
-* change ubuntu base image ([de264bc](https://github.com/herirusmanto/shibuya/commit/de264bca52b212b080f52dc7fb25bbcf38a0277c))
-
-## [1.7.0](https://github.com/herirusmanto/shibuya/compare/v1.6.0...v1.7.0) (2025-09-19)
-
-
-### Features
-
-* trigger job ([c245135](https://github.com/herirusmanto/shibuya/commit/c245135a544e22f1a447eb153f2e5efa840c0e2a))
+# Changelog
 
 ## [1.1.2](https://github.com/rakutentech/shibuya/compare/v1.1.1...v1.1.2) (2024-12-16)
 
