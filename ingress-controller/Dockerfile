@@ -11,7 +11,7 @@ COPY . /go/src/shibuya-ingress-controller
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/sic
 
-FROM gcr.io/shibuya-214807/ubuntu:18.04
+FROM gcr.io/shibuya-214807/ubuntu:24.04
 
 COPY --from=builder /go/bin/sic /usr/local/bin/sic
 
