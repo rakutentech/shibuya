@@ -1,4 +1,4 @@
-FROM golang:1.25.1-alpine3.22 AS builder
+FROM gcr.io/shibuya-214807/golang:1.25.1-alpine3.22 AS builder
 
 WORKDIR /go/src/shibuya-ingress-controller
 
