@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/herirusmanto/shibuya/compare/v1.7.0...v1.8.0) (2025-09-19)
+
+
+### Features
+
+* add build ingress controller and local storage ([b287576](https://github.com/herirusmanto/shibuya/commit/b28757678c7dd804dda30ac62343e441b9fd1a3e))
+
 ## [1.1.2](https://github.com/rakutentech/shibuya/compare/v1.1.1...v1.1.2) (2024-12-16)
 
 
