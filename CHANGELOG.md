@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3](https://github.com/rakutentech/shibuya/compare/v1.1.2...v1.1.3) (2025-09-29)
+
+
+### Bug Fixes
+
+* upgrade go version to latest ([#133](https://github.com/rakutentech/shibuya/issues/133)) ([a8dbe3b](https://github.com/rakutentech/shibuya/commit/a8dbe3b45b49f4fef2db05b48f5cd60d7a295467))
+* upgrade underscorejs to v1.13.7 ([#134](https://github.com/rakutentech/shibuya/issues/134)) ([3ffdf05](https://github.com/rakutentech/shibuya/commit/3ffdf05edd8d38cb4f80c2286b11b5080b3901a3))
+
 ## [1.1.2](https://github.com/rakutentech/shibuya/compare/v1.1.1...v1.1.2) (2024-12-16)
 
 
