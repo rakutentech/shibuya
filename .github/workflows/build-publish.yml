@@ -27,7 +27,7 @@ env:
 jobs:
   release-please:
     name: release-please
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     outputs:
       tag_name: ${{ steps.create_release.outputs.tag_name }}
     steps:
@@ -47,14 +47,14 @@ jobs:
   setup-build-publish-push:
     needs: release-please
     name: Setup, Build, push
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     environment: production
     if: ${{ needs.release-please.outputs.tag_name != '' }}
     steps:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.23.4'
+        go-version: '1.25.1'
 
     - id: 'auth'
       uses: 'google-github-actions/auth@v1'
@@ -123,6 +123,3 @@ jobs:
       # So we can cleary know which jmeter version we are using
       run: |-
         cd shibuya && make jmeter_agent_image component=jmeter-3.3
-
-
-
