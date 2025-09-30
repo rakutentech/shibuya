@@ -1,5 +1,8 @@
 all: | cluster permissions db prometheus grafana shibuya jmeter local_storage ingress-controller
 
+# Container runtime - can be docker or podman
+CONTAINER_RUNTIME ?= $(shell which podman >/dev/null 2>&1 && echo podman || echo docker)
+
 shibuya-controller-ns = shibuya-executors
 shibuya-executor-ns = shibuya-executors
 
@@ -30,21 +33,39 @@ db: shibuya/db kubernetes/db.yaml
 .PHONY: grafana
 grafana: grafana/
 	helm uninstall metrics-dashboard || true
-	docker build grafana/ -t grafana:local
+	$(CONTAINER_RUNTIME) build grafana/ -t grafana:local
+ifeq ($(CONTAINER_RUNTIME),podman)
+	podman save localhost/grafana:local -o /tmp/grafana-local.tar
+	kind load image-archive /tmp/grafana-local.tar --name shibuya
+	rm -f /tmp/grafana-local.tar
+else
 	kind load docker-image grafana:local --name shibuya
+endif
 	helm upgrade --install metrics-dashboard grafana/metrics-dashboard
 
 .PHONY: local_api
 local_api:
 	cd shibuya && sh build.sh api
-	docker build -f shibuya/Dockerfile --build-arg env=local -t api:local shibuya
+	$(CONTAINER_RUNTIME) build -f shibuya/Dockerfile --build-arg env=local -t api:local shibuya
+ifeq ($(CONTAINER_RUNTIME),podman)
+	podman save localhost/api:local -o /tmp/api-local.tar
+	kind load image-archive /tmp/api-local.tar --name shibuya
+	rm -f /tmp/api-local.tar
+else
 	kind load docker-image api:local --name shibuya
+endif
 
 .PHONY: local_controller
 local_controller:
 	cd shibuya && sh build.sh controller
-	docker build -f shibuya/Dockerfile --build-arg env=local -t controller:local shibuya
+	$(CONTAINER_RUNTIME) build -f shibuya/Dockerfile --build-arg env=local -t controller:local shibuya
+ifeq ($(CONTAINER_RUNTIME),podman)
+	podman save localhost/controller:local -o /tmp/controller-local.tar
+	kind load image-archive /tmp/controller-local.tar --name shibuya
+	rm -f /tmp/controller-local.tar
+else
 	kind load docker-image controller:local --name shibuya
+endif
 
 .PHONY: shibuya
 shibuya: local_api local_controller grafana
@@ -54,8 +75,14 @@ shibuya: local_api local_controller grafana
 .PHONY: jmeter
 jmeter: shibuya/engines/jmeter
 	cd shibuya && sh build.sh jmeter
-	docker build -t shibuya:jmeter -f shibuya/Dockerfile.engines.jmeter shibuya
+	$(CONTAINER_RUNTIME) build -t shibuya:jmeter -f shibuya/Dockerfile.engines.jmeter shibuya
+ifeq ($(CONTAINER_RUNTIME),podman)
+	podman save localhost/shibuya:jmeter -o /tmp/shibuya-jmeter.tar
+	kind load image-archive /tmp/shibuya-jmeter.tar --name shibuya
+	rm -f /tmp/shibuya-jmeter.tar
+else
 	kind load docker-image shibuya:jmeter --name shibuya
+endif
 
 .PHONY: expose
 expose:
@@ -90,13 +117,25 @@ node-permissions:
 
 .PHONY: local_storage
 local_storage:
-	docker build -t shibuya:storage local_storage
+	$(CONTAINER_RUNTIME) build -t shibuya:storage local_storage
+ifeq ($(CONTAINER_RUNTIME),podman)
+	podman save localhost/shibuya:storage -o /tmp/shibuya-storage.tar
+	kind load image-archive /tmp/shibuya-storage.tar --name shibuya
+	rm -f /tmp/shibuya-storage.tar
+else
 	kind load docker-image shibuya:storage --name shibuya
-	kubectl -n $(shibuya-controller-ns) replace -f kubernetes/storage.yaml --force
+endif
+	kubectl -n $(shibuya-controller-ns) apply -f kubernetes/storage.yaml
 
 .PHONY: ingress-controller
 ingress-controller:
 	# if you need to debug the controller, please use the makefile in the ingress controller folder
 	# And update the image in the config.json
-	docker build -t shibuya:ingress-controller -f ingress-controller/Dockerfile ingress-controller
+	$(CONTAINER_RUNTIME) build -t shibuya:ingress-controller -f ingress-controller/Dockerfile ingress-controller
+ifeq ($(CONTAINER_RUNTIME),podman)
+	podman save localhost/shibuya:ingress-controller -o /tmp/shibuya-ingress-controller.tar
+	kind load image-archive /tmp/shibuya-ingress-controller.tar --name shibuya
+	rm -f /tmp/shibuya-ingress-controller.tar
+else
 	kind load docker-image shibuya:ingress-controller --name shibuya
+endif
